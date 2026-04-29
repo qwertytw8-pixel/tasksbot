@@ -1,0 +1,97 @@
+from __future__ import annotations
+
+import logging
+from contextlib import asynccontextmanager
+
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.types import Update
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api import router as api_router
+from app.bot import configure_bot_commands, dp
+from app.config import get_settings
+from app.db import Base, get_engine
+from app.scheduler import start_scheduler
+
+
+def _setup_logging(level: str) -> None:
+    logging.basicConfig(
+        level=getattr(logging, level.upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s | %(message)s",
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+    _setup_logging(settings.log_level)
+    log = logging.getLogger("startup")
+
+    # DB: create tables if not exist (for first run; later — alembic)
+    engine = get_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    log.info("db ready")
+
+    # Bot
+    bot = Bot(
+        token=settings.bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
+    app.state.bot = bot
+
+    # Webhook
+    await bot.set_webhook(
+        url=settings.webhook_url,
+        secret_token=settings.webhook_secret,
+        drop_pending_updates=True,
+        allowed_updates=dp.resolve_used_update_types(),
+    )
+    await configure_bot_commands(bot)
+    log.info("webhook set: %s", settings.webhook_url)
+
+    # Scheduler
+    scheduler = start_scheduler(bot)
+    app.state.scheduler = scheduler
+
+    try:
+        yield
+    finally:
+        scheduler.shutdown(wait=False)
+        await bot.session.close()
+
+
+app = FastAPI(title="tasksbot", lifespan=lifespan)
+
+settings = get_settings()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list or ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(api_router)
+
+
+@app.get("/healthz")
+async def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.post("/tg/webhook")
+async def telegram_webhook(
+    request: Request,
+    x_telegram_bot_api_secret_token: str | None = Header(default=None),
+) -> dict[str, bool]:
+    settings = get_settings()
+    if x_telegram_bot_api_secret_token != settings.webhook_secret:
+        raise HTTPException(status_code=403, detail="bad secret")
+    payload = await request.json()
+    update = Update.model_validate(payload, context={"bot": request.app.state.bot})
+    await dp.feed_update(bot=request.app.state.bot, update=update)
+    return {"ok": True}
