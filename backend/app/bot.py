@@ -81,10 +81,6 @@ async def cmd_start(message: Message) -> None:
         await message.answer_photo(photo=img, caption=WELCOME_TEXT, reply_markup=_open_app_kb())
     else:
         await message.answer(WELCOME_TEXT, reply_markup=_open_app_kb())
-    await message.answer(
-        "Кнопка ниже всегда под рукой 👇",
-        reply_markup=_reply_kb(),
-    )
 
 
 @dp.message(Command("app"))
