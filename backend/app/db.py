@@ -1,9 +1,24 @@
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import date, datetime
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.config import get_settings
@@ -56,8 +71,13 @@ class Task(Base):
     category_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
     )
+    parent_task_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    has_time: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     remind_minutes_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_done: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -67,6 +87,8 @@ class Task(Base):
 
     user: Mapped[User] = relationship(back_populates="tasks")
     category: Mapped[Category | None] = relationship(back_populates="tasks")
+    parent: Mapped["Task | None"] = relationship(remote_side="Task.id", back_populates="children")
+    children: Mapped[list["Task"]] = relationship(back_populates="parent")
     reminders: Mapped[list["Reminder"]] = relationship(
         back_populates="task", cascade="all, delete-orphan"
     )
@@ -137,3 +159,21 @@ async def get_session() -> AsyncIterator[AsyncSession]:
     sm = get_sessionmaker()
     async with sm() as session:
         yield session
+
+
+async def ensure_runtime_schema(conn: AsyncConnection) -> None:
+    """Apply small additive schema updates without a full Alembic flow yet."""
+    statements = [
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parent_task_id INTEGER",
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_date DATE",
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS has_time BOOLEAN NOT NULL DEFAULT FALSE",
+        "CREATE INDEX IF NOT EXISTS ix_tasks_parent_task_id ON tasks (parent_task_id)",
+        "CREATE INDEX IF NOT EXISTS ix_tasks_due_date ON tasks (due_date)",
+        (
+            "UPDATE tasks SET "
+            "due_date = COALESCE(due_date, CAST(due_at AT TIME ZONE 'UTC' AS DATE)), "
+            "has_time = CASE WHEN due_at IS NOT NULL THEN TRUE ELSE has_time END"
+        ),
+    ]
+    for stmt in statements:
+        await conn.execute(text(stmt))

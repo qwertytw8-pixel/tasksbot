@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 
 import { api, type Category } from "../api";
+import { FolderIcon, PlusIcon, TagIcon } from "../icons";
 
 const PALETTE = [
+  "#6D5DFC",
   "#3B82F6",
   "#10B981",
   "#F59E0B",
@@ -10,7 +12,6 @@ const PALETTE = [
   "#EF4444",
   "#06B6D4",
   "#EC4899",
-  "#14B8A6",
 ];
 
 export function CategoriesPage() {
@@ -51,10 +52,20 @@ export function CategoriesPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Категории</h1>
+        <div className="page-header__stack">
+          <span className="page-header__eyebrow">
+            <TagIcon /> structure
+          </span>
+          <div className="page-header__title-row">
+            <h1>Категории</h1>
+          </div>
+          <div className="page-header__subtitle">
+            Собери свой рабочий ритм: личное, созвоны, спорт, дедлайны — как удобно тебе.
+          </div>
+        </div>
       </div>
 
-      <div className="section" style={{ padding: 14 }}>
+      <div className="surface" style={{ marginBottom: 14 }}>
         <div className="form">
           <div className="field">
             <span className="field__label">Название</span>
@@ -80,8 +91,8 @@ export function CategoriesPage() {
               {PALETTE.map((c) => (
                 <button
                   key={c}
-                  className={`chip ${color === c ? "chip--active" : ""}`}
-                  style={{ background: color === c ? c : undefined, borderColor: c }}
+                  className={`chip ${color === c ? "chip--soft-active" : ""}`}
+                  style={color === c ? { borderColor: c, color: c } : undefined}
                   onClick={() => setColor(c)}
                   type="button"
                 >
@@ -91,25 +102,39 @@ export function CategoriesPage() {
             </div>
           </div>
           <button className="btn" disabled={busy || !name.trim()} onClick={() => void add()}>
-            Добавить
+            <PlusIcon style={{ width: 16, height: 16, marginRight: 8, verticalAlign: "-3px" }} />
+            Добавить категорию
           </button>
         </div>
       </div>
 
-      <div className="section" style={{ marginTop: 16 }}>
-        {cats.length === 0 && <div className="empty">Категорий нет</div>}
+      {cats.length === 0 && (
+        <div className="empty">
+          <div className="empty__icon">
+            <FolderIcon />
+          </div>
+          <div className="empty__title">Категорий пока нет</div>
+          <div>Создай первую, чтобы задачи выглядели аккуратнее и были легче для навигации.</div>
+        </div>
+      )}
+
+      <div className="form">
         {cats.map((c) => (
-          <div className="row" key={c.id}>
-            <span className="swatch" style={{ ["--c" as never]: c.color ?? "#888" }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }}>
-                {c.emoji ? `${c.emoji} ` : ""}
-                {c.name}
+          <div className="category-card" key={c.id}>
+            <div className="category-card__header">
+              <div className="category-card__title">
+                <span className="swatch" style={{ ["--c" as never]: c.color ?? "#888" }} />
+                <div>
+                  <div className="category-card__name" style={c.color ? { color: c.color } : undefined}>
+                    {c.emoji ? `${c.emoji} ` : ""}
+                    {c.name}
+                  </div>
+                </div>
               </div>
+              <button className="chip" onClick={() => void remove(c.id)}>
+                Удалить
+              </button>
             </div>
-            <button className="chip" onClick={() => void remove(c.id)}>
-              Удалить
-            </button>
           </div>
         ))}
       </div>
