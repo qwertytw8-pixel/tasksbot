@@ -1,12 +1,24 @@
 import { useEffect, useState } from "react";
-import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
+import {
+  CalendarIcon,
+  ListIcon,
+  PlusIcon,
+  SparkIcon,
+  TagIcon,
+  UserIcon,
+} from "./icons";
 import { getUserTimezone } from "./telegram";
 import { TodayPage } from "./pages/Today";
 import { AllPage } from "./pages/All";
 import { CategoriesPage } from "./pages/Categories";
 import { TaskFormPage } from "./pages/TaskForm";
+import { CalendarPage } from "./pages/Calendar";
+import { ProfileRoutes } from "./pages/Profile";
+
+const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about"];
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -40,8 +52,11 @@ export function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/today" replace />} />
         <Route path="/today" element={<TodayPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/all" element={<AllPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/profile/*" element={<ProfileRoutes />} />
+        <Route path="/about" element={<Navigate to="/profile" replace />} />
         <Route path="/new" element={<TaskFormPage />} />
         <Route path="/edit/:id" element={<TaskFormPage />} />
       </Routes>
@@ -53,35 +68,39 @@ export function App() {
 
 function Fab() {
   const navigate = useNavigate();
+  const location = useLocation();
+  if (HIDE_FAB_ON.some((p) => location.pathname.startsWith(p))) return null;
   return (
-    <button
-      className="fab"
-      aria-label="Новая задача"
-      onClick={() => navigate("/new")}
-    >
-      +
+    <button className="fab" aria-label="Новая задача" onClick={() => navigate("/new")}>
+      <PlusIcon />
     </button>
   );
 }
 
 function TabBar() {
   const tabs = [
-    { to: "/today", label: "Сегодня", icon: "🟣" },
-    { to: "/all", label: "Все", icon: "📋" },
-    { to: "/categories", label: "Категории", icon: "🏷" },
+    { to: "/today", label: "Сегодня", icon: SparkIcon },
+    { to: "/calendar", label: "Календарь", icon: CalendarIcon },
+    { to: "/all", label: "Все", icon: ListIcon },
+    { to: "/categories", label: "Категории", icon: TagIcon },
+    { to: "/profile", label: "Профиль", icon: UserIcon },
   ];
+
   return (
-    <nav className="tabbar">
-      {tabs.map((t) => (
-        <NavLink
-          key={t.to}
-          to={t.to}
-          className={({ isActive }) => `tab ${isActive ? "tab--active" : ""}`}
-        >
-          <span className="tab__icon">{t.icon}</span>
-          <span>{t.label}</span>
-        </NavLink>
-      ))}
+    <nav className="tabbar tabbar--five">
+      {tabs.map((t) => {
+        const Icon = t.icon;
+        return (
+          <NavLink
+            key={t.to}
+            to={t.to}
+            className={({ isActive }) => `tab ${isActive ? "tab--active" : ""}`}
+          >
+            <Icon className="tab__icon" />
+            <span>{t.label}</span>
+          </NavLink>
+        );
+      })}
     </nav>
   );
 }

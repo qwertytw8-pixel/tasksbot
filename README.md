@@ -12,7 +12,8 @@
   [@telegram-apps/telegram-ui](https://github.com/Telegram-Mini-Apps/TelegramUI).
 - **Шрифты:** Inter (UI) + Manrope (заголовки).
 - **DB:** PostgreSQL.
-- **Hosting:** Fly.io (backend) + Neon (Postgres) + Vercel (Mini App).
+- **Hosting (free, no card):** Render Web Service + Neon Postgres + Vercel + GitHub Actions cron.
+  См. `DEPLOY.md`.
 
 ## Структура
 

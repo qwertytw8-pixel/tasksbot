@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     public_url: str = Field(alias="PUBLIC_URL")
     webapp_url: str = Field(alias="WEBAPP_URL")
     webhook_secret: str = Field(alias="WEBHOOK_SECRET", default="change-me")
+    cron_secret: str = Field(alias="CRON_SECRET", default="change-me")
     database_url: str = Field(alias="DATABASE_URL")
     cors_origins: str = Field(alias="CORS_ORIGINS", default="*")
     log_level: str = Field(alias="LOG_LEVEL", default="INFO")
