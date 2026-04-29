@@ -16,17 +16,23 @@ import {
 import { haptic } from "../telegram";
 import { fromISODate, todayISO } from "../utils/date";
 
-const REMIND_PRESETS: { label: string; value: number | null }[] = [
-  { label: "Без", value: null },
-  { label: "Вовремя", value: 0 },
-  { label: "−5 мин", value: 5 },
-  { label: "−15 мин", value: 15 },
-  { label: "−30 мин", value: 30 },
-  { label: "−1 ч", value: 60 },
-  { label: "−1 день", value: 60 * 24 },
+const REMIND_QUICK_PRESETS: { label: string; minutes: number }[] = [
+  { label: "5 мин", minutes: 5 },
+  { label: "15 мин", minutes: 15 },
+  { label: "30 мин", minutes: 30 },
+  { label: "1 ч", minutes: 60 },
+  { label: "3 ч", minutes: 180 },
+  { label: "1 день", minutes: 60 * 24 },
 ];
 
 type WhenMode = "none" | "date" | "datetime";
+type RemindMode = "off" | "on_time" | "before";
+
+function toRemindMode(value: number | null): RemindMode {
+  if (value === null) return "off";
+  if (value === 0) return "on_time";
+  return "before";
+}
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -67,6 +73,7 @@ export function TaskFormPage() {
   const [dueDate, setDueDate] = useState<string>(presetDay ?? todayISO());
   const [dueDateTime, setDueDateTime] = useState<string>("");
   const [remind, setRemind] = useState<number | null>(15);
+  const [remindCustom, setRemindCustom] = useState<string>("15");
 
   const [busy, setBusy] = useState(false);
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
@@ -97,6 +104,12 @@ export function TaskFormPage() {
             setWhenMode("none");
           }
           setRemind(found.remind_minutes_before);
+          if (
+            found.remind_minutes_before !== null &&
+            found.remind_minutes_before > 0
+          ) {
+            setRemindCustom(String(found.remind_minutes_before));
+          }
           setSubtasks(t.filter((x) => x.parent_task_id === found.id));
         }
       }
@@ -341,19 +354,89 @@ export function TaskFormPage() {
           {whenMode === "datetime" && (
             <div className="field">
               <span className="field__label">Напомнить</span>
-              <div className="chips">
-                {REMIND_PRESETS.map((p) => (
-                  <button
-                    key={String(p.value)}
-                    type="button"
-                    className={`chip ${remind === p.value ? "chip--active" : ""}`}
-                    onClick={() => setRemind(p.value)}
-                  >
-                    <BellIcon style={{ width: 14, height: 14 }} />
-                    {p.label}
-                  </button>
-                ))}
+              <div className="remind-modes" role="tablist">
+                <button
+                  type="button"
+                  className={`remind-mode ${
+                    toRemindMode(remind) === "off" ? "remind-mode--active" : ""
+                  }`}
+                  onClick={() => setRemind(null)}
+                >
+                  <span className="remind-mode__icon">
+                    <BellIcon />
+                  </span>
+                  Без
+                </button>
+                <button
+                  type="button"
+                  className={`remind-mode ${
+                    toRemindMode(remind) === "on_time" ? "remind-mode--active" : ""
+                  }`}
+                  onClick={() => setRemind(0)}
+                >
+                  <span className="remind-mode__icon">
+                    <ClockIcon />
+                  </span>
+                  Вовремя
+                </button>
+                <button
+                  type="button"
+                  className={`remind-mode ${
+                    toRemindMode(remind) === "before" ? "remind-mode--active" : ""
+                  }`}
+                  onClick={() => {
+                    const fallback = Number.parseInt(remindCustom, 10);
+                    const next =
+                      Number.isFinite(fallback) && fallback > 0 ? fallback : 15;
+                    setRemindCustom(String(next));
+                    setRemind(next);
+                  }}
+                >
+                  <span className="remind-mode__icon">
+                    <BellIcon />
+                  </span>
+                  Заранее
+                </button>
               </div>
+
+              {toRemindMode(remind) === "before" && (
+                <div className="remind-custom">
+                  <div className="remind-custom__row">
+                    <input
+                      className="remind-custom__input"
+                      type="number"
+                      min={1}
+                      max={60 * 24 * 7}
+                      inputMode="numeric"
+                      value={remindCustom}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setRemindCustom(v);
+                        const n = Number.parseInt(v, 10);
+                        if (Number.isFinite(n) && n > 0) setRemind(n);
+                      }}
+                    />
+                    <span className="remind-custom__unit">минут до начала</span>
+                  </div>
+                  <div className="remind-quick">
+                    {REMIND_QUICK_PRESETS.map((p) => (
+                      <button
+                        type="button"
+                        key={p.minutes}
+                        className={`remind-quick__chip ${
+                          remind === p.minutes ? "remind-quick__chip--active" : ""
+                        }`}
+                        onClick={() => {
+                          setRemind(p.minutes);
+                          setRemindCustom(String(p.minutes));
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
