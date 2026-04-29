@@ -14,7 +14,7 @@ from app.api import router as api_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, get_engine
-from app.scheduler import start_scheduler
+from app.scheduler import run_tick
 
 
 def _setup_logging(level: str) -> None:
@@ -53,14 +53,9 @@ async def lifespan(app: FastAPI):
     await configure_bot_commands(bot)
     log.info("webhook set: %s", settings.webhook_url)
 
-    # Scheduler
-    scheduler = start_scheduler(bot)
-    app.state.scheduler = scheduler
-
     try:
         yield
     finally:
-        scheduler.shutdown(wait=False)
         await bot.session.close()
 
 
@@ -95,3 +90,16 @@ async def telegram_webhook(
     update = Update.model_validate(payload, context={"bot": request.app.state.bot})
     await dp.feed_update(bot=request.app.state.bot, update=update)
     return {"ok": True}
+
+
+@app.post("/cron/tick")
+async def cron_tick(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict[str, int | str]:
+    settings = get_settings()
+    expected = f"Bearer {settings.cron_secret}"
+    if authorization != expected:
+        raise HTTPException(status_code=403, detail="bad cron secret")
+    sent = await run_tick(request.app.state.bot)
+    return {"status": "ok", "sent": sent}

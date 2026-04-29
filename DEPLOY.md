@@ -1,118 +1,104 @@
 # Деплой tasksbot — пошаговая инструкция
 
-Бесплатная связка: **Fly.io (бэкенд) + Neon (Postgres) + Vercel (Mini App)**.
+Бесплатная связка **без банковской карты**:
+**Render (бэкенд) + Neon (Postgres) + Vercel (Mini App) + GitHub Actions (cron)**.
 
-## 1. База данных — Neon
+> Render free Web Service засыпает после 15 мин простоя, а нам нужен живой бот.
+> Решение: GitHub Actions раз в 5 минут пингует `/healthz` (будит) и зовёт `/cron/tick`
+> (рассылает напоминания).
 
-1. Зарегистрируйся на https://neon.tech (можно через GitHub).
-2. Создай проект `tasksbot` (регион ближе к Fly.io — например, AWS Frankfurt).
-3. На дашборде скопируй **Connection string → Pooled connection** (это URL для приложения).
-4. Замени префикс `postgresql://` → `postgresql+asyncpg://`. Получится что-то вроде:
-   ```
-   postgresql+asyncpg://USER:PASSWORD@ep-xxx-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require
-   ```
-5. Сохрани этот URL — это `DATABASE_URL` для бэкенда.
+## 1. Neon — База данных
 
-## 2. Бэкенд — Fly.io
+1. https://neon.tech → Sign up with GitHub.
+2. Create project: имя `tasksbot`, регион **AWS Frankfurt** (`eu-central-1`).
+3. Скопируй **Connection string → Pooled connection**. Замени `postgresql://` на
+   `postgresql+asyncpg://` и сохрани — это `DATABASE_URL`.
 
-1. Установи CLI:
-   ```bash
-   curl -L https://fly.io/install.sh | sh
-   export PATH="$HOME/.fly/bin:$PATH"
-   fly auth login        # откроется браузер
-   ```
-2. В папке `backend/` запусти:
-   ```bash
-   cd backend
-   fly launch --no-deploy --copy-config --name tasksbot --region fra
-   # Когда спросит про Postgres / Redis — ответь No (мы используем Neon)
-   ```
-   Это создаст `fly.toml`. В нём убедись, что есть:
-   ```toml
-   [http_service]
-   internal_port = 8080
-   force_https = true
-   auto_stop_machines = false   # бот должен быть всегда онлайн
-   auto_start_machines = true
-   min_machines_running = 1
-   ```
-3. Сгенерируй случайный `WEBHOOK_SECRET`:
-   ```bash
-   python -c "import secrets; print(secrets.token_urlsafe(32))"
-   ```
-4. Заведи секреты (URL бэкенда узнаем после первого деплоя — пока поставь `https://tasksbot.fly.dev`, потом обнови, если будет другой):
-   ```bash
-   fly secrets set \
-     BOT_TOKEN="123456:AAA..." \
-     PUBLIC_URL="https://tasksbot.fly.dev" \
-     WEBAPP_URL="https://tasksbot.vercel.app" \
-     WEBHOOK_SECRET="<сгенерированный_выше>" \
-     DATABASE_URL="postgresql+asyncpg://...@neon..." \
-     CORS_ORIGINS="https://tasksbot.vercel.app,http://localhost:5173"
-   ```
-5. Деплой:
-   ```bash
-   fly deploy
-   ```
-6. Проверь: `curl https://tasksbot.fly.dev/healthz` → `{"status":"ok"}`.
+## 2. Render — Бэкенд
 
-## 3. Фронт — Vercel
+1. https://render.com → Sign up with GitHub. Карта **не нужна** для free-tier.
+2. **New → Blueprint** (он сам подхватит `render.yaml` из корня репо).
+   Альтернатива: **New → Web Service**, выбрать репо вручную, в `Root Directory` указать
+   `backend`, runtime `Docker`, плану — `Free`.
+3. После клика «Apply» Render предложит заполнить секреты, которые в `render.yaml`
+   помечены `sync: false`:
+   - `BOT_TOKEN` — токен от @BotFather.
+   - `PUBLIC_URL` — публичный URL этого же сервиса. Render подскажет домен (типа
+     `https://tasksbot-backend.onrender.com`) сразу после старта; впиши его.
+   - `WEBAPP_URL` — домен Vercel-приложения (заполним после п.3, пока можно поставить
+     `https://example.com` — потом обновишь).
+   - `DATABASE_URL` — строка Neon из шага 1.
+   - `CORS_ORIGINS` — `https://<ВАШ-Vercel>.vercel.app,http://localhost:5173`.
+   - `WEBHOOK_SECRET` и `CRON_SECRET` Render сгенерит сам (`generateValue: true`).
+4. После первого деплоя проверь:
+   ```
+   curl https://<твой-render-домен>/healthz
+   # {"status":"ok"}
+   ```
+5. Зайди в Render → Service → Environment, скопируй сгенерированный `CRON_SECRET` —
+   он понадобится для GitHub Actions.
 
-1. Зарегистрируйся на https://vercel.com (через GitHub).
-2. Import Project → выбери репо `tasksbot`.
-3. **Root Directory** = `webapp`.
-4. **Framework preset** должен сам определиться как `Vite`.
-5. **Environment Variables** → добавь:
-   ```
-   VITE_API_URL = https://tasksbot.fly.dev
-   ```
-6. Deploy. Получишь URL вида `https://tasksbot.vercel.app`.
-7. Если URL не совпадает с тем, что ты записал в `WEBAPP_URL` на Fly, обнови:
-   ```bash
-   fly secrets set WEBAPP_URL="https://<реальный>.vercel.app" CORS_ORIGINS="https://<реальный>.vercel.app"
-   ```
+## 3. Vercel — Mini App
 
-## 4. BotFather — связать всё вместе
+1. https://vercel.com → Continue with GitHub → Import репо `tasksbot-`.
+2. **Root Directory** = `webapp`. Framework `Vite` определится сам.
+3. **Environment Variables**:
+   - `VITE_API_URL` = `https://<твой-render-домен>` (без слэша на конце).
+4. Deploy. Получишь домен вида `https://tasksbot-xxx.vercel.app`.
+5. Вернись в Render → Environment, обнови `WEBAPP_URL` и `CORS_ORIGINS` на этот реальный домен.
+   Render автоматически передеплоит.
+
+## 4. GitHub Actions — крон для напоминаний
+
+В репо открой Settings → **Secrets and variables → Actions → New repository secret**
+и добавь два секрета:
+
+- `PUBLIC_URL` = `https://<твой-render-домен>`
+- `CRON_SECRET` = тот, что сгенерил Render в шаге 2
+
+Workflow `.github/workflows/cron-tick.yml` уже в репо — он запустится автоматически
+по расписанию `*/5 * * * *`. Можно проверить вручную: Actions → cron-tick → Run workflow.
+
+## 5. BotFather — связать всё в Telegram
 
 В Telegram открой `@BotFather`:
-1. `/mybots` → выбери своего бота → **Bot Settings → Menu Button → Configure menu button**:
-   - Текст кнопки: `Открыть задачи` (или что нравится)
-   - URL: `https://<реальный>.vercel.app`
-2. `/newapp` (или `/myapps` → выбери бота) — создай Mini App:
-   - Title: `Задачи`
-   - Description: пара строк
-   - Photo + GIF — можно скипнуть (или загрузить позже).
-   - **Web App URL**: `https://<реальный>.vercel.app`
-   - Short name: `tasks` (получишь ссылку `t.me/<bot>/tasks`)
 
-## 5. Проверка
+1. `/mybots` → выбери бота → **Bot Settings → Menu Button → Configure menu button**:
+   - Текст: `Открыть задачи`
+   - URL: `https://<твой-Vercel>.vercel.app`
+2. (Опционально) `/newapp` → создай Mini App с тем же URL — получишь короткую ссылку
+   `t.me/<твой-бот>/<short-name>`.
+
+## 6. Проверка end-to-end
 
 В Telegram:
-1. Открой своего бота → `/start` → видишь приветствие, кнопку «🚀 Открыть приложение»
-   и нижнюю кнопку «🗂 Открыть задачи».
-2. Жми кнопку → открывается Mini App в текущей теме (тёмная/светлая).
-3. Создай категорию, потом задачу с `due_at` = текущее время + 2 минуты, `remind = −1 мин`.
-4. Через минуту — приходит уведомление от бота.
+1. Открой бота → `/start` → видишь приветствие, кнопку «🚀 Открыть приложение».
+2. Жми кнопку → открывается Mini App в текущей теме (тёмная/светлая Telegram).
+3. Создай категорию, потом задачу с `due_at = now + 7 минут`, `remind = −5 мин`.
+4. В пределах ~5–10 минут (с учётом окна крона) — приходит уведомление от бота.
 
 ## Картинки бота
 
-Положи `welcome.png` (или `.jpg`/`.webp`) в `backend/assets/`, закоммить, `fly deploy`.
+Положи `welcome.png` (или `.jpg`/`.webp`) в `backend/assets/`, закоммить, Render передеплоит автоматом.
 Бот сам подхватит её в `/start`.
-
-## Обновления
-
-- Бэкенд: пуш в `main` → нет авто-деплоя по умолчанию, надо `fly deploy` руками
-  (либо настроить GitHub Actions — `fly deploy --remote-only`).
-- Фронт: пуш в `main` → Vercel автоматом пересобирает.
 
 ## Тонкие моменты
 
-- **Часовой пояс:** Mini App при первом запуске берёт `Intl.DateTimeFormat().resolvedOptions().timeZone`
-  и шлёт в `/api/me`. Бэк хранит `due_at` в UTC. Проверь, что в Neon настроена UTC (это дефолт).
+- **Render free спит** через 15 мин. Крон будит каждые 5 мин — должно хватать.
+  Первый ответ после долгого простоя (если крон не успел) занимает ~30 секунд —
+  Telegram дождётся.
+- **GitHub Actions cron** иногда задерживается на 5–15 минут под нагрузкой GitHub —
+  это нормальное поведение. Для личного планировщика не критично; если нужна точность
+  «секунда в секунду», уже надо платный сервис.
+- **Часовой пояс:** Mini App при первом входе шлёт `Intl.DateTimeFormat().resolvedOptions().timeZone`
+  на `/api/me`. Бэкенд хранит `due_at` в UTC.
 - **Webhook secret:** Telegram при каждом апдейте присылает заголовок
-  `X-Telegram-Bot-Api-Secret-Token`. Если он не совпадает с `WEBHOOK_SECRET` — бэк отвечает 403.
-  Это защита от поддельных апдейтов.
-- **Бот не отвечает:** проверь `fly logs` — там должно быть `webhook set: ...`. Если нет,
-  смотри `BOT_TOKEN` и `PUBLIC_URL`.
-- **Mini App не открывается:** проверь, что `WEBAPP_URL` в BotFather и в `fly secrets` совпадают,
-  и что они по HTTPS.
+  `X-Telegram-Bot-Api-Secret-Token`. Если он не совпадает с `WEBHOOK_SECRET` — бэк возвращает 403.
+
+## Локальный dev
+
+Чтобы тикать напоминания локально без GitHub Actions, просто дёргай эндпоинт
+сам каждую минуту:
+```bash
+watch -n 60 'curl -X POST localhost:8080/cron/tick -H "Authorization: Bearer change-me-too"'
+```
