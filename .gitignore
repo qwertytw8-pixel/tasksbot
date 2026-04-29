@@ -34,6 +34,9 @@ pnpm-debug.log*
 .vscode/
 *.swp
 
+# TS build info
+*.tsbuildinfo
+
 # DB / local
 *.sqlite
 *.sqlite3
