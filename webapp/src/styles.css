@@ -1,13 +1,22 @@
-:root {
-  --tb-bg: var(--tg-theme-bg-color, #f6f2eb);
-  --tb-secondary-bg: var(--tg-theme-secondary-bg-color, #f2ede5);
-  --tb-text: var(--tg-theme-text-color, #17171c);
-  --tb-hint: var(--tg-theme-hint-color, #77737f);
-  --tb-link: var(--tg-theme-link-color, #6d5dfc);
+:root,
+[data-theme="light"] {
+  --tb-bg: #f6f2eb;
+  --tb-secondary-bg: #f2ede5;
+  --tb-text: #17171c;
+  --tb-hint: #77737f;
+  --tb-link: #6d5dfc;
   --tb-button: #6d5dfc;
   --tb-button-text: #ffffff;
-  --tb-section-bg: color-mix(in srgb, var(--tg-theme-section-bg-color, #ffffff) 84%, #ffffff);
-  --tb-separator: color-mix(in srgb, var(--tb-text) 8%, transparent);
+  --tb-section-bg: #ffffff;
+  --tb-card-bg: rgba(255, 255, 255, 0.78);
+  --tb-card-border: rgba(255, 255, 255, 0.66);
+  --tb-cell-bg: rgba(255, 255, 255, 0.9);
+  --tb-cell-border: rgba(28, 22, 57, 0.06);
+  --tb-cell-bg-muted: rgba(255, 255, 255, 0.45);
+  --tb-overlay-soft: rgba(109, 93, 252, 0.06);
+  --tb-bg-grad-start: rgba(109, 93, 252, 0.07);
+  --tb-bg-grad-top: color-mix(in srgb, #f6f2eb 88%, #fff 12%);
+  --tb-separator: rgba(28, 22, 57, 0.08);
   --tb-accent-soft: rgba(109, 93, 252, 0.12);
   --tb-accent-strong: #6d5dfc;
   --tb-danger: #e3534b;
@@ -19,6 +28,34 @@
   --tb-radius-xs: 12px;
   --tb-shadow: 0 14px 30px rgba(28, 22, 57, 0.06);
   --tb-shadow-soft: 0 6px 18px rgba(28, 22, 57, 0.04);
+}
+
+[data-theme="dark"] {
+  --tb-bg: #14141a;
+  --tb-secondary-bg: #1b1b22;
+  --tb-text: #f3f1f6;
+  --tb-hint: #8a8694;
+  --tb-link: #9d8fff;
+  --tb-button: #7c6cff;
+  --tb-button-text: #ffffff;
+  --tb-section-bg: #1f1f27;
+  --tb-card-bg: rgba(36, 34, 46, 0.88);
+  --tb-card-border: rgba(255, 255, 255, 0.06);
+  --tb-cell-bg: rgba(45, 42, 56, 0.9);
+  --tb-cell-border: rgba(255, 255, 255, 0.06);
+  --tb-cell-bg-muted: rgba(36, 34, 46, 0.55);
+  --tb-overlay-soft: rgba(124, 108, 255, 0.16);
+  --tb-bg-grad-start: rgba(124, 108, 255, 0.18);
+  --tb-bg-grad-top: #1a1a22;
+  --tb-separator: rgba(255, 255, 255, 0.08);
+  --tb-accent-soft: rgba(124, 108, 255, 0.22);
+  --tb-accent-strong: #9d8fff;
+  --tb-danger: #ff6b62;
+  --tb-success: #36c98a;
+  --tb-warm: #232128;
+
+  --tb-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+  --tb-shadow-soft: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 * {
@@ -39,8 +76,8 @@ body {
   line-height: 1.45;
   color: var(--tb-text);
   background:
-    radial-gradient(circle at top left, rgba(109, 93, 252, 0.07), transparent 34%),
-    linear-gradient(180deg, color-mix(in srgb, var(--tb-bg) 88%, #fff 12%) 0%, var(--tb-bg) 28%, var(--tb-secondary-bg) 100%);
+    radial-gradient(circle at top left, var(--tb-bg-grad-start), transparent 34%),
+    linear-gradient(180deg, var(--tb-bg-grad-top) 0%, var(--tb-bg) 28%, var(--tb-secondary-bg) 100%);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -814,8 +851,8 @@ button {
 /* ---------- Calendar ---------- */
 
 .cal {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.66);
+  background: var(--tb-card-bg);
+  border: 1px solid var(--tb-card-border);
   border-radius: 24px;
   box-shadow: var(--tb-shadow-soft);
   padding: 14px;
@@ -826,7 +863,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .cal__title {
@@ -841,12 +878,13 @@ button {
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: rgba(109, 93, 252, 0.1);
+  background: var(--tb-accent-soft);
   color: var(--tb-accent-strong);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  border: none;
 }
 
 .cal__nav svg {
@@ -857,11 +895,12 @@ button {
 .cal__grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 6px;
 }
 
 .cal__grid--head {
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  gap: 6px;
 }
 
 .cal__weekday {
@@ -876,26 +915,43 @@ button {
 
 .cal__cell {
   appearance: none;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  aspect-ratio: 1 / 1;
+  background: var(--tb-cell-bg);
+  border: 1px solid var(--tb-cell-border);
+  border-radius: 14px;
+  aspect-ratio: 1 / 1.05;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 6px 7px;
   cursor: pointer;
   color: var(--tb-text);
   position: relative;
+  transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease;
+  box-shadow: 0 1px 0 var(--tb-cell-border);
 }
 
 .cal__cell:hover {
-  background: rgba(109, 93, 252, 0.08);
+  transform: translateY(-1px);
+  box-shadow: var(--tb-shadow-soft);
 }
 
 .cal__cell--muted {
+  background: var(--tb-cell-bg-muted);
   color: color-mix(in srgb, var(--tb-hint) 65%, transparent);
+}
+
+.cal__cell--has {
+  background:
+    linear-gradient(180deg, var(--tb-overlay-soft), transparent 70%),
+    var(--tb-cell-bg);
+}
+
+.cal__cell--today {
+  border-color: var(--tb-accent-strong);
+  box-shadow:
+    0 0 0 1px var(--tb-accent-strong),
+    var(--tb-shadow-soft);
 }
 
 .cal__cell--today .cal__num {
@@ -906,41 +962,45 @@ button {
 .cal__cell--selected {
   background: linear-gradient(135deg, #7b6bff, #5e4ef8);
   color: var(--tb-button-text);
-  box-shadow: 0 10px 18px rgba(109, 93, 252, 0.25);
+  border-color: transparent;
+  box-shadow: 0 10px 22px rgba(109, 93, 252, 0.3);
+  transform: translateY(-1px);
 }
 
-.cal__cell--selected .cal__num {
+.cal__cell--selected .cal__num,
+.cal__cell--selected .cal__count {
   color: var(--tb-button-text);
 }
 
-.cal__cell--selected .cal__dot--open {
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.cal__cell--selected .cal__dot--done {
-  background: rgba(255, 255, 255, 0.55);
+.cal__cell--selected .cal__count {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .cal__num {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
+  line-height: 1;
+  text-align: left;
 }
 
-.cal__dots {
-  display: inline-flex;
-  gap: 3px;
-}
-
-.cal__dot {
-  width: 4px;
-  height: 4px;
+.cal__count {
+  align-self: flex-end;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
-  background: var(--tb-accent-strong);
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
 }
 
-.cal__dot--done {
-  background: var(--tb-success);
-  opacity: 0.7;
+.cal__count--empty {
+  background: transparent;
+  color: color-mix(in srgb, var(--tb-hint) 50%, transparent);
+  font-weight: 600;
 }
 
 /* ---------- Day strip ---------- */
@@ -1129,4 +1189,239 @@ button {
     width: 16px;
     height: 16px;
   }
+}
+
+/* ---------- Profile / Settings ---------- */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.theme-option {
+  appearance: none;
+  border: 1px solid var(--tb-cell-border);
+  background: var(--tb-cell-bg);
+  border-radius: 16px;
+  padding: 12px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  cursor: pointer;
+  position: relative;
+  text-align: left;
+  color: var(--tb-text);
+  transition: transform 0.12s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.theme-option:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--tb-shadow-soft);
+}
+
+.theme-option__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-option__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.theme-option__label {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.theme-option__hint {
+  font-size: 11px;
+  color: var(--tb-hint);
+}
+
+.theme-option--active {
+  border-color: var(--tb-accent-strong);
+  box-shadow:
+    0 0 0 1px var(--tb-accent-strong),
+    var(--tb-shadow-soft);
+  background: var(--tb-accent-soft);
+}
+
+.theme-option__badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--tb-accent-strong);
+  color: var(--tb-button-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-option__badge svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* Nav rows (settings menu) */
+
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-row__divider {
+  height: 1px;
+  background: var(--tb-separator);
+  margin: 0 16px;
+}
+
+.nav-row__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nav-row__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-row__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-row__title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--tb-text);
+}
+
+.nav-row__subtitle {
+  font-size: 12.5px;
+  color: var(--tb-hint);
+  margin-top: 2px;
+}
+
+.nav-row__chevron {
+  color: var(--tb-hint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-row__chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Contact pill */
+
+.contact-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: var(--tb-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--tb-accent-strong) 30%, transparent);
+  text-decoration: none;
+  color: var(--tb-text);
+  transition: transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+.contact-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--tb-shadow-soft);
+}
+
+.contact-pill__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--tb-accent-strong);
+  color: var(--tb-button-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contact-pill__avatar svg {
+  width: 20px;
+  height: 20px;
+}
+
+.contact-pill__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-pill__handle {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.contact-pill__hint {
+  color: var(--tb-hint);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.contact-pill__chevron {
+  color: var(--tb-accent-strong);
+  display: inline-flex;
+}
+
+.contact-pill__chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Back button in page header */
+
+.page-header__back {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--tb-accent-strong);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.page-header__back svg {
+  width: 16px;
+  height: 16px;
 }

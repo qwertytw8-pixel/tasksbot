@@ -167,7 +167,7 @@ export function CalendarPage() {
             const isSelected = iso === selectedISO;
             const dayTasks = tasksByDay.get(iso) ?? [];
             const open = dayTasks.filter((t) => !t.is_done).length;
-            const done = dayTasks.length - open;
+            const total = dayTasks.length;
             return (
               <button
                 key={iso}
@@ -176,16 +176,20 @@ export function CalendarPage() {
                   inMonth ? "" : "cal__cell--muted",
                   isToday ? "cal__cell--today" : "",
                   isSelected ? "cal__cell--selected" : "",
+                  total > 0 ? "cal__cell--has" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
                 onClick={() => selectDay(d)}
               >
                 <span className="cal__num">{d.getDate()}</span>
-                {dayTasks.length > 0 && (
-                  <span className="cal__dots">
-                    {open > 0 && <span className="cal__dot cal__dot--open" />}
-                    {done > 0 && <span className="cal__dot cal__dot--done" />}
+                {total > 0 ? (
+                  <span className="cal__count" aria-label={`задач: ${total}`}>
+                    {open > 0 ? open : "✓"}
+                  </span>
+                ) : (
+                  <span className="cal__count cal__count--empty" aria-hidden>
+                    ·
                   </span>
                 )}
               </button>

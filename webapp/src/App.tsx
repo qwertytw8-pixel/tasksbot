@@ -6,9 +6,9 @@ import {
   CalendarIcon,
   ListIcon,
   PlusIcon,
-  ShieldIcon,
   SparkIcon,
   TagIcon,
+  UserIcon,
 } from "./icons";
 import { getUserTimezone } from "./telegram";
 import { TodayPage } from "./pages/Today";
@@ -16,9 +16,9 @@ import { AllPage } from "./pages/All";
 import { CategoriesPage } from "./pages/Categories";
 import { TaskFormPage } from "./pages/TaskForm";
 import { CalendarPage } from "./pages/Calendar";
-import { AboutPage } from "./pages/About";
+import { ProfileRoutes } from "./pages/Profile";
 
-const HIDE_FAB_ON = ["/new", "/edit", "/about"];
+const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about"];
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -55,7 +55,8 @@ export function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/all" element={<AllPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
-        <Route path="/about" element={<AboutPage />} />
+        <Route path="/profile/*" element={<ProfileRoutes />} />
+        <Route path="/about" element={<Navigate to="/profile" replace />} />
         <Route path="/new" element={<TaskFormPage />} />
         <Route path="/edit/:id" element={<TaskFormPage />} />
       </Routes>
@@ -82,7 +83,7 @@ function TabBar() {
     { to: "/calendar", label: "Календарь", icon: CalendarIcon },
     { to: "/all", label: "Все", icon: ListIcon },
     { to: "/categories", label: "Категории", icon: TagIcon },
-    { to: "/about", label: "О боте", icon: ShieldIcon },
+    { to: "/profile", label: "Профиль", icon: UserIcon },
   ];
 
   return (
