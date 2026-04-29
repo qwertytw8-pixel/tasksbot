@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,6 +21,9 @@ class TaskIn(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
     category_id: int | None = None
+    parent_task_id: int | None = None
+    due_date: date | None = None
+    has_time: bool = False
     due_at: datetime | None = None
     remind_minutes_before: int | None = Field(default=None, ge=0, le=10_080)
     is_done: bool = False
@@ -32,6 +35,9 @@ class TaskOut(BaseModel):
     title: str
     description: str | None
     category_id: int | None
+    parent_task_id: int | None
+    due_date: date | None
+    has_time: bool
     due_at: datetime | None
     remind_minutes_before: int | None
     is_done: bool
@@ -46,3 +52,9 @@ class UserOut(BaseModel):
 
 class UserUpdate(BaseModel):
     tz: str | None = Field(default=None, max_length=64)
+
+
+class PrivacyInfo(BaseModel):
+    support_label: str
+    support_text: str
+    privacy_summary: str

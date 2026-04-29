@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import router as api_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
-from app.db import Base, get_engine
+from app.db import Base, ensure_runtime_schema, get_engine
 from app.scheduler import run_tick
 
 
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await ensure_runtime_schema(conn)
     log.info("db ready")
 
     # Bot

@@ -94,10 +94,40 @@ async def cmd_help(message: Message) -> None:
         "<b>Команды</b>\n"
         "/start — приветствие и кнопка приложения\n"
         "/app — открыть Mini App\n"
+        "/privacy — как хранятся твои задачи\n"
+        "/support — связь и поддержка\n"
         "/help — это сообщение\n\n"
         "Все задачи и напоминания живут внутри Mini App.",
         reply_markup=_open_app_kb(),
     )
+
+
+PRIVACY_TEXT = (
+    "<b>Приватность</b>\n\n"
+    "У каждого пользователя свои задачи, категории и подзадачи. "
+    "Доступ к данным проверяется по Telegram <code>initData</code> и user id — "
+    "чужие записи не смешиваются и не показываются другим.\n\n"
+    "Mini App не использует логины и пароли. Авторизация происходит автоматически "
+    "через Telegram.\n\n"
+    "Данные хранятся в БД сервиса и нужны только для работы планировщика."
+)
+
+SUPPORT_TEXT = (
+    "<b>Поддержка</b>\n\n"
+    "Если что-то не работает, ошибка или есть идея — напиши владельцу бота "
+    "прямым сообщением.\n\n"
+    "Команды: /privacy — приватность, /help — список команд, /app — открыть Mini App."
+)
+
+
+@dp.message(Command("privacy"))
+async def cmd_privacy(message: Message) -> None:
+    await message.answer(PRIVACY_TEXT, reply_markup=_open_app_kb())
+
+
+@dp.message(Command("support"))
+async def cmd_support(message: Message) -> None:
+    await message.answer(SUPPORT_TEXT, reply_markup=_open_app_kb())
 
 
 @dp.callback_query(F.data == "help")
@@ -125,6 +155,8 @@ async def configure_bot_commands(bot: Bot) -> None:
         [
             BotCommand(command="start", description="Приветствие"),
             BotCommand(command="app", description="Открыть Mini App"),
+            BotCommand(command="privacy", description="Приватность"),
+            BotCommand(command="support", description="Поддержка"),
             BotCommand(command="help", description="Помощь"),
         ]
     )

@@ -19,6 +19,9 @@ export interface Task {
   title: string;
   description: string | null;
   category_id: number | null;
+  parent_task_id: number | null;
+  due_date: string | null;
+  has_time: boolean;
   due_at: string | null;
   remind_minutes_before: number | null;
   is_done: boolean;
@@ -29,6 +32,9 @@ export interface TaskInput {
   title: string;
   description?: string | null;
   category_id?: number | null;
+  parent_task_id?: number | null;
+  due_date?: string | null;
+  has_time?: boolean;
   due_at?: string | null;
   remind_minutes_before?: number | null;
   is_done?: boolean;
@@ -38,6 +44,12 @@ export interface CategoryInput {
   name: string;
   color?: string | null;
   emoji?: string | null;
+}
+
+export interface PrivacyInfo {
+  support_label: string;
+  support_text: string;
+  privacy_summary: string;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -57,10 +69,31 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+export interface ListTasksParams {
+  done?: boolean;
+  day?: string;
+  parentId?: number | null;
+  topLevel?: boolean;
+}
+
+function buildTaskQuery(params?: ListTasksParams): string {
+  if (!params) return "";
+  const qs = new URLSearchParams();
+  if (params.done !== undefined) qs.set("done", String(params.done));
+  if (params.day !== undefined) qs.set("day", params.day);
+  if (params.parentId !== undefined && params.parentId !== null) {
+    qs.set("parent_id", String(params.parentId));
+  }
+  if (params.topLevel) qs.set("top_level", "true");
+  const s = qs.toString();
+  return s ? `?${s}` : "";
+}
+
 export const api = {
   me: () => request<User>("/api/me"),
   updateMe: (tz: string) =>
     request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ tz }) }),
+  privacy: () => request<PrivacyInfo>("/api/privacy"),
 
   listCategories: () => request<Category[]>("/api/categories"),
   createCategory: (input: CategoryInput) =>
@@ -73,10 +106,8 @@ export const api = {
   deleteCategory: (id: number) =>
     request<void>(`/api/categories/${id}`, { method: "DELETE" }),
 
-  listTasks: (done?: boolean) => {
-    const qs = done === undefined ? "" : `?done=${done}`;
-    return request<Task[]>(`/api/tasks${qs}`);
-  },
+  listTasks: (params?: ListTasksParams) =>
+    request<Task[]>(`/api/tasks${buildTaskQuery(params)}`),
   createTask: (input: TaskInput) =>
     request<Task>("/api/tasks", { method: "POST", body: JSON.stringify(input) }),
   updateTask: (id: number, input: TaskInput) =>

@@ -1,13 +1,24 @@
 import { useEffect, useState } from "react";
-import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
-import { PlusIcon, SparkIcon, ListIcon, TagIcon } from "./icons";
+import {
+  CalendarIcon,
+  ListIcon,
+  PlusIcon,
+  ShieldIcon,
+  SparkIcon,
+  TagIcon,
+} from "./icons";
 import { getUserTimezone } from "./telegram";
 import { TodayPage } from "./pages/Today";
 import { AllPage } from "./pages/All";
 import { CategoriesPage } from "./pages/Categories";
 import { TaskFormPage } from "./pages/TaskForm";
+import { CalendarPage } from "./pages/Calendar";
+import { AboutPage } from "./pages/About";
+
+const HIDE_FAB_ON = ["/new", "/edit", "/about"];
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -41,8 +52,10 @@ export function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/today" replace />} />
         <Route path="/today" element={<TodayPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/all" element={<AllPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/new" element={<TaskFormPage />} />
         <Route path="/edit/:id" element={<TaskFormPage />} />
       </Routes>
@@ -54,6 +67,8 @@ export function App() {
 
 function Fab() {
   const navigate = useNavigate();
+  const location = useLocation();
+  if (HIDE_FAB_ON.some((p) => location.pathname.startsWith(p))) return null;
   return (
     <button className="fab" aria-label="Новая задача" onClick={() => navigate("/new")}>
       <PlusIcon />
@@ -64,12 +79,14 @@ function Fab() {
 function TabBar() {
   const tabs = [
     { to: "/today", label: "Сегодня", icon: SparkIcon },
+    { to: "/calendar", label: "Календарь", icon: CalendarIcon },
     { to: "/all", label: "Все", icon: ListIcon },
     { to: "/categories", label: "Категории", icon: TagIcon },
+    { to: "/about", label: "О боте", icon: ShieldIcon },
   ];
 
   return (
-    <nav className="tabbar">
+    <nav className="tabbar tabbar--five">
       {tabs.map((t) => {
         const Icon = t.icon;
         return (
