@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
+import { PlusIcon, SparkIcon, ListIcon, TagIcon } from "./icons";
 import { getUserTimezone } from "./telegram";
 import { TodayPage } from "./pages/Today";
 import { AllPage } from "./pages/All";
@@ -54,34 +55,34 @@ export function App() {
 function Fab() {
   const navigate = useNavigate();
   return (
-    <button
-      className="fab"
-      aria-label="Новая задача"
-      onClick={() => navigate("/new")}
-    >
-      +
+    <button className="fab" aria-label="Новая задача" onClick={() => navigate("/new")}>
+      <PlusIcon />
     </button>
   );
 }
 
 function TabBar() {
   const tabs = [
-    { to: "/today", label: "Сегодня", icon: "🟣" },
-    { to: "/all", label: "Все", icon: "📋" },
-    { to: "/categories", label: "Категории", icon: "🏷" },
+    { to: "/today", label: "Сегодня", icon: SparkIcon },
+    { to: "/all", label: "Все", icon: ListIcon },
+    { to: "/categories", label: "Категории", icon: TagIcon },
   ];
+
   return (
     <nav className="tabbar">
-      {tabs.map((t) => (
-        <NavLink
-          key={t.to}
-          to={t.to}
-          className={({ isActive }) => `tab ${isActive ? "tab--active" : ""}`}
-        >
-          <span className="tab__icon">{t.icon}</span>
-          <span>{t.label}</span>
-        </NavLink>
-      ))}
+      {tabs.map((t) => {
+        const Icon = t.icon;
+        return (
+          <NavLink
+            key={t.to}
+            to={t.to}
+            className={({ isActive }) => `tab ${isActive ? "tab--active" : ""}`}
+          >
+            <Icon className="tab__icon" />
+            <span>{t.label}</span>
+          </NavLink>
+        );
+      })}
     </nav>
   );
 }

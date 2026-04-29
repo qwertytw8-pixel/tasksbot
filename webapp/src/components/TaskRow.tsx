@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 import type { Category, Task } from "../api";
+import { ArrowRightIcon, BellIcon, CheckIcon, ClockIcon } from "../icons";
 import { haptic } from "../telegram";
 
 export function TaskRow({
@@ -38,32 +39,38 @@ export function TaskRow({
         }}
         aria-label={task.is_done ? "Отметить невыполненной" : "Отметить выполненной"}
       >
-        {task.is_done ? "✓" : ""}
+        {task.is_done ? <CheckIcon /> : null}
       </button>
-      <div>
+
+      <div className="task__content">
         <div className="task__title">{task.title}</div>
+        {task.description && <div className="task__description">{task.description}</div>}
         {(category || dueLabel || task.remind_minutes_before != null) && (
           <div className="task__meta">
             {category && (
-              <span className="task__cat">
+              <span className="task__cat" style={category.color ? { color: category.color } : undefined}>
                 {category.emoji ? `${category.emoji} ` : ""}
                 {category.name}
               </span>
             )}
             {dueLabel && (
-              <span>
-                <span className="task__meta-dot" />🕒 {dueLabel}
+              <span className="task__meta-item">
+                <ClockIcon />
+                {dueLabel}
               </span>
             )}
             {task.remind_minutes_before != null && (
-              <span>
-                <span className="task__meta-dot" />🔔 −{task.remind_minutes_before}мин
+              <span className="task__meta-item">
+                <BellIcon />−{task.remind_minutes_before} мин
               </span>
             )}
           </div>
         )}
       </div>
-      {category?.color && <span className="swatch" style={{ ["--c" as never]: category.color }} />}
+
+      <span className="task__arrow">
+        <ArrowRightIcon />
+      </span>
     </div>
   );
 }

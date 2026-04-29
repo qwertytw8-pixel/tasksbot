@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { api, type Category, type Task } from "../api";
+import { ArrowRightIcon, BellIcon, ClockIcon, PlusIcon, TagIcon } from "../icons";
 import { haptic } from "../telegram";
 
 const REMIND_PRESETS: { label: string; value: number | null }[] = [
@@ -93,97 +94,121 @@ export function TaskFormPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>{editing ? "Задача" : "Новая задача"}</h1>
-        <button
-          className="page-header__date"
-          onClick={() => navigate(-1)}
-          style={{ background: "none", border: "none", cursor: "pointer" }}
-        >
-          ✕ закрыть
+        <div className="page-header__stack">
+          <span className="page-header__eyebrow">
+            {editing ? <ArrowRightIcon /> : <PlusIcon />} {editing ? "edit" : "create"}
+          </span>
+          <div className="page-header__title-row">
+            <h1>{editing ? "Задача" : "Новая задача"}</h1>
+          </div>
+          <div className="page-header__subtitle">
+            Короткая форма без лишнего: название, категория, время и напоминание.
+          </div>
+        </div>
+        <button className="inline-action" onClick={() => navigate(-1)}>
+          Закрыть
         </button>
       </div>
 
-      <div className="form">
-        <div className="field">
-          <span className="field__label">Что нужно сделать</span>
-          <input
-            className="input"
-            placeholder="Например: Созвон с командой"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus={!editing}
-          />
-        </div>
-
-        <div className="field">
-          <span className="field__label">Описание</span>
-          <textarea
-            className="textarea"
-            placeholder="Необязательно"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <div className="field">
-          <span className="field__label">Категория</span>
-          <div className="chips">
-            <button
-              type="button"
-              className={`chip ${categoryId === null ? "chip--active" : ""}`}
-              onClick={() => setCategoryId(null)}
-            >
-              Без
-            </button>
-            {cats.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={`chip ${categoryId === c.id ? "chip--active" : ""}`}
-                onClick={() => setCategoryId(c.id)}
-              >
-                {c.emoji ? `${c.emoji} ` : ""}
-                {c.name}
-              </button>
-            ))}
+      <div className="surface">
+        <div className="form">
+          <div className="field">
+            <span className="field__label">Что нужно сделать</span>
+            <input
+              className="input"
+              placeholder="Например: Созвон с командой"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus={!editing}
+            />
           </div>
-        </div>
 
-        <div className="field">
-          <span className="field__label">Когда</span>
-          <input
-            className="input"
-            type="datetime-local"
-            value={dueLocal}
-            onChange={(e) => setDueLocal(e.target.value)}
-          />
-        </div>
-
-        <div className="field">
-          <span className="field__label">Напомнить</span>
-          <div className="chips">
-            {REMIND_PRESETS.map((p) => (
-              <button
-                key={String(p.value)}
-                type="button"
-                className={`chip ${remind === p.value ? "chip--active" : ""}`}
-                onClick={() => setRemind(p.value)}
-              >
-                {p.label}
-              </button>
-            ))}
+          <div className="field">
+            <span className="field__label">Описание</span>
+            <textarea
+              className="textarea"
+              placeholder="Короткий контекст, если нужен"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
-        </div>
 
-        <button className="btn" disabled={busy || !title.trim()} onClick={() => void save()}>
-          {editing ? "Сохранить" : "Добавить"}
-        </button>
+          <div className="field">
+            <span className="field__label">Категория</span>
+            <div className="chips">
+              <button
+                type="button"
+                className={`chip ${categoryId === null ? "chip--active" : ""}`}
+                onClick={() => setCategoryId(null)}
+              >
+                <TagIcon style={{ width: 14, height: 14 }} />
+                Без
+              </button>
+              {cats.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`chip ${categoryId === c.id ? "chip--soft-active" : ""}`}
+                  onClick={() => setCategoryId(c.id)}
+                  style={categoryId === c.id && c.color ? { color: c.color, borderColor: c.color } : undefined}
+                >
+                  {c.emoji ? `${c.emoji} ` : ""}
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {editing && (
-          <button className="btn btn--danger" onClick={() => void remove()}>
-            Удалить задачу
+          <div className="field">
+            <span className="field__label">Когда</span>
+            <div style={{ position: "relative" }}>
+              <ClockIcon
+                style={{
+                  position: "absolute",
+                  left: 14,
+                  top: 14,
+                  width: 18,
+                  height: 18,
+                  color: "var(--tb-accent-strong)",
+                }}
+              />
+              <input
+                className="input"
+                type="datetime-local"
+                value={dueLocal}
+                onChange={(e) => setDueLocal(e.target.value)}
+                style={{ paddingLeft: 42 }}
+              />
+            </div>
+          </div>
+
+          <div className="field">
+            <span className="field__label">Напомнить</span>
+            <div className="chips">
+              {REMIND_PRESETS.map((p) => (
+                <button
+                  key={String(p.value)}
+                  type="button"
+                  className={`chip ${remind === p.value ? "chip--active" : ""}`}
+                  onClick={() => setRemind(p.value)}
+                >
+                  <BellIcon style={{ width: 14, height: 14 }} />
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button className="btn" disabled={busy || !title.trim()} onClick={() => void save()}>
+            {editing ? "Сохранить" : "Добавить задачу"}
           </button>
-        )}
+
+          {editing && (
+            <button className="btn btn--danger" onClick={() => void remove()}>
+              Удалить задачу
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
