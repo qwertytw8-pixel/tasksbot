@@ -88,11 +88,29 @@ _engine = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
 
+def _normalize_async_url(url: str) -> str:
+    # Neon and most managed Postgres providers hand out plain `postgresql://`
+    # connection strings. SQLAlchemy's async engine needs an async driver, so
+    # rewrite to `postgresql+asyncpg://` if not already specified.
+    if url.startswith("postgresql+"):
+        return url
+    if url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + url[len("postgresql://") :]
+    if url.startswith("postgres://"):
+        return "postgresql+asyncpg://" + url[len("postgres://") :]
+    return url
+
+
 def get_engine():
     global _engine, _sessionmaker
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+        url = _normalize_async_url(settings.database_url)
+        # asyncpg doesn't understand `?sslmode=require` like libpq does — it accepts
+        # `ssl=require` instead. Translate both common forms transparently.
+        if "sslmode=" in url:
+            url = url.replace("sslmode=", "ssl=")
+        _engine = create_async_engine(url, pool_pre_ping=True)
         _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
 
