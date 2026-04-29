@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 from datetime import datetime
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -89,16 +90,30 @@ _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
 
 def _normalize_async_url(url: str) -> str:
-    # Neon and most managed Postgres providers hand out plain `postgresql://`
-    # connection strings. SQLAlchemy's async engine needs an async driver, so
-    # rewrite to `postgresql+asyncpg://` if not already specified.
-    if url.startswith("postgresql+"):
-        return url
-    if url.startswith("postgresql://"):
-        return "postgresql+asyncpg://" + url[len("postgresql://") :]
-    if url.startswith("postgres://"):
-        return "postgresql+asyncpg://" + url[len("postgres://") :]
-    return url
+    """Coerce a libpq-style Postgres URL into one asyncpg can use.
+
+    Neon and most managed Postgres providers hand out plain `postgresql://...`
+    URLs with libpq-only parameters such as `sslmode=require` and
+    `channel_binding=require`. SQLAlchemy's async engine needs an async driver,
+    and asyncpg does not understand those parameters at all.
+    """
+    parsed = urlparse(url)
+    scheme = parsed.scheme
+    if scheme in ("postgres", "postgresql"):
+        scheme = "postgresql+asyncpg"
+
+    # Drop libpq-only query params that asyncpg rejects, translate `sslmode`.
+    params = parse_qsl(parsed.query, keep_blank_values=True)
+    libpq_only = {"channel_binding", "gssencmode", "target_session_attrs", "options"}
+    new_params: list[tuple[str, str]] = []
+    for k, v in params:
+        if k in libpq_only:
+            continue
+        if k == "sslmode":
+            new_params.append(("ssl", v))
+            continue
+        new_params.append((k, v))
+    return urlunparse(parsed._replace(scheme=scheme, query=urlencode(new_params)))
 
 
 def get_engine():
@@ -106,10 +121,6 @@ def get_engine():
     if _engine is None:
         settings = get_settings()
         url = _normalize_async_url(settings.database_url)
-        # asyncpg doesn't understand `?sslmode=require` like libpq does — it accepts
-        # `ssl=require` instead. Translate both common forms transparently.
-        if "sslmode=" in url:
-            url = url.replace("sslmode=", "ssl=")
         _engine = create_async_engine(url, pool_pre_ping=True)
         _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
