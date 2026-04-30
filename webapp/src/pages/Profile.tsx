@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate } from "react-router-dom";
 
-import { api, type PrivacyInfo } from "../api";
+import { api, type Category, type PrivacyInfo, type Task } from "../api";
+import { TaskRow } from "../components/TaskRow";
 import {
+  ArchiveIcon,
   ArrowRightIcon,
   CheckIcon,
   ChevronLeftIcon,
@@ -78,6 +80,13 @@ function ProfileHome() {
       </div>
 
       <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
+        <NavRow
+          to="/profile/archive"
+          icon={<ArchiveIcon />}
+          title="Архив задач"
+          subtitle="Выполненные и убранные вручную"
+        />
+        <div className="nav-row__divider" />
         <NavRow
           to="/profile/support"
           icon={<HelpIcon />}
@@ -284,10 +293,93 @@ function PrivacyPage() {
   );
 }
 
+function ArchivePage() {
+  const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [cats, setCats] = useState<Category[]>([]);
+
+  useEffect(() => {
+    void (async () => {
+      const [t, c] = await Promise.all([
+        api.listTasks({ archived: true }),
+        api.listCategories(),
+      ]);
+      setTasks(t);
+      setCats(c);
+    })();
+  }, []);
+
+  async function unarchive(task: Task) {
+    await api.unarchiveTask(task.id);
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
+  }
+
+  async function remove(task: Task) {
+    if (
+      !window.confirm(
+        `Удалить задачу «${task.title}» навсегда? Это действие нельзя отменить.`,
+      )
+    )
+      return;
+    await api.deleteTask(task.id);
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
+  }
+
+  const catById = new Map(cats.map((c) => [c.id, c] as const));
+
+  return (
+    <div className="page">
+      <BackHeader
+        eyebrow="архив"
+        title="Архив задач"
+        subtitle="Сюда попадают выполненные задачи старше 24 часов и всё, что ты убрал вручную."
+      />
+
+      <div className="archive-hero">
+        <span className="archive-hero__icon">
+          <ArchiveIcon />
+        </span>
+        <div>
+          <div className="archive-hero__title">
+            {tasks ? `${tasks.length} в архиве` : "Загружаем…"}
+          </div>
+          <div className="archive-hero__hint">
+            Свайпни влево → «Вернуть» или «Удалить».
+          </div>
+        </div>
+      </div>
+
+      {tasks && tasks.length === 0 && (
+        <div className="empty">
+          <div className="empty__icon">
+            <ArchiveIcon />
+          </div>
+          <div className="empty__title">Архив пуст</div>
+          <div>Сюда уходит всё, что ты пометишь как «В архив».</div>
+        </div>
+      )}
+
+      {tasks?.map((t) => (
+        <TaskRow
+          key={t.id}
+          task={t}
+          category={t.category_id ? catById.get(t.category_id) : null}
+          onToggle={() => {
+            /* no-op in archive */
+          }}
+          onUnarchive={unarchive}
+          onDelete={remove}
+          hideArrow
+        />
+      ))}
+    </div>
+  );
+}
+
 export function ProfileRoutes() {
   return (
     <Routes>
       <Route index element={<ProfileHome />} />
+      <Route path="archive" element={<ArchivePage />} />
       <Route path="support" element={<SupportPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
     </Routes>

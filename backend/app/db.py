@@ -81,6 +81,12 @@ class Task(Base):
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     remind_minutes_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_done: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    done_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False
     )
@@ -167,8 +173,11 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parent_task_id INTEGER",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_date DATE",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS has_time BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ",
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ",
         "CREATE INDEX IF NOT EXISTS ix_tasks_parent_task_id ON tasks (parent_task_id)",
         "CREATE INDEX IF NOT EXISTS ix_tasks_due_date ON tasks (due_date)",
+        "CREATE INDEX IF NOT EXISTS ix_tasks_archived_at ON tasks (archived_at)",
         (
             "UPDATE tasks SET "
             "due_date = COALESCE(due_date, CAST(due_at AT TIME ZONE 'UTC' AS DATE)), "
