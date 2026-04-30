@@ -10,7 +10,7 @@ import {
   InboxIcon,
   SparkIcon,
 } from "../icons";
-import { todayISO } from "../utils/date";
+import { todayISO, tomorrowISO } from "../utils/date";
 
 export function TodayPage() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -97,6 +97,37 @@ export function TodayPage() {
       is_done: !task.is_done,
     });
     setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+  }
+
+  async function postpone(task: Task) {
+    const nextDate = tomorrowISO();
+    // If the task had a time (has_time), keep the time-of-day and move to tomorrow.
+    let due_at: string | null = null;
+    let has_time = task.has_time;
+    if (has_time && task.due_at) {
+      const prev = new Date(task.due_at);
+      const [y, m, d] = nextDate.split("-").map(Number);
+      const next = new Date(y, m - 1, d, prev.getHours(), prev.getMinutes(), 0, 0);
+      due_at = next.toISOString();
+    }
+    const updated = await api.updateTask(task.id, {
+      title: task.title,
+      description: task.description,
+      category_id: task.category_id,
+      parent_task_id: task.parent_task_id,
+      due_date: nextDate,
+      has_time,
+      due_at,
+      remind_minutes_before: task.remind_minutes_before,
+      is_done: task.is_done,
+    });
+    setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+  }
+
+  async function remove(task: Task) {
+    if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
+    await api.deleteTask(task.id);
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id && t.parent_task_id !== task.id));
   }
 
   const todayLabel = new Date().toLocaleDateString("ru-RU", {
@@ -194,6 +225,8 @@ export function TodayPage() {
               onToggle={toggle}
               subtasks={childrenByParent.get(t.id)}
               onToggleSub={toggle}
+              onPostpone={postpone}
+              onDelete={remove}
             />
           ))}
         </Section>
@@ -209,6 +242,8 @@ export function TodayPage() {
               onToggle={toggle}
               subtasks={childrenByParent.get(t.id)}
               onToggleSub={toggle}
+              onPostpone={postpone}
+              onDelete={remove}
             />
           ))}
         </Section>
@@ -224,6 +259,8 @@ export function TodayPage() {
               onToggle={toggle}
               subtasks={childrenByParent.get(t.id)}
               onToggleSub={toggle}
+              onPostpone={postpone}
+              onDelete={remove}
             />
           ))}
         </Section>
@@ -239,6 +276,7 @@ export function TodayPage() {
               onToggle={toggle}
               subtasks={childrenByParent.get(t.id)}
               onToggleSub={toggle}
+              onDelete={remove}
             />
           ))}
         </Section>
