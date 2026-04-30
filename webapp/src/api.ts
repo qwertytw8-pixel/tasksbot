@@ -25,6 +25,8 @@ export interface Task {
   due_at: string | null;
   remind_minutes_before: number | null;
   is_done: boolean;
+  done_at: string | null;
+  archived_at: string | null;
   created_at: string;
 }
 
@@ -74,6 +76,7 @@ export interface ListTasksParams {
   day?: string;
   parentId?: number | null;
   topLevel?: boolean;
+  archived?: boolean;
 }
 
 function buildTaskQuery(params?: ListTasksParams): string {
@@ -85,6 +88,7 @@ function buildTaskQuery(params?: ListTasksParams): string {
     qs.set("parent_id", String(params.parentId));
   }
   if (params.topLevel) qs.set("top_level", "true");
+  if (params.archived !== undefined) qs.set("archived", String(params.archived));
   const s = qs.toString();
   return s ? `?${s}` : "";
 }
@@ -114,4 +118,8 @@ export const api = {
     request<Task>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
   deleteTask: (id: number) =>
     request<void>(`/api/tasks/${id}`, { method: "DELETE" }),
+  archiveTask: (id: number) =>
+    request<Task>(`/api/tasks/${id}/archive`, { method: "POST" }),
+  unarchiveTask: (id: number) =>
+    request<Task>(`/api/tasks/${id}/unarchive`, { method: "POST" }),
 };

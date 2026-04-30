@@ -38,7 +38,12 @@ async def run_tick(bot: Bot) -> int:
         rows = await session.execute(
             select(Reminder, Task)
             .join(Task, Task.id == Reminder.task_id)
-            .where(Reminder.sent.is_(False), Reminder.fire_at <= now)
+            .where(
+                Reminder.sent.is_(False),
+                Reminder.fire_at <= now,
+                Task.archived_at.is_(None),
+                Task.is_done.is_(False),
+            )
             .limit(50)
         )
         items = list(rows.all())

@@ -125,6 +125,11 @@ export function CalendarPage() {
     setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id && t.parent_task_id !== task.id));
   }
 
+  async function archive(task: Task) {
+    await api.archiveTask(task.id);
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
+  }
+
   function selectDay(d: Date) {
     haptic("light");
     const iso = toISODate(d);
@@ -261,6 +266,7 @@ export function CalendarPage() {
           subtasks={(tasks ?? []).filter((c) => c.parent_task_id === t.id)}
           onToggleSub={toggle}
           onPostpone={!t.is_done ? postpone : undefined}
+          onArchive={archive}
           onDelete={remove}
         />
       ))}
