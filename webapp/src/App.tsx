@@ -50,7 +50,7 @@ export function App() {
   return (
     <div className="app">
       <Routes>
-        <Route path="/" element={<Navigate to="/today" replace />} />
+        <Route path="/" element={<Navigate to="/all" replace />} />
         <Route path="/today" element={<TodayPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/all" element={<AllPage />} />
@@ -79,9 +79,9 @@ function Fab() {
 
 function TabBar() {
   const tabs = [
+    { to: "/all", label: "Все", icon: ListIcon },
     { to: "/today", label: "Сегодня", icon: SparkIcon },
     { to: "/calendar", label: "Календарь", icon: CalendarIcon },
-    { to: "/all", label: "Все", icon: ListIcon },
     { to: "/categories", label: "Категории", icon: TagIcon },
     { to: "/profile", label: "Профиль", icon: UserIcon },
   ];
