@@ -129,7 +129,13 @@ export function AllPage() {
       remind_minutes_before: task.remind_minutes_before,
       is_done: !task.is_done,
     });
-    setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+    setTasks((prev) => {
+      const list = prev ?? [];
+      if (updated.archived_at) {
+        return list.filter((t) => t.id !== task.id);
+      }
+      return list.map((t) => (t.id === task.id ? updated : t));
+    });
   }
 
   async function postpone(task: Task) {
@@ -266,7 +272,7 @@ export function AllPage() {
                 subtasks={childrenByParent.get(t.id)}
                 onToggleSub={toggle}
                 onPostpone={!isDone ? postpone : undefined}
-                onArchive={isDone || section.key === "overdue" ? archive : undefined}
+                onArchive={archive}
                 onDelete={remove}
               />
             ))}

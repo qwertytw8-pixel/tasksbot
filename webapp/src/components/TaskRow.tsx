@@ -259,6 +259,7 @@ export function TaskRow({
   const swipeClass = [
     "task-swipe",
     open ? "task-swipe--open" : "",
+    dragging || dx !== 0 ? "task-swipe--active" : "",
     compact ? "task-swipe--compact" : "",
     !hasActions ? "task-swipe--no-actions" : "",
   ]
