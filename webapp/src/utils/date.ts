@@ -14,6 +14,12 @@ export function todayISO(): string {
   return toISODate(new Date());
 }
 
+export function tomorrowISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return toISODate(d);
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
