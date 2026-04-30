@@ -22,6 +22,7 @@ import {
   startOfMonth,
   toISODate,
   todayISO,
+  tomorrowISO,
 } from "../utils/date";
 
 export function CalendarPage() {
@@ -93,6 +94,40 @@ export function CalendarPage() {
       is_done: !task.is_done,
     });
     setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+  }
+
+  async function postpone(task: Task) {
+    const nextDate = tomorrowISO();
+    let due_at: string | null = null;
+    if (task.has_time && task.due_at) {
+      const prev = new Date(task.due_at);
+      const [y, m, d] = nextDate.split("-").map(Number);
+      const next = new Date(y, m - 1, d, prev.getHours(), prev.getMinutes(), 0, 0);
+      due_at = next.toISOString();
+    }
+    const updated = await api.updateTask(task.id, {
+      title: task.title,
+      description: task.description,
+      category_id: task.category_id,
+      parent_task_id: task.parent_task_id,
+      due_date: nextDate,
+      has_time: task.has_time,
+      due_at,
+      remind_minutes_before: task.remind_minutes_before,
+      is_done: task.is_done,
+    });
+    setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+  }
+
+  async function remove(task: Task) {
+    if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
+    await api.deleteTask(task.id);
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id && t.parent_task_id !== task.id));
+  }
+
+  async function archive(task: Task) {
+    await api.archiveTask(task.id);
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
   }
 
   function selectDay(d: Date) {
@@ -230,6 +265,9 @@ export function CalendarPage() {
           onToggle={toggle}
           subtasks={(tasks ?? []).filter((c) => c.parent_task_id === t.id)}
           onToggleSub={toggle}
+          onPostpone={!t.is_done ? postpone : undefined}
+          onArchive={archive}
+          onDelete={remove}
         />
       ))}
 
@@ -269,6 +307,8 @@ export function CalendarPage() {
               onToggle={toggle}
               subtasks={(tasks ?? []).filter((c) => c.parent_task_id === t.id)}
               onToggleSub={toggle}
+              onPostpone={postpone}
+              onDelete={remove}
             />
           ))}
         </div>

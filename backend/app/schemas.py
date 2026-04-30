@@ -41,6 +41,8 @@ class TaskOut(BaseModel):
     due_at: datetime | None
     remind_minutes_before: int | None
     is_done: bool
+    done_at: datetime | None
+    archived_at: datetime | None
     created_at: datetime
 
 

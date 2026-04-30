@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { api, type Category, type Task } from "../api";
-import { TaskRow } from "../components/TaskRow";
+import { TaskRow, isTaskOverdue } from "../components/TaskRow";
 import {
+  AlertTriangleIcon,
   BellIcon,
   CalendarIcon,
   CheckIcon,
@@ -10,7 +11,7 @@ import {
   InboxIcon,
   SparkIcon,
 } from "../icons";
-import { todayISO } from "../utils/date";
+import { todayISO, tomorrowISO } from "../utils/date";
 
 export function TodayPage() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -35,26 +36,24 @@ export function TodayPage() {
 
   const todayTasks = useMemo(() => {
     if (!tasks) return null;
-    return tasks.filter(
-      (t) =>
-        t.parent_task_id === null &&
-        !t.is_done &&
-        ((t.due_date && t.due_date === today) ||
-          (t.has_time && t.due_at && new Date(t.due_at).toDateString() === new Date().toDateString()))
-    );
+    const now = new Date();
+    return tasks.filter((t) => {
+      if (t.parent_task_id !== null || t.is_done) return false;
+      if (isTaskOverdue(t, now)) return false;
+      if (t.due_date && t.due_date === today) return true;
+      if (t.has_time && t.due_at && new Date(t.due_at).toDateString() === now.toDateString())
+        return true;
+      return false;
+    });
   }, [tasks, today]);
 
   const overdue = useMemo(() => {
     if (!tasks) return null;
-    return tasks.filter((t) => {
-      if (t.parent_task_id !== null || t.is_done) return false;
-      if (t.has_time && t.due_at) {
-        return new Date(t.due_at) < new Date() && new Date(t.due_at).toDateString() !== new Date().toDateString();
-      }
-      if (t.due_date && t.due_date < today) return true;
-      return false;
-    });
-  }, [tasks, today]);
+    const now = new Date();
+    return tasks.filter(
+      (t) => t.parent_task_id === null && isTaskOverdue(t, now),
+    );
+  }, [tasks]);
 
   const inbox = useMemo(() => {
     if (!tasks) return null;
@@ -65,13 +64,13 @@ export function TodayPage() {
 
   const done = useMemo(() => {
     if (!tasks) return null;
+    const last24 = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return tasks.filter((t) => {
       if (t.parent_task_id !== null || !t.is_done) return false;
-      if (t.due_date) return t.due_date === today;
-      const d = new Date(t.created_at);
-      return d.toDateString() === new Date().toDateString();
+      const d = t.done_at ? new Date(t.done_at) : new Date(t.created_at);
+      return d >= last24;
     });
-  }, [tasks, today]);
+  }, [tasks]);
 
   const childrenByParent = useMemo(() => {
     const map = new Map<number, Task[]>();
@@ -97,6 +96,42 @@ export function TodayPage() {
       is_done: !task.is_done,
     });
     setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+  }
+
+  async function postpone(task: Task) {
+    const nextDate = tomorrowISO();
+    // If the task had a time (has_time), keep the time-of-day and move to tomorrow.
+    let due_at: string | null = null;
+    let has_time = task.has_time;
+    if (has_time && task.due_at) {
+      const prev = new Date(task.due_at);
+      const [y, m, d] = nextDate.split("-").map(Number);
+      const next = new Date(y, m - 1, d, prev.getHours(), prev.getMinutes(), 0, 0);
+      due_at = next.toISOString();
+    }
+    const updated = await api.updateTask(task.id, {
+      title: task.title,
+      description: task.description,
+      category_id: task.category_id,
+      parent_task_id: task.parent_task_id,
+      due_date: nextDate,
+      has_time,
+      due_at,
+      remind_minutes_before: task.remind_minutes_before,
+      is_done: task.is_done,
+    });
+    setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+  }
+
+  async function remove(task: Task) {
+    if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
+    await api.deleteTask(task.id);
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id && t.parent_task_id !== task.id));
+  }
+
+  async function archive(task: Task) {
+    await api.archiveTask(task.id);
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
   }
 
   const todayLabel = new Date().toLocaleDateString("ru-RU", {
@@ -185,7 +220,7 @@ export function TodayPage() {
       )}
 
       {overdue && overdue.length > 0 && (
-        <Section title="Просрочено" count={overdue.length} icon={BellIcon}>
+        <Section title="Просрочено" count={overdue.length} icon={AlertTriangleIcon}>
           {overdue.map((t) => (
             <TaskRow
               key={t.id}
@@ -194,6 +229,9 @@ export function TodayPage() {
               onToggle={toggle}
               subtasks={childrenByParent.get(t.id)}
               onToggleSub={toggle}
+              onPostpone={postpone}
+              onArchive={archive}
+              onDelete={remove}
             />
           ))}
         </Section>
@@ -209,6 +247,8 @@ export function TodayPage() {
               onToggle={toggle}
               subtasks={childrenByParent.get(t.id)}
               onToggleSub={toggle}
+              onPostpone={postpone}
+              onDelete={remove}
             />
           ))}
         </Section>
@@ -224,6 +264,8 @@ export function TodayPage() {
               onToggle={toggle}
               subtasks={childrenByParent.get(t.id)}
               onToggleSub={toggle}
+              onPostpone={postpone}
+              onDelete={remove}
             />
           ))}
         </Section>
@@ -239,6 +281,8 @@ export function TodayPage() {
               onToggle={toggle}
               subtasks={childrenByParent.get(t.id)}
               onToggleSub={toggle}
+              onArchive={archive}
+              onDelete={remove}
             />
           ))}
         </Section>

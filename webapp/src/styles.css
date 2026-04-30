@@ -1,48 +1,48 @@
 :root,
 [data-theme="light"] {
-  --tb-bg: #f6f2eb;
-  --tb-secondary-bg: #f2ede5;
-  --tb-text: #17171c;
-  --tb-hint: #6c6975;
+  --tb-bg: #eee8dc;
+  --tb-secondary-bg: #e9e1d0;
+  --tb-text: #15151b;
+  --tb-hint: #625f6d;
   --tb-link: #6d5dfc;
   --tb-button: #6d5dfc;
   --tb-button-text: #ffffff;
   --tb-section-bg: #ffffff;
 
-  --tb-card-bg: rgba(255, 255, 255, 0.66);
-  --tb-card-border: rgba(255, 255, 255, 0.7);
-  --tb-cell-bg: rgba(255, 255, 255, 0.78);
-  --tb-cell-border: rgba(28, 22, 57, 0.08);
-  --tb-cell-bg-muted: rgba(255, 255, 255, 0.4);
+  --tb-card-bg: rgba(255, 255, 255, 0.88);
+  --tb-card-border: rgba(255, 255, 255, 0.95);
+  --tb-cell-bg: rgba(255, 255, 255, 0.92);
+  --tb-cell-border: rgba(28, 22, 57, 0.12);
+  --tb-cell-bg-muted: rgba(255, 255, 255, 0.56);
 
-  /* Liquid-glass surfaces */
-  --tb-glass: rgba(255, 255, 255, 0.62);
-  --tb-glass-strong: rgba(255, 255, 255, 0.85);
-  --tb-glass-border: rgba(255, 255, 255, 0.7);
-  --tb-glass-highlight: rgba(255, 255, 255, 0.55);
-  --tb-task-bg: rgba(255, 255, 255, 0.72);
-  --tb-input-bg: rgba(255, 255, 255, 0.78);
+  /* Liquid-glass surfaces (denser + more visible) */
+  --tb-glass: rgba(255, 255, 255, 0.86);
+  --tb-glass-strong: rgba(255, 255, 255, 0.96);
+  --tb-glass-border: rgba(28, 22, 57, 0.14);
+  --tb-glass-highlight: rgba(255, 255, 255, 0.75);
+  --tb-task-bg: rgba(255, 255, 255, 0.92);
+  --tb-input-bg: rgba(255, 255, 255, 0.95);
 
-  --tb-overlay-soft: rgba(109, 93, 252, 0.06);
-  --tb-bg-grad-start: rgba(109, 93, 252, 0.07);
-  --tb-bg-grad-top: #faf6ee;
-  --tb-separator: rgba(28, 22, 57, 0.08);
-  --tb-accent-soft: rgba(109, 93, 252, 0.12);
+  --tb-overlay-soft: rgba(109, 93, 252, 0.07);
+  --tb-bg-grad-start: rgba(109, 93, 252, 0.08);
+  --tb-bg-grad-top: #f4edda;
+  --tb-separator: rgba(28, 22, 57, 0.1);
+  --tb-accent-soft: rgba(109, 93, 252, 0.14);
   --tb-accent-strong: #6d5dfc;
   --tb-accent-grad: linear-gradient(135deg, #7b6bff, #5e4ef8);
   --tb-danger: #e3534b;
-  --tb-danger-soft: rgba(227, 83, 75, 0.1);
+  --tb-danger-soft: rgba(227, 83, 75, 0.12);
   --tb-success: #1f9d63;
   --tb-warm: #f5efe6;
 
   --tb-radius: 22px;
   --tb-radius-sm: 16px;
   --tb-radius-xs: 12px;
-  --tb-shadow: 0 14px 30px rgba(28, 22, 57, 0.06);
-  --tb-shadow-soft: 0 6px 18px rgba(28, 22, 57, 0.04);
-  --tb-shadow-press: 0 2px 6px rgba(28, 22, 57, 0.05);
-  --tb-blur: blur(22px) saturate(160%);
-  --tb-blur-light: blur(14px) saturate(140%);
+  --tb-shadow: 0 18px 36px rgba(28, 22, 57, 0.1), 0 2px 6px rgba(28, 22, 57, 0.06);
+  --tb-shadow-soft: 0 8px 22px rgba(28, 22, 57, 0.07);
+  --tb-shadow-press: 0 2px 6px rgba(28, 22, 57, 0.08);
+  --tb-blur: blur(22px) saturate(170%);
+  --tb-blur-light: blur(14px) saturate(150%);
 }
 
 [data-theme="dark"] {
@@ -1895,4 +1895,233 @@ button {
 
 .remind-quick__chip:active {
   transform: scale(0.95);
+}
+
+/* ---------- Swipe actions on tasks ---------- */
+
+.task-swipe {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  isolation: isolate;
+  touch-action: pan-y;
+}
+
+.task-swipe .task {
+  margin-bottom: 0;
+}
+
+.task-swipe__content {
+  position: relative;
+  z-index: 1;
+  will-change: transform;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  touch-action: pan-y;
+}
+
+.task-swipe__content--dragging {
+  transition: none;
+}
+
+.task-swipe__actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  z-index: 0;
+  pointer-events: auto;
+}
+
+.task-swipe--no-actions .task-swipe__actions {
+  display: none;
+}
+
+.task-swipe__action {
+  width: 76px;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0;
+  transition: filter 150ms ease, transform 150ms ease, opacity 150ms ease;
+  opacity: 0.96;
+}
+
+.task-swipe__action svg {
+  width: 20px;
+  height: 20px;
+}
+
+.task-swipe__action:active {
+  transform: scale(0.96);
+  filter: brightness(0.92);
+}
+
+.task-swipe__action--postpone {
+  background: linear-gradient(180deg, #fbbf24, #f59e0b);
+}
+
+.task-swipe__action--done {
+  background: linear-gradient(180deg, #34d399, #10b981);
+}
+
+.task-swipe__action--delete {
+  background: linear-gradient(180deg, #f87171, #ef4444);
+}
+
+.task-swipe--open .task-swipe__action {
+  animation: tb-action-pop 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.task-swipe--open .task-swipe__action:nth-child(1) {
+  animation-delay: 40ms;
+}
+.task-swipe--open .task-swipe__action:nth-child(2) {
+  animation-delay: 90ms;
+}
+.task-swipe--open .task-swipe__action:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+@keyframes tb-action-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(18px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-2px) scale(1.02);
+  }
+  100% {
+    opacity: 0.96;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Hint arrow stays in place but hides faint when open so actions are primary focus */
+.task-swipe__content--open .task__arrow {
+  opacity: 0;
+  transform: translateX(6px);
+}
+.task__arrow {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.task-swipe__action--archive {
+  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+}
+
+.task-swipe__action--restore {
+  background: linear-gradient(180deg, #818cf8, #6366f1);
+}
+
+/* ---------- Overdue & archive visuals on cards ---------- */
+
+.task-card--overdue .task-swipe {
+  box-shadow:
+    inset 3px 0 0 var(--tb-danger),
+    0 12px 26px rgba(227, 83, 75, 0.14);
+}
+
+.task__meta-item--overdue {
+  color: var(--tb-danger) !important;
+  font-weight: 700;
+  background: var(--tb-danger-soft);
+  border-radius: 999px;
+  padding: 2px 10px 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.task__meta-item--overdue svg {
+  width: 13px;
+  height: 13px;
+}
+
+.task-card--archived {
+  opacity: 0.86;
+}
+
+.task-card--archived .task__title {
+  text-decoration: none;
+  color: var(--tb-hint) !important;
+}
+
+/* ---------- Stats cards variants (3-up) ---------- */
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stats-row .stat-card {
+  padding: 12px;
+}
+
+.stat-card__value--muted {
+  color: var(--tb-hint);
+}
+
+.stat-card--danger .stat-card__value {
+  color: var(--tb-danger);
+}
+
+.stat-card--danger {
+  box-shadow: var(--tb-shadow-soft),
+    inset 0 1px 0 var(--tb-glass-highlight),
+    inset 0 0 0 1px color-mix(in srgb, var(--tb-danger) 28%, transparent);
+}
+
+.stat-card--success .stat-card__value {
+  color: var(--tb-success);
+}
+
+/* ---------- Archive link row on Profile ---------- */
+
+.archive-hero {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius);
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--tb-shadow-soft);
+  -webkit-backdrop-filter: var(--tb-blur);
+  backdrop-filter: var(--tb-blur);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.archive-hero__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.archive-hero__title {
+  font-weight: 700;
+  color: var(--tb-text) !important;
+}
+
+.archive-hero__hint {
+  font-size: 13px;
+  color: var(--tb-hint);
 }

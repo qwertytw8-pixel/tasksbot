@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -222,9 +222,45 @@ async def delete_category(
 
 async def _sync_reminders(session: AsyncSession, task: Task) -> None:
     await session.execute(delete(Reminder).where(Reminder.task_id == task.id))
-    if task.due_at and task.remind_minutes_before is not None and not task.is_done:
+    if (
+        task.due_at
+        and task.remind_minutes_before is not None
+        and not task.is_done
+        and task.archived_at is None
+    ):
         fire_at = task.due_at - timedelta(minutes=task.remind_minutes_before)
         session.add(Reminder(task_id=task.id, fire_at=fire_at))
+
+
+AUTO_ARCHIVE_AFTER = timedelta(hours=24)
+
+
+async def _auto_archive_old_done(session: AsyncSession, user_id: int) -> None:
+    """Move done-tasks older than 24h into the archive (set archived_at)."""
+    cutoff = datetime.now(UTC) - AUTO_ARCHIVE_AFTER
+    await session.execute(
+        update(Task)
+        .where(
+            Task.user_id == user_id,
+            Task.is_done.is_(True),
+            Task.archived_at.is_(None),
+            Task.done_at.is_not(None),
+            Task.done_at < cutoff,
+        )
+        .values(archived_at=datetime.now(UTC))
+    )
+    # Drop any pending reminders for those archived tasks.
+    await session.execute(
+        delete(Reminder).where(
+            Reminder.task_id.in_(
+                select(Task.id).where(
+                    Task.user_id == user_id,
+                    Task.archived_at.is_not(None),
+                    Reminder.sent.is_(False),
+                )
+            )
+        )
+    )
 
 
 @router.get("/tasks", response_model=list[TaskOut])
@@ -233,10 +269,13 @@ async def list_tasks(
     day: date | None = None,
     parent_id: int | None = None,
     top_level: bool | None = None,
+    archived: bool | None = None,
     tg: TelegramUser = Depends(_get_dep()),
     session: AsyncSession = Depends(get_session),
 ):
     await _ensure_user(session, tg)
+    await _auto_archive_old_done(session, tg.id)
+    await session.commit()
     stmt = (
         select(Task)
         .options(selectinload(Task.children))
@@ -249,6 +288,10 @@ async def list_tasks(
             Task.created_at.desc(),
         )
     )
+    if archived is True:
+        stmt = stmt.where(Task.archived_at.is_not(None)).order_by(Task.archived_at.desc())
+    else:
+        stmt = stmt.where(Task.archived_at.is_(None))
     if done is not None:
         stmt = stmt.where(Task.is_done == done)
     if day is not None:
@@ -283,6 +326,7 @@ async def create_task(
         due_at=due_at,
         remind_minutes_before=remind,
         is_done=payload.is_done,
+        done_at=datetime.now(UTC) if payload.is_done else None,
     )
     session.add(task)
     await session.flush()
@@ -315,6 +359,11 @@ async def update_task(
     task.has_time = has_time
     task.due_at = due_at
     task.remind_minutes_before = remind
+    # Track when a task was marked done so we can auto-archive later.
+    if payload.is_done and not task.is_done:
+        task.done_at = datetime.now(UTC)
+    elif not payload.is_done:
+        task.done_at = None
     task.is_done = payload.is_done
     await session.flush()
     await _sync_reminders(session, task)
@@ -334,3 +383,38 @@ async def delete_task(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
     await session.delete(task)
     await session.commit()
+
+
+@router.post("/tasks/{task_id}/archive", response_model=TaskOut)
+async def archive_task(
+    task_id: int,
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    task = await session.get(Task, task_id)
+    if task is None or task.user_id != tg.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
+    if task.archived_at is None:
+        task.archived_at = datetime.now(UTC)
+    await session.flush()
+    await _sync_reminders(session, task)
+    await session.commit()
+    await session.refresh(task)
+    return task
+
+
+@router.post("/tasks/{task_id}/unarchive", response_model=TaskOut)
+async def unarchive_task(
+    task_id: int,
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    task = await session.get(Task, task_id)
+    if task is None or task.user_id != tg.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
+    task.archived_at = None
+    await session.flush()
+    await _sync_reminders(session, task)
+    await session.commit()
+    await session.refresh(task)
+    return task
