@@ -359,11 +359,16 @@ async def update_task(
     task.has_time = has_time
     task.due_at = due_at
     task.remind_minutes_before = remind
-    # Track when a task was marked done so we can auto-archive later.
+    # Track when a task was marked done; auto-archive it immediately.
     if payload.is_done and not task.is_done:
         task.done_at = datetime.now(UTC)
+        if task.archived_at is None:
+            task.archived_at = datetime.now(UTC)
     elif not payload.is_done:
         task.done_at = None
+        # Un-completing a task also brings it out of the archive so it
+        # shows up in the normal task list again.
+        task.archived_at = None
     task.is_done = payload.is_done
     await session.flush()
     await _sync_reminders(session, task)
