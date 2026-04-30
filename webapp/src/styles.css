@@ -120,6 +120,20 @@ h3,
   font-weight: 800;
   letter-spacing: -0.03em;
   margin: 0;
+  /* Force tematic text color so Telegram theme params can't override it */
+  color: var(--tb-text) !important;
+}
+
+.page-header__title-row h1,
+.hero-card h1,
+.hero-card h2,
+.surface__heading,
+.empty__title {
+  color: var(--tb-text) !important;
+}
+
+.page-header__date {
+  color: var(--tb-hint) !important;
 }
 
 h1 {
@@ -598,14 +612,24 @@ button {
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   background: var(--tb-glass-strong);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.12), inset 0 1px 0 var(--tb-glass-highlight);
+  border: 1px solid var(--tb-separator);
+  box-shadow:
+    0 22px 44px rgba(28, 22, 57, 0.18),
+    0 4px 12px rgba(28, 22, 57, 0.08),
+    inset 0 1px 0 var(--tb-glass-highlight);
   border-radius: 24px;
   padding: 8px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   -webkit-backdrop-filter: var(--tb-blur);
   backdrop-filter: var(--tb-blur);
   z-index: 9;
+}
+
+[data-theme="dark"] .tabbar {
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.55),
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 var(--tb-glass-highlight);
 }
 
 .tabbar--five {
@@ -1643,4 +1667,232 @@ button {
 .page-header__back svg {
   width: 16px;
   height: 16px;
+}
+
+/* ---------- Extra liquid-glass + animation polish ---------- */
+
+@keyframes tb-shimmer {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  60% {
+    transform: translateX(220%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(220%) skewX(-18deg);
+  }
+}
+
+@keyframes tb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Stagger task/category list entries so they cascade in */
+.task,
+.category-card {
+  animation: tb-rise 0.42s cubic-bezier(0.21, 0.99, 0.36, 1) both;
+}
+
+.task-card:nth-child(1) .task,
+.category-card:nth-child(1) {
+  animation-delay: 30ms;
+}
+.task-card:nth-child(2) .task,
+.category-card:nth-child(2) {
+  animation-delay: 70ms;
+}
+.task-card:nth-child(3) .task,
+.category-card:nth-child(3) {
+  animation-delay: 110ms;
+}
+.task-card:nth-child(4) .task,
+.category-card:nth-child(4) {
+  animation-delay: 150ms;
+}
+.task-card:nth-child(5) .task,
+.category-card:nth-child(5) {
+  animation-delay: 190ms;
+}
+.task-card:nth-child(6) .task,
+.category-card:nth-child(6) {
+  animation-delay: 230ms;
+}
+.task-card:nth-child(n + 7) .task,
+.category-card:nth-child(n + 7) {
+  animation-delay: 260ms;
+}
+
+/* Glass highlight reflection across the FAB */
+.fab {
+  overflow: hidden;
+}
+
+.fab::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 80%
+  );
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+  animation: tb-shimmer 4s ease-in-out 1.4s infinite;
+}
+
+/* Glass highlight reflection across calendar selected cell */
+.cal__cell--selected {
+  position: relative;
+  overflow: hidden;
+}
+
+.cal__cell--selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    transparent 35%,
+    transparent 65%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Reminder mode picker (Без / Вовремя / Заранее) */
+.remind-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: var(--tb-overlay-soft);
+  padding: 4px;
+  border-radius: 16px;
+}
+
+.remind-mode {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 10px 8px;
+  border-radius: 12px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--tb-hint);
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease,
+    transform 140ms ease;
+}
+
+.remind-mode__icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+}
+
+.remind-mode__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.remind-mode--active {
+  background: var(--tb-glass-strong);
+  color: var(--tb-accent-strong);
+  box-shadow: var(--tb-shadow-press);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  backdrop-filter: var(--tb-blur-light);
+  transform: translateY(-1px);
+}
+
+.remind-mode:active {
+  transform: scale(0.97);
+}
+
+.remind-custom {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: tb-rise 0.32s ease both;
+}
+
+.remind-custom__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.remind-custom__input {
+  flex: 1;
+  width: 100%;
+  border: 1px solid var(--tb-glass-border);
+  background: var(--tb-input-bg);
+  color: var(--tb-text);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  box-shadow: inset 0 1px 0 var(--tb-glass-highlight);
+}
+
+.remind-custom__input:focus {
+  border-color: color-mix(in srgb, var(--tb-accent-strong) 60%, transparent);
+  box-shadow: 0 0 0 4px var(--tb-accent-soft);
+}
+
+.remind-custom__unit {
+  color: var(--tb-hint);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.remind-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.remind-quick__chip {
+  appearance: none;
+  border: 1px solid var(--tb-glass-border);
+  background: var(--tb-glass);
+  color: var(--tb-text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms ease, background 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+.remind-quick__chip--active {
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-strong);
+  border-color: color-mix(in srgb, var(--tb-accent-strong) 30%, transparent);
+}
+
+.remind-quick__chip:active {
+  transform: scale(0.95);
 }
