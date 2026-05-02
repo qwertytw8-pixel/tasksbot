@@ -1007,7 +1007,7 @@ button {
 
 .segmented {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 6px;
   background: var(--tb-overlay-soft);
   padding: 4px;

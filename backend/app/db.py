@@ -186,6 +186,7 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
             "due_date = COALESCE(due_date, CAST(due_at AT TIME ZONE 'UTC' AS DATE)), "
             "has_time = CASE WHEN due_at IS NOT NULL THEN TRUE ELSE has_time END"
         ),
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(16)",
     ]
     for stmt in statements:
         await conn.execute(text(stmt))
