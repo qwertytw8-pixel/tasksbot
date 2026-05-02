@@ -294,3 +294,12 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
     ]
     for stmt in statements:
         await conn.execute(text(stmt))
+
+    settings = get_settings()
+    if settings.admin_user_id:
+        await conn.execute(
+            text(
+                "UPDATE users SET is_admin = TRUE WHERE id = :uid AND is_admin = FALSE"
+            ),
+            {"uid": settings.admin_user_id},
+        )
