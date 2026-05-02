@@ -12,9 +12,10 @@ from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy import func, select, update
 
-from app.db import Reminder, Task, User, get_sessionmaker
+from app.db import Reminder, Subscription, Task, User, get_sessionmaker
 
 log = logging.getLogger(__name__)
 
@@ -163,3 +164,113 @@ def _pluralize_tasks(n: int) -> str:
     if 2 <= n % 10 <= 4 and not (12 <= n % 100 <= 14):
         return "незавершённые задачи"
     return "незавершённых задач"
+
+
+async def run_subscription_notifications(bot: Bot) -> int:
+    """Send subscription expiry notifications. Returns the number sent."""
+    from app.subscription import RENEWAL_DISCOUNT_PLAN
+
+    sm = get_sessionmaker()
+    now = datetime.now(UTC)
+    sent_count = 0
+
+    async with sm() as session:
+        subs = (
+            await session.execute(
+                select(Subscription)
+                .where(
+                    Subscription.is_active.is_(True),
+                    Subscription.expires_at.isnot(None),
+                )
+            )
+        ).scalars().all()
+
+        for sub in subs:
+            days_left = (sub.expires_at - now).total_seconds() / 86400
+
+            # 3 days before expiry
+            if 2.5 < days_left <= 3.5 and not sub.notif_3d_sent:
+                try:
+                    exp_str = sub.expires_at.strftime("%d.%m.%Y")
+                    await bot.send_message(
+                        chat_id=sub.user_id,
+                        text=(
+                            "⏳ <b>Подписка скоро закончится</b>\n\n"
+                            "Твоя Premium-подписка истекает "
+                            f"{exp_str}.\n\n"
+                            "Продли сейчас, чтобы не потерять "
+                            "безлимитные задачи и все возможности!"
+                        ),
+                        reply_markup=InlineKeyboardMarkup(
+                            inline_keyboard=[[
+                                InlineKeyboardButton(
+                                    text="💎 Продлить Premium",
+                                    callback_data="show_premium",
+                                )
+                            ]]
+                        ),
+                    )
+                    sent_count += 1
+                except Exception:
+                    log.exception("failed sub notif 3d for user %s", sub.user_id)
+                    continue
+                sub.notif_3d_sent = True
+                await session.commit()
+
+            # Day of expiry (0-24h left)
+            elif -0.5 < days_left <= 0.5 and not sub.notif_0d_sent:
+                try:
+                    await bot.send_message(
+                        chat_id=sub.user_id,
+                        text=(
+                            "⚠️ <b>Подписка истекла</b>\n\n"
+                            "Твоя Premium-подписка закончилась. "
+                            "Продли, чтобы вернуть все возможности!"
+                        ),
+                        reply_markup=InlineKeyboardMarkup(
+                            inline_keyboard=[[
+                                InlineKeyboardButton(
+                                    text="💎 Продлить Premium",
+                                    callback_data="show_premium",
+                                )
+                            ]]
+                        ),
+                    )
+                    sent_count += 1
+                except Exception:
+                    log.exception("failed sub notif 0d for user %s", sub.user_id)
+                    continue
+                sub.notif_0d_sent = True
+                await session.commit()
+
+            # 1 day after expiry — discount offer
+            elif -1.5 < days_left <= -0.5 and not sub.notif_discount_sent:
+                discount = RENEWAL_DISCOUNT_PLAN
+                try:
+                    await bot.send_message(
+                        chat_id=sub.user_id,
+                        text=(
+                            "🎁 <b>Специальное предложение!</b>\n\n"
+                            "Мы скучаем! Держи скидку на продление:\n\n"
+                            f"💎 Premium на {discount['label']} — "
+                            f"<b>{discount['stars']} ⭐</b> "
+                            f"<s>99 ⭐</s>\n\n"
+                            "Предложение ограничено — не упусти!"
+                        ),
+                        reply_markup=InlineKeyboardMarkup(
+                            inline_keyboard=[[
+                                InlineKeyboardButton(
+                                    text=f"🎁 Продлить за {discount['stars']} ⭐",
+                                    callback_data="renew_discount",
+                                )
+                            ]]
+                        ),
+                    )
+                    sent_count += 1
+                except Exception:
+                    log.exception("failed sub discount notif for user %s", sub.user_id)
+                    continue
+                sub.notif_discount_sent = True
+                await session.commit()
+
+    return sent_count

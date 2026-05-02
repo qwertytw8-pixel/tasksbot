@@ -17,7 +17,7 @@ from app.api_subscription import router as subscription_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
-from app.scheduler import run_daily_summary, run_tick
+from app.scheduler import run_daily_summary, run_subscription_notifications, run_tick
 
 
 def _setup_logging(level: str) -> None:
@@ -155,4 +155,5 @@ async def cron_tick(
         raise HTTPException(status_code=403, detail="bad cron secret")
     sent = await run_tick(request.app.state.bot)
     summaries = await run_daily_summary(request.app.state.bot)
-    return {"status": "ok", "sent": sent, "summaries": summaries}
+    sub_notifs = await run_subscription_notifications(request.app.state.bot)
+    return {"status": "ok", "sent": sent, "summaries": summaries, "sub_notifs": sub_notifs}

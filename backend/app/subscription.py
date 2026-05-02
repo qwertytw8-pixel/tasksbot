@@ -20,6 +20,8 @@ PREMIUM_PLANS = [
 ]
 PREMIUM_PRICE_STARS = 99  # default (1 month)
 
+RENEWAL_DISCOUNT_PLAN = {"key": "renewal_1m", "label": "1 месяц (скидка)", "days": 30, "stars": 69}
+
 
 async def get_active_subscription(session: AsyncSession, user_id: int) -> Subscription | None:
     now = datetime.now(UTC)

@@ -25,6 +25,7 @@ from app.subscription import (
     FREE_MAX_TASKS,
     PREMIUM_PLANS,
     PREMIUM_PRICE_STARS,
+    RENEWAL_DISCOUNT_PLAN,
     can_create_category,
     count_active_tasks,
     count_tasks_created_today,
@@ -177,8 +178,9 @@ async def create_invoice(
     body = await request.json()
     plan_key = body.get("plan", "1m")
 
+    all_plans = [*PREMIUM_PLANS, RENEWAL_DISCOUNT_PLAN]
     plan = next(
-        (p for p in PREMIUM_PLANS if p["key"] == plan_key),
+        (p for p in all_plans if p["key"] == plan_key),
         None,
     )
     if plan is None:
@@ -202,7 +204,7 @@ async def create_invoice(
         description=(
             f"Premium {plan['label']}: "
             "безлимитные задачи, "
-            "свои категории, AI."
+            "свои категории и все возможности."
         ),
         payload=json.dumps({
             "type": f"premium_{plan_key}",

@@ -129,6 +129,9 @@ class Subscription(Base):
         String(16), nullable=False, default="stars"
     )  # stars / promo / admin_grant
     stars_payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    notif_3d_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notif_0d_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notif_discount_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     user: Mapped[User] = relationship(back_populates="subscriptions")
 
@@ -295,6 +298,18 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
         ),
         "CREATE INDEX IF NOT EXISTS ix_promo_activations_promo_id ON promo_activations (promo_id)",
         "CREATE INDEX IF NOT EXISTS ix_promo_activations_user_id ON promo_activations (user_id)",
+        (
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS"
+            " notif_3d_sent BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
+        (
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS"
+            " notif_0d_sent BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
+        (
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS"
+            " notif_discount_sent BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
     ]
     for stmt in statements:
         await conn.execute(text(stmt))
