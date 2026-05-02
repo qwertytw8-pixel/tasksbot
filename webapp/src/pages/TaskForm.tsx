@@ -364,7 +364,7 @@ export function TaskFormPage() {
                 className={`segmented__item ${whenMode === "datetime" ? "segmented__item--active" : ""}`}
                 onClick={() => setWhenMode("datetime")}
               >
-                <ClockIcon /> Время
+                <ClockIcon /> Дата и время
               </button>
             </div>
 
