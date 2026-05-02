@@ -299,18 +299,50 @@ async def cb_delete_task(cq: CallbackQuery) -> None:
     await cq.answer("удалено")
 
 
+async def _transcribe_google(ogg_bytes: bytes) -> str | None:
+    """Free transcription via Google Speech Recognition (no API key)."""
+    import asyncio
+    import subprocess
+    import tempfile
+
+    import speech_recognition as sr
+
+    def _sync_transcribe() -> str | None:
+        with tempfile.NamedTemporaryFile(suffix=".ogg") as ogg_f:
+            ogg_f.write(ogg_bytes)
+            ogg_f.flush()
+            wav_path = ogg_f.name + ".wav"
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", ogg_f.name, "-ar", "16000", "-ac", "1", wav_path],
+                capture_output=True,
+            )
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(wav_path) as source:
+                audio = recognizer.record(source)
+            try:
+                return recognizer.recognize_google(audio, language="ru-RU")
+            except (sr.UnknownValueError, sr.RequestError):
+                return None
+
+    return await asyncio.to_thread(_sync_transcribe)
+
+
+async def _transcribe_openai(ogg_bytes: bytes, api_key: str) -> str | None:
+    """Transcription via OpenAI Whisper API (paid, higher quality)."""
+    from openai import AsyncOpenAI
+
+    buf = io.BytesIO(ogg_bytes)
+    buf.name = "voice.ogg"
+    client = AsyncOpenAI(api_key=api_key)
+    transcript = await client.audio.transcriptions.create(
+        model="whisper-1", file=buf, language="ru",
+    )
+    return transcript.text.strip() or None
+
+
 @dp.message(F.voice)
 async def on_voice(message: Message) -> None:
     settings = get_settings()
-    if not settings.openai_api_key:
-        await message.answer(
-            "🎙 Голосовой ввод пока не настроен. "
-            "Добавь <code>OPENAI_API_KEY</code> в переменные окружения, "
-            "чтобы я мог распознавать голосовые сообщения.",
-            reply_markup=_open_app_kb(),
-        )
-        return
-
     bot = message.bot
     if bot is None or message.voice is None:
         return
@@ -325,18 +357,14 @@ async def on_voice(message: Message) -> None:
 
         buf = io.BytesIO()
         await bot.download_file(file.file_path, buf)
-        buf.seek(0)
-        buf.name = "voice.ogg"
+        ogg_bytes = buf.getvalue()
 
-        from openai import AsyncOpenAI
+        text = None
+        if settings.openai_api_key:
+            text = await _transcribe_openai(ogg_bytes, settings.openai_api_key)
+        else:
+            text = await _transcribe_google(ogg_bytes)
 
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
-        transcript = await client.audio.transcriptions.create(
-            model="whisper-1",
-            file=buf,
-            language="ru",
-        )
-        text = transcript.text.strip()
         if not text:
             await message.answer(
                 "Не удалось распознать текст из голосового сообщения. "
