@@ -8,6 +8,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Update
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
@@ -83,7 +84,7 @@ async def healthz() -> dict[str, str]:
 async def migrate_neon(
     request: Request,
     authorization: str | None = Header(default=None),
-) -> dict[str, str | int]:
+) -> JSONResponse:
     settings = get_settings()
     if authorization != f"Bearer {settings.cron_secret}":
         raise HTTPException(status_code=403, detail="bad secret")
@@ -92,17 +93,17 @@ async def migrate_neon(
     if not statements:
         raise HTTPException(status_code=400, detail="no statements")
     engine = get_engine()
-    from sqlalchemy import text
+    from sqlalchemy import text as sa_text
     ok = 0
     errors = []
     async with engine.begin() as conn:
         for stmt in statements:
             try:
-                await conn.execute(text(stmt))
+                await conn.execute(sa_text(stmt))
                 ok += 1
             except Exception as e:
-                errors.append(f"{stmt[:80]}... -> {e}")
-    return {"status": "migrated", "ok": ok, "errors_count": len(errors), "errors": errors[:10]}
+                errors.append(f"{str(e)[:200]}")
+    return JSONResponse({"status": "migrated", "ok": ok, "errors_count": len(errors), "errors": errors[:10]})
 
 
 @app.post("/tg/webhook")
