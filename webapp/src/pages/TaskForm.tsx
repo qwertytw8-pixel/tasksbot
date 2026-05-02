@@ -70,15 +70,24 @@ export function TaskFormPage() {
   const [busy, setBusy] = useState(false);
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [modalVariant, setModalVariant] = useState<"daily_limit" | "premium_feature">("daily_limit");
+  const [modalFeatureTitle, setModalFeatureTitle] = useState<string | undefined>();
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [subtasks, setSubtasks] = useState<Task[]>([]);
 
+  const isPremium = subStatus?.is_premium ?? true;
+
   useEffect(() => {
     void (async () => {
-      const [c, t] = await Promise.all([api.listCategories(), api.listTasks()]);
+      const [c, t, st] = await Promise.all([
+        api.listCategories(),
+        api.listTasks(),
+        api.subscriptionStatus(),
+      ]);
       setCats(c);
       setAllTasks(t);
+      setSubStatus(st);
       if (editing && id) {
         const found = t.find((x) => x.id === Number(id));
         if (found) {
@@ -174,6 +183,7 @@ export function TaskFormPage() {
         const st = await api.subscriptionStatus();
         setSubStatus(st);
         if (!st.is_premium && st.daily_tasks_count >= st.max_daily_tasks) {
+          setModalVariant("daily_limit");
           setShowLimitModal(true);
           return;
         }
@@ -196,6 +206,7 @@ export function TaskFormPage() {
         try {
           const st = await api.subscriptionStatus();
           setSubStatus(st);
+          setModalVariant("daily_limit");
           setShowLimitModal(true);
         } catch {
           alert("Дневной лимит задач исчерпан.");
@@ -251,10 +262,12 @@ export function TaskFormPage() {
 
   return (
     <div className="page">
-      {showLimitModal && subStatus && (
+      {showLimitModal && (
         <LimitModal
-          dailyCount={subStatus.daily_tasks_count}
-          maxDaily={subStatus.max_daily_tasks}
+          variant={modalVariant}
+          dailyCount={subStatus?.daily_tasks_count}
+          maxDaily={subStatus?.max_daily_tasks}
+          featureTitle={modalFeatureTitle}
           onClose={() => setShowLimitModal(false)}
         />
       )}
@@ -418,24 +431,42 @@ export function TaskFormPage() {
                   </span>
                   Вовремя
                 </button>
-                <button
-                  type="button"
-                  className={`remind-mode ${
-                    toRemindMode(remind) === "before" ? "remind-mode--active" : ""
-                  }`}
-                  onClick={() => {
-                    const fallback = Number.parseInt(remindCustom, 10);
-                    const next =
-                      Number.isFinite(fallback) && fallback > 0 ? fallback : 15;
-                    setRemindCustom(String(next));
-                    setRemind(next);
-                  }}
-                >
-                  <span className="remind-mode__icon">
-                    <BellIcon />
-                  </span>
-                  Заранее
-                </button>
+                {isPremium && (
+                  <button
+                    type="button"
+                    className={`remind-mode ${
+                      toRemindMode(remind) === "before" ? "remind-mode--active" : ""
+                    }`}
+                    onClick={() => {
+                      const fallback = Number.parseInt(remindCustom, 10);
+                      const next =
+                        Number.isFinite(fallback) && fallback > 0 ? fallback : 15;
+                      setRemindCustom(String(next));
+                      setRemind(next);
+                    }}
+                  >
+                    <span className="remind-mode__icon">
+                      <BellIcon />
+                    </span>
+                    Заранее
+                  </button>
+                )}
+                {!isPremium && (
+                  <button
+                    type="button"
+                    className="remind-mode remind-mode--locked"
+                    onClick={() => {
+                      setModalVariant("premium_feature");
+                      setModalFeatureTitle("Напоминание заранее");
+                      setShowLimitModal(true);
+                    }}
+                  >
+                    <span className="remind-mode__icon">
+                      <BellIcon />
+                    </span>
+                    Заранее 💎
+                  </button>
+                )}
               </div>
 
               {toRemindMode(remind) === "before" && (
