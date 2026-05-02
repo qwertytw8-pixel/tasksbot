@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { api, type Category } from "../api";
-import { FolderIcon, PlusIcon, TagIcon } from "../icons";
+import { FolderIcon, PlusIcon } from "../icons";
 
 const PALETTE = [
   "#6D5DFC",
@@ -53,9 +53,6 @@ export function CategoriesPage() {
     <div className="page">
       <div className="page-header">
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            <TagIcon /> structure
-          </span>
           <div className="page-header__title-row">
             <h1>Категории</h1>
           </div>

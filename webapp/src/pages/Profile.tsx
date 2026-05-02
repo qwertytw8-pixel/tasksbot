@@ -70,9 +70,6 @@ function ProfileHome() {
     <div className="page">
       <div className="page-header">
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            <UserIcon /> profile
-          </span>
           <div className="page-header__title-row">
             <h1>Профиль</h1>
           </div>
@@ -254,7 +251,6 @@ function BackHeader(props: { eyebrow: string; title: string; subtitle: string })
         <span>Профиль</span>
       </button>
       <div className="page-header__stack">
-        <span className="page-header__eyebrow">{props.eyebrow}</span>
         <div className="page-header__title-row">
           <h1>{props.title}</h1>
         </div>

@@ -10,7 +10,6 @@ import {
 import {
   ChevronLeftIcon,
   PlusIcon,
-  ShieldIcon,
   SparkIcon,
   TagIcon,
   UserIcon,
@@ -136,9 +135,6 @@ export function AdminPage() {
           <span>Профиль</span>
         </button>
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            <ShieldIcon /> admin
-          </span>
           <div className="page-header__title-row">
             <h1>Админ-панель</h1>
           </div>

@@ -9,7 +9,6 @@ import {
   ClockIcon,
   FolderIcon,
   InboxIcon,
-  ListIcon,
   SparkIcon,
   SunriseIcon,
 } from "../icons";
@@ -191,9 +190,6 @@ export function AllPage() {
     <div className="page">
       <div className="page-header">
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            <ListIcon /> library
-          </span>
           <div className="page-header__title-row">
             <h1>Все</h1>
           </div>
