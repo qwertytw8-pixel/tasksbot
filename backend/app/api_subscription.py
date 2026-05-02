@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +22,7 @@ from app.schemas import (
 )
 from app.subscription import (
     FREE_MAX_TASKS,
+    PREMIUM_PLANS,
     PREMIUM_PRICE_STARS,
     can_create_category,
     count_active_tasks,
@@ -160,3 +162,53 @@ async def activate_promo(
         message=f"Premium активирован на {promo_row.duration_days} дней!",
         expires_at=expires_at,
     )
+
+
+@router.post("/create-invoice")
+async def create_invoice(
+    request: Request,
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Create a Telegram Stars invoice link for in-app payment."""
+    body = await request.json()
+    plan_key = body.get("plan", "1m")
+
+    plan = next(
+        (p for p in PREMIUM_PLANS if p["key"] == plan_key),
+        None,
+    )
+    if plan is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Неизвестный тариф",
+        )
+
+    await _ensure_user(session, tg)
+    if await is_premium(session, tg.id):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "У тебя уже есть активная подписка",
+        )
+
+    from aiogram import Bot
+
+    bot: Bot = request.app.state.bot
+    link = await bot.create_invoice_link(
+        title="Task Blo Premium",
+        description=(
+            f"Premium {plan['label']}: "
+            "безлимитные задачи, "
+            "свои категории, AI."
+        ),
+        payload=json.dumps({
+            "type": f"premium_{plan_key}",
+            "user_id": tg.id,
+            "days": plan["days"],
+        }),
+        currency="XTR",
+        prices=[
+            {"label": f"Premium {plan['label']}", "amount": plan["stars"]}
+        ],
+    )
+    return {"invoice_url": link}

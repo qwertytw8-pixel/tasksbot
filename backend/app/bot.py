@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import logging
@@ -153,6 +154,35 @@ async def _do_start(message: Message) -> None:
         )
     else:
         await message.answer(WELCOME_TEXT, reply_markup=_open_app_kb())
+
+    if message.from_user:
+        asyncio.create_task(
+            _premium_nudge(message)
+        )
+
+
+async def _premium_nudge(message: Message) -> None:
+    """Send a delayed premium promo to non-premium users."""
+    if message.from_user is None:
+        return
+    await asyncio.sleep(3)
+    sm = get_sessionmaker()
+    async with sm() as session:
+        if await is_premium(session, message.from_user.id):
+            return
+    await message.answer(
+        "💎 <b>Попробуй Premium!</b>\n\n"
+        "Безлимитные задачи, свои категории "
+        "и AI-парсинг — от 99 ⭐/мес.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="💎 Подробнее о Premium",
+                    callback_data="show_premium",
+                )
+            ]]
+        ),
+    )
 
 
 @dp.message(Command("app"))

@@ -223,4 +223,10 @@ export const api = {
     }),
 
   botInfo: () => request<{ bot_username: string }>("/api/bot-info"),
+
+  createInvoice: (plan: string) =>
+    request<{ invoice_url: string }>("/api/subscription/create-invoice", {
+      method: "POST",
+      body: JSON.stringify({ plan }),
+    }),
 };
