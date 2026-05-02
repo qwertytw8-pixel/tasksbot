@@ -80,6 +80,8 @@ class SubscriptionStatus(BaseModel):
     subscription: SubscriptionOut | None = None
     active_tasks_count: int = 0
     max_tasks: int = 5
+    daily_tasks_count: int = 0
+    max_daily_tasks: int = 5
     can_create_categories: bool = False
 
 

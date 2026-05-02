@@ -223,18 +223,18 @@ export function SubscriptionPage() {
       {/* Usage */}
       {!status.is_premium && (
         <div className="surface" style={{ marginBottom: 14 }}>
-          <div className="surface__heading">📊 Использование</div>
+          <div className="surface__heading">📊 Использование сегодня</div>
           <div style={{ padding: "8px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span>Активных задач</span>
-              <span><b>{status.active_tasks_count}</b> / {status.max_tasks}</span>
+              <span>Задач создано сегодня</span>
+              <span><b>{status.daily_tasks_count}</b> / {status.max_daily_tasks}</span>
             </div>
             <div className="premium-bar">
               <div
                 className="premium-bar__fill"
                 style={{
-                  width: `${Math.min(100, (status.active_tasks_count / status.max_tasks) * 100)}%`,
-                  background: status.active_tasks_count >= status.max_tasks
+                  width: `${Math.min(100, (status.daily_tasks_count / status.max_daily_tasks) * 100)}%`,
+                  background: status.daily_tasks_count >= status.max_daily_tasks
                     ? "var(--tb-danger)"
                     : "var(--tb-accent-strong)",
                 }}

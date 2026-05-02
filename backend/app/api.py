@@ -19,10 +19,10 @@ from app.schemas import (
     UserUpdate,
 )
 from app.subscription import (
-    FREE_MAX_TASKS,
+    FREE_DAILY_LIMIT,
     can_create_category,
     can_create_task,
-    count_active_tasks,
+    count_tasks_created_today,
     is_premium,
 )
 
@@ -366,11 +366,11 @@ async def create_task(
     tg: TelegramUser = Depends(_get_dep()),
     session: AsyncSession = Depends(get_session),
 ):
-    await _ensure_user(session, tg)
-    if not await can_create_task(session, tg.id):
+    user = await _ensure_user(session, tg)
+    if not await can_create_task(session, tg.id, user.tz):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Лимит задач исчерпан. Оформи Premium для безлимитных задач.",
+            "Дневной лимит задач исчерпан. Оформи Premium для безлимитных задач.",
         )
     await _validate_category(session, tg, payload.category_id)
     await _validate_parent(session, tg, None, payload.parent_task_id)
@@ -397,8 +397,8 @@ async def create_task(
     await session.refresh(task)
 
     if not await is_premium(session, tg.id):
-        active = await count_active_tasks(session, tg.id)
-        if active >= FREE_MAX_TASKS:
+        daily = await count_tasks_created_today(session, tg.id, user.tz)
+        if daily >= FREE_DAILY_LIMIT:
             import asyncio
 
             from aiogram.types import (
@@ -412,10 +412,10 @@ async def create_task(
 
                     await tg_bot.send_message(
                         tg.id,
-                        "⚠️ <b>Лимит задач!</b>\n\n"
-                        f"Ты использовал {active} "
-                        f"из {FREE_MAX_TASKS} "
-                        "задач на бесплатном плане.\n\n"
+                        "⚠️ <b>Дневной лимит задач!</b>\n\n"
+                        f"Ты создал {daily} "
+                        f"из {FREE_DAILY_LIMIT} "
+                        "задач сегодня на бесплатном плане.\n\n"
                         "Подключи Premium — "
                         "безлимитные задачи, "
                         "умный ввод и голос!",

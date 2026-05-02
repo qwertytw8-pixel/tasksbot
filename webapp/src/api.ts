@@ -71,6 +71,8 @@ export interface SubscriptionStatus {
   subscription: SubscriptionOut | null;
   active_tasks_count: number;
   max_tasks: number;
+  daily_tasks_count: number;
+  max_daily_tasks: number;
   can_create_categories: boolean;
 }
 
