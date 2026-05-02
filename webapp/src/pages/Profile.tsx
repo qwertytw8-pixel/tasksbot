@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate } from "react-router-dom";
 
-import { api, type Category, type PrivacyInfo, type Task } from "../api";
+import { api, type Category, type PrivacyInfo, type SubscriptionStatus, type Task } from "../api";
 import { TaskRow } from "../components/TaskRow";
 import {
   ArchiveIcon,
@@ -14,6 +14,7 @@ import {
   ShieldIcon,
   SparkIcon,
   SunIcon,
+  TagIcon,
   UserIcon,
 } from "../icons";
 import { applyTheme, getStoredMode, setStoredMode, type ThemeMode } from "../theme";
@@ -23,11 +24,46 @@ const SUPPORT_TG_URL = "https://t.me/ficsyk";
 
 function ProfileHome() {
   const [mode, setMode] = useState<ThemeMode>(() => getStoredMode());
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoMsg, setPromoMsg] = useState<string | null>(null);
+  const [promoBusy, setPromoBusy] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [me, sub] = await Promise.all([api.me(), api.subscriptionStatus()]);
+        setSubStatus(sub);
+        setIsAdmin(me.is_admin);
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
   function pick(next: ThemeMode) {
     setMode(next);
     setStoredMode(next);
     applyTheme(next);
+  }
+
+  async function activatePromo() {
+    if (!promoCode.trim()) return;
+    setPromoBusy(true);
+    setPromoMsg(null);
+    try {
+      const res = await api.activatePromo(promoCode.trim());
+      setPromoMsg(res.message);
+      setPromoCode("");
+      setSubStatus(await api.subscriptionStatus());
+    } catch (e) {
+      setPromoMsg(String(e).includes("404") ? "Промокод не найден" :
+                  String(e).includes("400") ? "Промокод уже использован или исчерпан" :
+                  String(e));
+    } finally {
+      setPromoBusy(false);
+    }
   }
 
   return (
@@ -41,8 +77,53 @@ function ProfileHome() {
             <h1>Профиль</h1>
           </div>
           <div className="page-header__subtitle">
-            Тема приложения, поддержка и приватность — всё на одной полке.
+            Подписка, тема, поддержка и приватность — всё на одной полке.
           </div>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
+        <NavRow
+          to="/profile/subscription"
+          icon={<SparkIcon />}
+          title={subStatus?.is_premium ? "⭐ Premium активен" : "Подписка"}
+          subtitle={
+            subStatus?.is_premium
+              ? subStatus.subscription?.expires_at
+                ? `До ${new Date(subStatus.subscription.expires_at).toLocaleDateString("ru-RU")}`
+                : "Бессрочная"
+              : "Разблокируй все возможности"
+          }
+        />
+      </div>
+
+      <div className="surface" style={{ marginBottom: 14 }}>
+        <div className="surface__heading">
+          <TagIcon /> Промокод
+        </div>
+        <div className="form">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className="input"
+              placeholder="Введи промокод"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              style={{ flex: 1 }}
+            />
+            <button
+              className="btn"
+              disabled={promoBusy || !promoCode.trim()}
+              onClick={() => void activatePromo()}
+              style={{ whiteSpace: "nowrap" }}
+            >
+              Активировать
+            </button>
+          </div>
+          {promoMsg && (
+            <div className="page-header__subtitle" style={{ marginTop: 8 }}>
+              {promoMsg}
+            </div>
+          )}
         </div>
       </div>
 
@@ -101,6 +182,17 @@ function ProfileHome() {
           subtitle="Что хранится и кто это видит"
         />
       </div>
+
+      {isAdmin && (
+        <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
+          <NavRow
+            to="/admin"
+            icon={<ShieldIcon />}
+            title="👑 Админ-панель"
+            subtitle="Статистика, промокоды, управление пользователями"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -382,6 +474,16 @@ export function ProfileRoutes() {
       <Route path="archive" element={<ArchivePage />} />
       <Route path="support" element={<SupportPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
+      <Route path="subscription" element={<SubscriptionPageLazy />} />
     </Routes>
   );
+}
+
+function SubscriptionPageLazy() {
+  const [Comp, setComp] = useState<React.ComponentType | null>(null);
+  useEffect(() => {
+    void import("./Subscription").then((m) => setComp(() => m.SubscriptionPage));
+  }, []);
+  if (!Comp) return <div className="spinner">Загрузка…</div>;
+  return <Comp />;
 }

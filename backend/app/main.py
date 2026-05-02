@@ -11,6 +11,8 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
+from app.api_admin import router as admin_router
+from app.api_subscription import router as subscription_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
@@ -72,6 +74,8 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(subscription_router)
+app.include_router(admin_router)
 
 
 @app.get("/healthz")

@@ -17,8 +17,9 @@ import { CategoriesPage } from "./pages/Categories";
 import { TaskFormPage } from "./pages/TaskForm";
 import { CalendarPage } from "./pages/Calendar";
 import { ProfileRoutes } from "./pages/Profile";
+import { AdminPage } from "./pages/Admin";
 
-const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about"];
+const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin"];
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -57,6 +58,7 @@ export function App() {
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/profile/*" element={<ProfileRoutes />} />
         <Route path="/about" element={<Navigate to="/profile" replace />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/new" element={<TaskFormPage />} />
         <Route path="/edit/:id" element={<TaskFormPage />} />
       </Routes>
