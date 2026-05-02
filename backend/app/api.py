@@ -18,7 +18,13 @@ from app.schemas import (
     UserOut,
     UserUpdate,
 )
-from app.subscription import can_create_category, can_create_task
+from app.subscription import (
+    FREE_MAX_TASKS,
+    can_create_category,
+    can_create_task,
+    count_active_tasks,
+    is_premium,
+)
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -389,6 +395,44 @@ async def create_task(
     await _sync_reminders(session, task)
     await session.commit()
     await session.refresh(task)
+
+    if not await is_premium(session, tg.id):
+        active = await count_active_tasks(session, tg.id)
+        if active >= FREE_MAX_TASKS:
+            import asyncio
+
+            from aiogram.types import (
+                InlineKeyboardButton,
+                InlineKeyboardMarkup,
+            )
+
+            async def _send_limit_nudge() -> None:
+                try:
+                    from app.bot import bot as tg_bot
+
+                    await tg_bot.send_message(
+                        tg.id,
+                        "⚠️ <b>Лимит задач!</b>\n\n"
+                        f"Ты использовал {active} "
+                        f"из {FREE_MAX_TASKS} "
+                        "задач на бесплатном плане.\n\n"
+                        "Подключи Premium — "
+                        "безлимитные задачи, "
+                        "умный ввод и голос!",
+                        reply_markup=InlineKeyboardMarkup(
+                            inline_keyboard=[[
+                                InlineKeyboardButton(
+                                    text="💎 Подключить Premium",
+                                    callback_data="show_premium",
+                                )
+                            ]]
+                        ),
+                    )
+                except Exception:
+                    pass
+
+            asyncio.create_task(_send_limit_nudge())
+
     return task
 
 

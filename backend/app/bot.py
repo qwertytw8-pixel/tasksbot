@@ -263,6 +263,15 @@ def _premium_image() -> BufferedInputFile | None:
     return None
 
 
+def _premium_success_image() -> BufferedInputFile | None:
+    p = ASSETS_DIR / "premium_success.png"
+    if p.exists():
+        return BufferedInputFile(
+            p.read_bytes(), filename=p.name,
+        )
+    return None
+
+
 def _premium_kb() -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     for plan in PREMIUM_PLANS:
@@ -427,16 +436,30 @@ async def on_successful_payment(message: Message) -> None:
         await session.commit()
 
     exp_str = expires_at.strftime("%d.%m.%Y")
-    await message.answer(
-        "🎉 <b>Premium активирован!</b>\n\n"
-        f"Подписка до {exp_str}.\n"
-        "Напиши задачу текстом "
-        "или голосом — я сделаю "
-        "всё остальное!",
-        reply_markup=_open_app_kb(
-            show_premium=False,
-        ),
+    success_text = (
+        "🎉 <b>Добро пожаловать в Premium!</b>\n\n"
+        "Спасибо, что выбрал Task Blo Premium. "
+        "Теперь тебе доступны все возможности:\n\n"
+        "• Безлимитные задачи\n"
+        "• Свои категории\n"
+        "• Умный ввод текстом\n"
+        "• Голосовые сообщения\n\n"
+        f"Подписка активна до {exp_str}.\n"
+        "Просто напиши или запиши голосовое — "
+        "я создам задачу за тебя!"
     )
+    kb = _open_app_kb(show_premium=False)
+    img = _premium_success_image()
+    if img is not None:
+        await message.answer_photo(
+            photo=img,
+            caption=success_text,
+            reply_markup=kb,
+        )
+    else:
+        await message.answer(
+            success_text, reply_markup=kb,
+        )
 
 
 # ---- natural-language task creation -----------------------------------
