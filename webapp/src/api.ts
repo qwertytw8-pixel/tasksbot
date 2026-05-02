@@ -5,6 +5,7 @@ const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 export interface User {
   id: number;
   tz: string;
+  is_admin: boolean;
 }
 
 export interface Category {
@@ -54,6 +55,67 @@ export interface PrivacyInfo {
   support_label: string;
   support_text: string;
   privacy_summary: string;
+}
+
+export interface SubscriptionOut {
+  id: number;
+  plan: string;
+  started_at: string;
+  expires_at: string | null;
+  is_active: boolean;
+  source: string;
+}
+
+export interface SubscriptionStatus {
+  is_premium: boolean;
+  subscription: SubscriptionOut | null;
+  active_tasks_count: number;
+  max_tasks: number;
+  can_create_categories: boolean;
+}
+
+export interface PlanInfo {
+  name: string;
+  price_stars: number;
+  features: string[];
+}
+
+export interface PlansOut {
+  free: PlanInfo;
+  premium: PlanInfo;
+}
+
+export interface PromoActivateOut {
+  success: boolean;
+  message: string;
+  expires_at: string | null;
+}
+
+export interface PromoCodeOut {
+  id: number;
+  code: string;
+  duration_days: number;
+  max_uses: number;
+  current_uses: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminStatsOut {
+  total_users: number;
+  premium_users: number;
+  total_tasks: number;
+  total_promo_codes: number;
+  total_promo_activations: number;
+}
+
+export interface AdminUserOut {
+  id: number;
+  tz: string;
+  is_admin: boolean;
+  created_at: string;
+  is_premium: boolean;
+  subscription_expires: string | null;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -124,4 +186,39 @@ export const api = {
     request<Task>(`/api/tasks/${id}/archive`, { method: "POST" }),
   unarchiveTask: (id: number) =>
     request<Task>(`/api/tasks/${id}/unarchive`, { method: "POST" }),
+
+  subscriptionStatus: () =>
+    request<SubscriptionStatus>("/api/subscription/status"),
+  subscriptionPlans: () => request<PlansOut>("/api/subscription/plans"),
+  activatePromo: (code: string) =>
+    request<PromoActivateOut>("/api/subscription/activate-promo", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+
+  adminStats: () => request<AdminStatsOut>("/api/admin/stats"),
+  adminUsers: (premiumOnly?: boolean) =>
+    request<AdminUserOut[]>(
+      `/api/admin/users${premiumOnly ? "?premium_only=true" : ""}`,
+    ),
+  adminPromos: () => request<PromoCodeOut[]>("/api/admin/promos"),
+  adminCreatePromo: (code: string, durationDays: number, maxUses: number) =>
+    request<PromoCodeOut>("/api/admin/promos", {
+      method: "POST",
+      body: JSON.stringify({
+        code,
+        duration_days: durationDays,
+        max_uses: maxUses,
+      }),
+    }),
+  adminDeletePromo: (id: number) =>
+    request<void>(`/api/admin/promos/${id}`, { method: "DELETE" }),
+  adminGrant: (userId: number, durationDays: number | null) =>
+    request<{ success: boolean; message: string }>("/api/admin/grant", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: userId,
+        duration_days: durationDays,
+      }),
+    }),
 };

@@ -1,5 +1,5 @@
-from datetime import UTC, date, datetime, timedelta
 from calendar import monthrange
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select, update
@@ -18,6 +18,7 @@ from app.schemas import (
     UserOut,
     UserUpdate,
 )
+from app.subscription import can_create_category, can_create_task
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -212,6 +213,11 @@ async def create_category(
     session: AsyncSession = Depends(get_session),
 ):
     await _ensure_user(session, tg)
+    if not await can_create_category(session, tg.id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Создание категорий доступно только с Premium-подпиской",
+        )
     cat = Category(user_id=tg.id, name=payload.name, color=payload.color, emoji=payload.emoji)
     session.add(cat)
     try:
@@ -348,6 +354,11 @@ async def create_task(
     session: AsyncSession = Depends(get_session),
 ):
     await _ensure_user(session, tg)
+    if not await can_create_task(session, tg.id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Лимит задач исчерпан. Оформи Premium для безлимитных задач.",
+        )
     await _validate_category(session, tg, payload.category_id)
     await _validate_parent(session, tg, None, payload.parent_task_id)
     due_date, has_time, due_at, remind = _normalize_task_fields(payload)
@@ -406,8 +417,6 @@ async def update_task(
             session.add(next_task)
     elif not payload.is_done:
         task.done_at = None
-        # Un-completing a task also brings it out of the archive so it
-        # shows up in the normal task list again.
         task.archived_at = None
     task.is_done = payload.is_done
     await session.flush()

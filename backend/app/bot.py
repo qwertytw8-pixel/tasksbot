@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F
@@ -15,16 +17,20 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
+    LabeledPrice,
     Message,
+    PreCheckoutQuery,
     ReplyKeyboardMarkup,
+    SuccessfulPayment,
     WebAppInfo,
 )
 
 from app.api import _ensure_user, _sync_reminders
 from app.auth import TelegramUser
 from app.config import get_settings
-from app.db import Task, get_sessionmaker
+from app.db import Subscription, Task, User, get_sessionmaker
 from app.nlp import ParsedTask, commit_parsed, format_summary, parse_ru
+from app.subscription import PREMIUM_PRICE_STARS, is_premium
 
 log = logging.getLogger(__name__)
 
@@ -250,6 +256,16 @@ async def on_plain_text(message: Message) -> None:
     text = (message.text or "").strip()
     if not text or text.startswith("/"):
         return
+    if message.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            if not await is_premium(session, message.from_user.id):
+                await message.answer(
+                    "💎 Добавление задач через сообщения доступно "
+                    "с Premium-подпиской.\n"
+                    "Используй /premium для оформления.",
+                )
+                return
     await _handle_task_text(message, text)
 
 
@@ -347,6 +363,17 @@ async def on_voice(message: Message) -> None:
     if bot is None or message.voice is None:
         return
 
+    if message.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            if not await is_premium(session, message.from_user.id):
+                await message.answer(
+                    "💎 Добавление задач через голосовые сообщения "
+                    "доступно с Premium-подпиской.\n"
+                    "Используй /premium для оформления.",
+                )
+                return
+
     await message.answer("🎙 Распознаю голосовое сообщение…")
 
     try:
@@ -382,11 +409,112 @@ async def on_voice(message: Message) -> None:
         )
 
 
+@dp.message(Command("premium"))
+async def cmd_premium(message: Message) -> None:
+    await message.answer(
+        "<b>⭐ Premium-подписка</b>\n\n"
+        "Безлимитные задачи, свои категории, "
+        "AI-парсинг текстовых и голосовых сообщений.\n\n"
+        f"Цена: {PREMIUM_PRICE_STARS} ⭐ / месяц\n\n"
+        "Нажми кнопку ниже, чтобы оформить:",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(
+                    text=f"⭐ Купить за {PREMIUM_PRICE_STARS} Stars",
+                    callback_data="buy_premium",
+                )],
+                [InlineKeyboardButton(
+                    text="🚀 Открыть приложение",
+                    web_app=WebAppInfo(url=get_settings().webapp_url),
+                )],
+            ]
+        ),
+    )
+
+
+@dp.callback_query(F.data == "buy_premium")
+async def cb_buy_premium(cq: CallbackQuery) -> None:
+    if cq.message and cq.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            if await is_premium(session, cq.from_user.id):
+                await cq.message.answer(
+                    "У тебя уже есть активная Premium-подписка! 🎉"
+                )
+                await cq.answer()
+                return
+
+        await cq.message.answer_invoice(
+            title="Task Blo Premium",
+            description=(
+                "Подписка Premium на 30 дней: "
+                "безлимитные задачи, свои категории, AI-парсинг."
+            ),
+            payload=json.dumps(
+                {"type": "premium_30d", "user_id": cq.from_user.id}
+            ),
+            currency="XTR",
+            prices=[
+                LabeledPrice(
+                    label="Premium 30 дней",
+                    amount=PREMIUM_PRICE_STARS,
+                )
+            ],
+        )
+    await cq.answer()
+
+
+@dp.pre_checkout_query()
+async def on_pre_checkout(query: PreCheckoutQuery) -> None:
+    await query.answer(ok=True)
+
+
+@dp.message(F.successful_payment)
+async def on_successful_payment(message: Message) -> None:
+    payment: SuccessfulPayment | None = message.successful_payment
+    if payment is None or message.from_user is None:
+        return
+
+    user_id = message.from_user.id
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(days=30)
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        user = await session.get(User, user_id)
+        if user is None:
+            user = User(id=user_id)
+            session.add(user)
+            await session.commit()
+
+        sub = Subscription(
+            user_id=user_id,
+            plan="premium",
+            started_at=now,
+            expires_at=expires_at,
+            is_active=True,
+            source="stars",
+            stars_payment_id=payment.telegram_payment_charge_id,
+        )
+        session.add(sub)
+        await session.commit()
+
+    await message.answer(
+        "🎉 <b>Premium активирован!</b>\n\n"
+        f"Подписка действует до {expires_at.strftime('%d.%m.%Y')}.\n"
+        "Теперь ты можешь создавать безлимитные задачи, свои категории "
+        "и отправлять текстовые/голосовые сообщения для быстрого "
+        "добавления задач.",
+        reply_markup=_open_app_kb(),
+    )
+
+
 async def configure_bot_commands(bot: Bot) -> None:
     await bot.set_my_commands(
         [
             BotCommand(command="start", description="Приветствие"),
             BotCommand(command="new", description="Добавить задачу из чата"),
+            BotCommand(command="premium", description="Купить Premium"),
             BotCommand(command="app", description="Открыть Mini App"),
             BotCommand(command="privacy", description="Приватность"),
             BotCommand(command="support", description="Поддержка"),

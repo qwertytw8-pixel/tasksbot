@@ -8,10 +8,12 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Update
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api import router as api_router
+from app.api_admin import router as admin_router
+from app.api_subscription import router as subscription_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
@@ -73,6 +75,8 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(subscription_router)
+app.include_router(admin_router)
 
 
 @app.get("/healthz")
@@ -103,7 +107,10 @@ async def migrate_neon(
                 ok += 1
             except Exception as e:
                 errors.append(f"{str(e)[:200]}")
-    return JSONResponse({"status": "migrated", "ok": ok, "errors_count": len(errors), "errors": errors[:10]})
+    return JSONResponse({
+        "status": "migrated", "ok": ok,
+        "errors_count": len(errors), "errors": errors[:10],
+    })
 
 
 @app.post("/tg/webhook")

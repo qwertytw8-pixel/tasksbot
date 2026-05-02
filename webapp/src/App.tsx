@@ -18,8 +18,9 @@ const CategoriesPage = lazy(() => import("./pages/Categories").then((m) => ({ de
 const TaskFormPage = lazy(() => import("./pages/TaskForm").then((m) => ({ default: m.TaskFormPage })));
 const CalendarPage = lazy(() => import("./pages/Calendar").then((m) => ({ default: m.CalendarPage })));
 const ProfileRoutes = lazy(() => import("./pages/Profile").then((m) => ({ default: m.ProfileRoutes })));
+const AdminPage = lazy(() => import("./pages/Admin").then((m) => ({ default: m.AdminPage })));
 
-const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about"];
+const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin"];
 
 function PageFallback() {
   return <div className="spinner">Загрузка…</div>;
@@ -55,6 +56,7 @@ export function App() {
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/profile/*" element={<ProfileRoutes />} />
           <Route path="/about" element={<Navigate to="/profile" replace />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="/new" element={<TaskFormPage />} />
           <Route path="/edit/:id" element={<TaskFormPage />} />
         </Routes>
