@@ -91,6 +91,7 @@ export function CalendarPage() {
       has_time: task.has_time,
       due_at: task.due_at,
       remind_minutes_before: task.remind_minutes_before,
+      recurrence: task.recurrence,
       is_done: !task.is_done,
     });
     setTasks((prev) => {
