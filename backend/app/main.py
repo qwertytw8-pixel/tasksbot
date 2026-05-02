@@ -14,7 +14,7 @@ from app.api import router as api_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
-from app.scheduler import run_tick
+from app.scheduler import run_daily_summary, run_tick
 
 
 def _setup_logging(level: str) -> None:
@@ -103,4 +103,5 @@ async def cron_tick(
     if authorization != expected:
         raise HTTPException(status_code=403, detail="bad cron secret")
     sent = await run_tick(request.app.state.bot)
-    return {"status": "ok", "sent": sent}
+    summaries = await run_daily_summary(request.app.state.bot)
+    return {"status": "ok", "sent": sent, "summaries": summaries}

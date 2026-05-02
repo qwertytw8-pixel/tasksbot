@@ -64,6 +64,7 @@ export function TaskFormPage() {
   const [timeMinutes, setTimeMinutes] = useState<number>(0);
   const [remind, setRemind] = useState<number | null>(15);
   const [remindCustom, setRemindCustom] = useState<string>("15");
+  const [recurrence, setRecurrence] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
@@ -96,6 +97,7 @@ export function TaskFormPage() {
             setWhenMode("none");
           }
           setRemind(found.remind_minutes_before);
+          setRecurrence(found.recurrence ?? null);
           if (
             found.remind_minutes_before !== null &&
             found.remind_minutes_before > 0
@@ -130,6 +132,7 @@ export function TaskFormPage() {
         due_at: dateObj.toISOString(),
         due_date: null,
         remind_minutes_before: remind,
+        recurrence,
         is_done: task?.is_done ?? false,
       };
     }
@@ -143,6 +146,7 @@ export function TaskFormPage() {
         due_date: dueDate,
         due_at: null,
         remind_minutes_before: null,
+        recurrence,
         is_done: task?.is_done ?? false,
       };
     }
@@ -155,6 +159,7 @@ export function TaskFormPage() {
       due_date: null,
       due_at: null,
       remind_minutes_before: null,
+      recurrence: null,
       is_done: task?.is_done ?? false,
     };
   }
@@ -207,6 +212,7 @@ export function TaskFormPage() {
       has_time: sub.has_time,
       due_at: sub.due_at,
       remind_minutes_before: sub.remind_minutes_before,
+      recurrence: sub.recurrence,
       is_done: !sub.is_done,
     });
     setSubtasks((prev) => prev.map((s) => (s.id === sub.id ? updated : s)));
@@ -438,6 +444,42 @@ export function TaskFormPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {whenMode !== "none" && (
+            <div className="field">
+              <span className="field__label">Повторение</span>
+              <div className="segmented">
+                <button
+                  type="button"
+                  className={`segmented__item ${recurrence === null ? "segmented__item--active" : ""}`}
+                  onClick={() => setRecurrence(null)}
+                >
+                  Без
+                </button>
+                <button
+                  type="button"
+                  className={`segmented__item ${recurrence === "daily" ? "segmented__item--active" : ""}`}
+                  onClick={() => setRecurrence("daily")}
+                >
+                  День
+                </button>
+                <button
+                  type="button"
+                  className={`segmented__item ${recurrence === "weekly" ? "segmented__item--active" : ""}`}
+                  onClick={() => setRecurrence("weekly")}
+                >
+                  Неделя
+                </button>
+                <button
+                  type="button"
+                  className={`segmented__item ${recurrence === "monthly" ? "segmented__item--active" : ""}`}
+                  onClick={() => setRecurrence("monthly")}
+                >
+                  Месяц
+                </button>
+              </div>
             </div>
           )}
 

@@ -80,6 +80,9 @@ class Task(Base):
     has_time: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     remind_minutes_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recurrence: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )  # "daily", "weekly", "monthly" or null
     is_done: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     done_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

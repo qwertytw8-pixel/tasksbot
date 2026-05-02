@@ -2385,3 +2385,129 @@ button {
   align-items: center;
   height: 44px;
 }
+
+/* ========== Confetti ========== */
+
+.confetti-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.confetti-particle {
+  position: absolute;
+  left: var(--cx);
+  top: var(--cy);
+  width: var(--size);
+  height: var(--size);
+  background: var(--color);
+  animation: confetti-burst 1.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) var(--delay) forwards;
+  opacity: 0;
+}
+
+.confetti-particle--circle {
+  border-radius: 50%;
+}
+
+.confetti-particle--rect {
+  border-radius: 1px;
+}
+
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--spin)) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* ========== Focus Widget ========== */
+
+.focus-widget {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--tb-shadow-soft);
+  -webkit-backdrop-filter: var(--tb-blur);
+  backdrop-filter: var(--tb-blur);
+}
+
+.focus-widget__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--tb-text);
+}
+
+.focus-widget__header svg {
+  width: 18px;
+  height: 18px;
+  color: var(--tb-accent-strong);
+}
+
+.focus-widget__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.focus-widget__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--tb-radius-xs);
+  background: var(--tb-cell-bg);
+  border: 1px solid var(--tb-cell-border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.focus-widget__item:active {
+  transform: scale(0.98);
+  background: var(--tb-accent-soft);
+}
+
+.focus-widget__num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--tb-accent-grad);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.focus-widget__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tb-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.focus-widget__empty {
+  text-align: center;
+  color: var(--tb-hint);
+  font-size: 13px;
+  padding: 8px 0;
+}
