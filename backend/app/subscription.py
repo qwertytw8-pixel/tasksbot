@@ -10,7 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import Subscription, Task, User
 
 FREE_MAX_TASKS = 5
-PREMIUM_PRICE_STARS = 99
+
+# Pricing tiers: (label, days, stars)
+PREMIUM_PLANS = [
+    {"key": "1m", "label": "1 месяц", "days": 30, "stars": 99},
+    {"key": "3m", "label": "3 месяца", "days": 90, "stars": 249, "save": "16%"},
+    {"key": "12m", "label": "12 месяцев", "days": 365, "stars": 799, "save": "33%"},
+]
+PREMIUM_PRICE_STARS = 99  # default (1 month)
 
 
 async def get_active_subscription(session: AsyncSession, user_id: int) -> Subscription | None:

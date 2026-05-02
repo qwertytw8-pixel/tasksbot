@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="420" viewBox="0 0 800 420">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f7d774"/>
+      <stop offset="50%" style="stop-color:#e2ac4b"/>
+      <stop offset="100%" style="stop-color:#c9952a"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#e2ac4b" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="420" rx="20" fill="url(#bg)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="650" cy="80" r="120" fill="#e2ac4b" opacity="0.06"/>
+  <circle cx="150" cy="350" r="80" fill="#e2ac4b" opacity="0.04"/>
+  <circle cx="700" cy="350" r="60" fill="#4fc3f7" opacity="0.05"/>
+
+  <!-- Star icon -->
+  <g transform="translate(400, 120)" filter="url(#shadow)">
+    <polygon points="0,-55 13,-18 50,-18 20,5 32,42 0,20 -32,42 -20,5 -50,-18 -13,-18" fill="url(#gold)" filter="url(#glow)"/>
+  </g>
+
+  <!-- Small decorative stars -->
+  <g fill="#f7d774" opacity="0.3">
+    <polygon points="120,90 124,100 134,100 126,106 129,116 120,110 111,116 114,106 106,100 116,100" transform="scale(0.6)"/>
+    <polygon points="680,60 684,70 694,70 686,76 689,86 680,80 671,86 674,76 666,70 676,70" transform="scale(0.5)"/>
+    <polygon points="160,300 163,307 170,307 164,312 167,319 160,314 153,319 156,312 150,307 157,307" transform="scale(0.7)"/>
+  </g>
+
+  <!-- Title -->
+  <text x="400" y="220" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="bold" fill="url(#gold)" filter="url(#glow)">Task Blo Premium</text>
+
+  <!-- Subtitle -->
+  <text x="400" y="260" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#a0b4c8">Безлимитные задачи · Свои категории · AI-парсинг</text>
+
+  <!-- Price -->
+  <rect x="250" y="290" width="300" height="50" rx="25" fill="url(#gold)" opacity="0.15"/>
+  <rect x="250" y="290" width="300" height="50" rx="25" fill="none" stroke="url(#gold)" stroke-width="1.5" opacity="0.6"/>
+  <text x="400" y="322" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#f7d774">от 99 ⭐ / месяц</text>
+
+  <!-- Features row -->
+  <text x="400" y="380" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#7a8fa6">
+    ✨ Голосовые задачи · 📝 Текстовые задачи · 🏷 Свои категории · ♾ Безлимит
+  </text>
+</svg>

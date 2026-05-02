@@ -30,7 +30,7 @@ from app.auth import TelegramUser
 from app.config import get_settings
 from app.db import Subscription, Task, User, get_sessionmaker
 from app.nlp import ParsedTask, commit_parsed, format_summary, parse_ru
-from app.subscription import PREMIUM_PRICE_STARS, is_premium
+from app.subscription import PREMIUM_PLANS, is_premium
 
 log = logging.getLogger(__name__)
 
@@ -38,14 +38,11 @@ dp = Dispatcher()
 
 WELCOME_TEXT = (
     "<b>Твой личный task space.</b>\n\n"
-    "Планируй день без шума: задачи, категории и напоминания в одном "
-    "аккуратном Mini App.\n\n"
-    "📝 <b>Быстрый способ:</b> просто напиши мне в чат, что хочешь сделать "
-    "— я распознаю дату, время и категорию.\n"
-    "   • <i>купить молоко завтра в 19:00</i>\n"
-    "   • <i>созвон в пн в 10 напомни за 30 мин #работа</i>\n"
-    "   • <i>через час позвонить маме</i>\n\n"
-    "Или жми «🚀 Открыть приложение» — там весь календарь и задачи."
+    "Планируй день без шума: задачи, категории и напоминания "
+    "в одном аккуратном Mini App.\n\n"
+    "💎 <b>Premium</b> — безлимитные задачи, свои категории, "
+    "AI-парсинг текста и голоса от 99 ⭐/мес.\n\n"
+    "Жми «Открыть приложение» — и поехали."
 )
 
 NEW_TASK_HINT = (
@@ -57,22 +54,36 @@ NEW_TASK_HINT = (
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 
-def _open_app_kb() -> InlineKeyboardMarkup:
+def _open_app_kb(
+    show_premium: bool = True,
+) -> InlineKeyboardMarkup:
     settings = get_settings()
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🚀 Открыть приложение",
-                    web_app=WebAppInfo(url=settings.webapp_url),
-                )
-            ],
-            [
-                InlineKeyboardButton(text="➕ Новая задача", callback_data="new_task"),
-                InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help"),
-            ],
-        ]
-    )
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text="🚀 Открыть приложение",
+                web_app=WebAppInfo(url=settings.webapp_url),
+            )
+        ],
+    ]
+    if show_premium:
+        rows.append([
+            InlineKeyboardButton(
+                text="💎 Купить Premium",
+                callback_data="show_premium",
+            )
+        ])
+    rows.append([
+        InlineKeyboardButton(
+            text="➕ Новая задача",
+            callback_data="new_task",
+        ),
+        InlineKeyboardButton(
+            text="ℹ️ Помощь",
+            callback_data="help",
+        ),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _task_actions_kb(task_id: int) -> InlineKeyboardMarkup:
@@ -119,8 +130,22 @@ def _welcome_image() -> BufferedInputFile | None:
     return None
 
 
+@dp.message(CommandStart(deep_link=True, deep_link_encoded=True))
+async def cmd_start_deep(message: Message) -> None:
+    args = (message.text or "").split(maxsplit=1)
+    param = args[1].strip().lower() if len(args) > 1 else ""
+    if param == "premium":
+        await cmd_premium(message)
+        return
+    await _do_start(message)
+
+
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
+    await _do_start(message)
+
+
+async def _do_start(message: Message) -> None:
     img = _welcome_image()
     if img is not None:
         await message.answer_photo(
@@ -141,6 +166,7 @@ async def cmd_help(message: Message) -> None:
         "<b>Команды</b>\n"
         "/start — приветствие и кнопка приложения\n"
         "/new &lt;текст&gt; — добавить задачу из чата\n"
+        "/premium — купить Premium-подписку\n"
         "/app — открыть Mini App\n"
         "/privacy — как хранятся твои задачи\n"
         "/support — связь и поддержка\n"
@@ -195,6 +221,192 @@ async def cb_new_task(cq: CallbackQuery) -> None:
     if cq.message:
         await cq.message.answer(NEW_TASK_HINT)
     await cq.answer()
+
+
+# ---- premium / payment -----------------------------------------------
+
+
+def _premium_image() -> BufferedInputFile | None:
+    p = ASSETS_DIR / "premium.png"
+    if p.exists():
+        return BufferedInputFile(p.read_bytes(), filename=p.name)
+    return None
+
+
+def _premium_kb() -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for plan in PREMIUM_PLANS:
+        label = f"\u2b50 {plan['label']} \u2014 {plan['stars']} Stars"
+        if "save" in plan:
+            label += f" (\u2212{plan['save']})"
+        rows.append([InlineKeyboardButton(
+            text=label,
+            callback_data=f"buy:{plan['key']}",
+        )])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+PREMIUM_TEXT = (
+    "<b>⭐ Task Blo Premium</b>\n\n"
+    "Безлимитные задачи и никаких "
+    "ограничений.\n\n"
+    "<b>Что входит:</b>\n"
+    "• ♾️ Безлимитные задачи "
+    "(в Free — только 5)\n"
+    "• 🏷 Свои категории\n"
+    "• 📝 AI-парсинг текстовых "
+    "сообщений\n"
+    "• 🎤 Голосовые задачи\n\n"
+    "<b>Тарифы:</b>\n"
+    "• 1 месяц — 99 ⭐\n"
+    "• 3 месяца — 249 ⭐ "
+    "<i>(выгода 16%)</i>\n"
+    "• 12 месяцев — 799 ⭐ "
+    "<i>(выгода 33%)</i>\n\n"
+    "Выбери тариф ниже:"
+)
+
+
+@dp.message(Command("premium"))
+async def cmd_premium(message: Message) -> None:
+    img = _premium_image()
+    if img:
+        await message.answer_photo(
+            photo=img,
+            caption=PREMIUM_TEXT,
+            reply_markup=_premium_kb(),
+        )
+    else:
+        await message.answer(
+            PREMIUM_TEXT, reply_markup=_premium_kb(),
+        )
+
+
+@dp.callback_query(F.data == "show_premium")
+async def cb_show_premium(cq: CallbackQuery) -> None:
+    if cq.message:
+        img = _premium_image()
+        if img:
+            await cq.message.answer_photo(
+                photo=img,
+                caption=PREMIUM_TEXT,
+                reply_markup=_premium_kb(),
+            )
+        else:
+            await cq.message.answer(
+                PREMIUM_TEXT, reply_markup=_premium_kb(),
+            )
+    await cq.answer()
+
+
+def _plan_by_key(key: str) -> dict | None:
+    for p in PREMIUM_PLANS:
+        if p["key"] == key:
+            return p
+    return None
+
+
+@dp.callback_query(F.data.startswith("buy:"))
+async def cb_buy_premium(cq: CallbackQuery) -> None:
+    if not cq.message or not cq.from_user or not cq.data:
+        await cq.answer()
+        return
+
+    plan_key = cq.data.split(":", 1)[1]
+    plan = _plan_by_key(plan_key)
+    if plan is None:
+        await cq.answer(
+            "Неизвестный тариф",
+            show_alert=True,
+        )
+        return
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        if await is_premium(session, cq.from_user.id):
+            await cq.message.answer(
+                "У тебя уже есть активная "
+                "Premium-подписка! 🎉"
+            )
+            await cq.answer()
+            return
+
+    await cq.message.answer_invoice(
+        title="Task Blo Premium",
+        description=(
+            f"Premium {plan['label']}: "
+            "безлимитные задачи, "
+            "свои категории, AI."
+        ),
+        payload=json.dumps({
+            "type": f"premium_{plan_key}",
+            "user_id": cq.from_user.id,
+            "days": plan["days"],
+        }),
+        currency="XTR",
+        prices=[
+            LabeledPrice(
+                label=f"Premium {plan['label']}",
+                amount=plan["stars"],
+            )
+        ],
+    )
+    await cq.answer()
+
+
+@dp.pre_checkout_query()
+async def on_pre_checkout(query: PreCheckoutQuery) -> None:
+    await query.answer(ok=True)
+
+
+@dp.message(F.successful_payment)
+async def on_successful_payment(message: Message) -> None:
+    payment: SuccessfulPayment | None = message.successful_payment
+    if payment is None or message.from_user is None:
+        return
+
+    user_id = message.from_user.id
+    now = datetime.now(UTC)
+
+    try:
+        payload = json.loads(payment.invoice_payload)
+        days = int(payload.get("days", 30))
+    except (json.JSONDecodeError, ValueError, TypeError):
+        days = 30
+
+    expires_at = now + timedelta(days=days)
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        user = await session.get(User, user_id)
+        if user is None:
+            user = User(id=user_id)
+            session.add(user)
+            await session.commit()
+
+        sub = Subscription(
+            user_id=user_id,
+            plan="premium",
+            started_at=now,
+            expires_at=expires_at,
+            is_active=True,
+            source="stars",
+            stars_payment_id=payment.telegram_payment_charge_id,
+        )
+        session.add(sub)
+        await session.commit()
+
+    exp_str = expires_at.strftime("%d.%m.%Y")
+    await message.answer(
+        "🎉 <b>Premium активирован!</b>\n\n"
+        f"Подписка до {exp_str}.\n"
+        "Напиши задачу текстом "
+        "или голосом — я сделаю "
+        "всё остальное!",
+        reply_markup=_open_app_kb(
+            show_premium=False,
+        ),
+    )
 
 
 # ---- natural-language task creation -----------------------------------
@@ -262,8 +474,15 @@ async def on_plain_text(message: Message) -> None:
             if not await is_premium(session, message.from_user.id):
                 await message.answer(
                     "💎 Добавление задач через сообщения доступно "
-                    "с Premium-подпиской.\n"
-                    "Используй /premium для оформления.",
+                    "с Premium-подпиской.",
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="💎 Купить Premium",
+                                callback_data="show_premium",
+                            )
+                        ]]
+                    ),
                 )
                 return
     await _handle_task_text(message, text)
@@ -369,8 +588,15 @@ async def on_voice(message: Message) -> None:
             if not await is_premium(session, message.from_user.id):
                 await message.answer(
                     "💎 Добавление задач через голосовые сообщения "
-                    "доступно с Premium-подпиской.\n"
-                    "Используй /premium для оформления.",
+                    "доступно с Premium-подпиской.",
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="💎 Купить Premium",
+                                callback_data="show_premium",
+                            )
+                        ]]
+                    ),
                 )
                 return
 
@@ -407,106 +633,6 @@ async def on_voice(message: Message) -> None:
             "Ой, не получилось распознать голосовое — попробуй ещё раз чуть позже.",
             reply_markup=_open_app_kb(),
         )
-
-
-@dp.message(Command("premium"))
-async def cmd_premium(message: Message) -> None:
-    await message.answer(
-        "<b>⭐ Premium-подписка</b>\n\n"
-        "Безлимитные задачи, свои категории, "
-        "AI-парсинг текстовых и голосовых сообщений.\n\n"
-        f"Цена: {PREMIUM_PRICE_STARS} ⭐ / месяц\n\n"
-        "Нажми кнопку ниже, чтобы оформить:",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(
-                    text=f"⭐ Купить за {PREMIUM_PRICE_STARS} Stars",
-                    callback_data="buy_premium",
-                )],
-                [InlineKeyboardButton(
-                    text="🚀 Открыть приложение",
-                    web_app=WebAppInfo(url=get_settings().webapp_url),
-                )],
-            ]
-        ),
-    )
-
-
-@dp.callback_query(F.data == "buy_premium")
-async def cb_buy_premium(cq: CallbackQuery) -> None:
-    if cq.message and cq.from_user:
-        sm = get_sessionmaker()
-        async with sm() as session:
-            if await is_premium(session, cq.from_user.id):
-                await cq.message.answer(
-                    "У тебя уже есть активная Premium-подписка! 🎉"
-                )
-                await cq.answer()
-                return
-
-        await cq.message.answer_invoice(
-            title="Task Blo Premium",
-            description=(
-                "Подписка Premium на 30 дней: "
-                "безлимитные задачи, свои категории, AI-парсинг."
-            ),
-            payload=json.dumps(
-                {"type": "premium_30d", "user_id": cq.from_user.id}
-            ),
-            currency="XTR",
-            prices=[
-                LabeledPrice(
-                    label="Premium 30 дней",
-                    amount=PREMIUM_PRICE_STARS,
-                )
-            ],
-        )
-    await cq.answer()
-
-
-@dp.pre_checkout_query()
-async def on_pre_checkout(query: PreCheckoutQuery) -> None:
-    await query.answer(ok=True)
-
-
-@dp.message(F.successful_payment)
-async def on_successful_payment(message: Message) -> None:
-    payment: SuccessfulPayment | None = message.successful_payment
-    if payment is None or message.from_user is None:
-        return
-
-    user_id = message.from_user.id
-    now = datetime.now(UTC)
-    expires_at = now + timedelta(days=30)
-
-    sm = get_sessionmaker()
-    async with sm() as session:
-        user = await session.get(User, user_id)
-        if user is None:
-            user = User(id=user_id)
-            session.add(user)
-            await session.commit()
-
-        sub = Subscription(
-            user_id=user_id,
-            plan="premium",
-            started_at=now,
-            expires_at=expires_at,
-            is_active=True,
-            source="stars",
-            stars_payment_id=payment.telegram_payment_charge_id,
-        )
-        session.add(sub)
-        await session.commit()
-
-    await message.answer(
-        "🎉 <b>Premium активирован!</b>\n\n"
-        f"Подписка действует до {expires_at.strftime('%d.%m.%Y')}.\n"
-        "Теперь ты можешь создавать безлимитные задачи, свои категории "
-        "и отправлять текстовые/голосовые сообщения для быстрого "
-        "добавления задач.",
-        reply_markup=_open_app_kb(),
-    )
 
 
 async def configure_bot_commands(bot: Bot) -> None:

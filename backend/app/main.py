@@ -47,6 +47,10 @@ async def lifespan(app: FastAPI):
     )
     app.state.bot = bot
 
+    # Remember bot username for deep-links
+    bot_me = await bot.get_me()
+    app.state.bot_username = bot_me.username or ""
+
     # Webhook
     await bot.set_webhook(
         url=settings.webhook_url,

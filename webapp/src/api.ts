@@ -221,4 +221,6 @@ export const api = {
         duration_days: durationDays,
       }),
     }),
+
+  botInfo: () => request<{ bot_username: string }>("/api/bot-info"),
 };
