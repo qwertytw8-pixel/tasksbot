@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.types import Update
+from aiogram.types import MenuButtonWebApp, Update, WebAppInfo
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -59,6 +59,19 @@ async def lifespan(app: FastAPI):
         allowed_updates=dp.resolve_used_update_types(),
     )
     await configure_bot_commands(bot)
+
+    # Menu button — shows "Открыть" in chat list
+    try:
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="Открыть",
+                web_app=WebAppInfo(url=settings.webapp_url),
+            ),
+        )
+        log.info("menu button set")
+    except Exception as exc:
+        log.warning("menu button failed: %s", exc)
+
     log.info("webhook set: %s", settings.webhook_url)
 
     try:
