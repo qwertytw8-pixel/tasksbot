@@ -79,30 +79,6 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/migrate/neon")
-async def migrate_neon(
-    request: Request,
-    authorization: str | None = Header(default=None),
-) -> dict[str, str]:
-    settings = get_settings()
-    if authorization != f"Bearer {settings.cron_secret}":
-        raise HTTPException(status_code=403, detail="bad secret")
-    payload = await request.json()
-    sql = payload.get("sql", "")
-    if not sql:
-        raise HTTPException(status_code=400, detail="no sql")
-    engine = get_engine()
-    from sqlalchemy import text
-    async with engine.begin() as conn:
-        for stmt in sql.split(";"):
-            stmt = stmt.strip()
-            if stmt and not stmt.startswith("--") and not stmt.startswith("\\") and not stmt.startswith("SET ") and not stmt.startswith("SELECT pg_catalog"):
-                try:
-                    await conn.execute(text(stmt))
-                except Exception:
-                    pass
-    return {"status": "migrated"}
-
 
 @app.post("/tg/webhook")
 async def telegram_webhook(
