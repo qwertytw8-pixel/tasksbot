@@ -398,11 +398,8 @@ async def update_task(
     task.due_at = due_at
     task.remind_minutes_before = remind
     task.recurrence = payload.recurrence
-    # Track when a task was marked done; auto-archive it immediately.
     if payload.is_done and not task.is_done:
         task.done_at = datetime.now(UTC)
-        if task.archived_at is None:
-            task.archived_at = datetime.now(UTC)
         # Create next occurrence for recurring tasks
         if task.recurrence and task.due_date:
             next_task = _create_next_recurrence(task, tg.id)
