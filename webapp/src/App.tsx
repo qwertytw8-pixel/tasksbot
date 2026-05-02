@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
@@ -26,31 +26,23 @@ function PageFallback() {
 }
 
 export function App() {
-  const [ready, setReady] = useState(false);
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const me = await api.me();
         const tz = getUserTimezone();
-        if (me.tz !== tz && tz && tz !== "UTC") {
+        if (!cancelled && me.tz !== tz && tz && tz !== "UTC") {
           await api.updateMe(tz);
         }
       } catch {
         // ignore — user will see error in pages
-      } finally {
-        if (!cancelled) setReady(true);
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
-
-  if (!ready) {
-    return <PageFallback />;
-  }
 
   return (
     <div className="app">

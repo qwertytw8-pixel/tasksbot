@@ -330,7 +330,6 @@ export function TaskFormPage() {
             )}
             {whenMode === "datetime" && (
               <>
-                <DatePicker value={dueDate} onChange={setDueDate} />
                 <WheelTimePicker
                   hours={timeHours}
                   minutes={timeMinutes}
