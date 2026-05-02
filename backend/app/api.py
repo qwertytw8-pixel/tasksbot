@@ -376,6 +376,9 @@ async def create_task(
     await _validate_parent(session, tg, None, payload.parent_task_id)
     due_date, has_time, due_at, remind = _normalize_task_fields(payload)
 
+    if remind is not None and remind > 0 and not await is_premium(session, tg.id):
+        remind = 0
+
     task = Task(
         user_id=tg.id,
         title=payload.title,
@@ -418,7 +421,7 @@ async def create_task(
                         "задач сегодня на бесплатном плане.\n\n"
                         "Подключи Premium — "
                         "безлимитные задачи, "
-                        "умный ввод и голос!",
+                        "ввод задач текстом и голосом!",
                         reply_markup=InlineKeyboardMarkup(
                             inline_keyboard=[[
                                 InlineKeyboardButton(
@@ -447,9 +450,13 @@ async def update_task(
     if task is None or task.user_id != tg.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
 
+    await _ensure_user(session, tg)
     await _validate_category(session, tg, payload.category_id)
     await _validate_parent(session, tg, task_id, payload.parent_task_id)
     due_date, has_time, due_at, remind = _normalize_task_fields(payload)
+
+    if remind is not None and remind > 0 and not await is_premium(session, tg.id):
+        remind = 0
 
     task.title = payload.title
     task.description = payload.description

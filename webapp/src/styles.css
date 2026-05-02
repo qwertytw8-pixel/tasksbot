@@ -1827,6 +1827,11 @@ button {
   transform: scale(0.97);
 }
 
+.remind-mode--locked {
+  opacity: 0.55;
+  cursor: pointer;
+}
+
 .remind-custom {
   margin-top: 12px;
   display: flex;
