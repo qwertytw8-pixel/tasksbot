@@ -79,6 +79,31 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.post("/migrate/neon")
+async def migrate_neon(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict[str, str | int]:
+    settings = get_settings()
+    if authorization != f"Bearer {settings.cron_secret}":
+        raise HTTPException(status_code=403, detail="bad secret")
+    payload = await request.json()
+    statements = payload.get("statements", [])
+    if not statements:
+        raise HTTPException(status_code=400, detail="no statements")
+    engine = get_engine()
+    from sqlalchemy import text
+    ok = 0
+    errors = []
+    async with engine.begin() as conn:
+        for stmt in statements:
+            try:
+                await conn.execute(text(stmt))
+                ok += 1
+            except Exception as e:
+                errors.append(f"{stmt[:80]}... -> {e}")
+    return {"status": "migrated", "ok": ok, "errors_count": len(errors), "errors": errors[:10]}
+
 
 @app.post("/tg/webhook")
 async def telegram_webhook(
