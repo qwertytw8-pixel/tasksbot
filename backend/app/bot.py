@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import logging
 from pathlib import Path
 
@@ -296,6 +297,61 @@ async def cb_delete_task(cq: CallbackQuery) -> None:
         except Exception:  # noqa: BLE001
             await cq.message.answer("❌ Задача отменена.")
     await cq.answer("удалено")
+
+
+@dp.message(F.voice)
+async def on_voice(message: Message) -> None:
+    settings = get_settings()
+    if not settings.openai_api_key:
+        await message.answer(
+            "🎙 Голосовой ввод пока не настроен. "
+            "Добавь <code>OPENAI_API_KEY</code> в переменные окружения, "
+            "чтобы я мог распознавать голосовые сообщения.",
+            reply_markup=_open_app_kb(),
+        )
+        return
+
+    bot = message.bot
+    if bot is None or message.voice is None:
+        return
+
+    await message.answer("🎙 Распознаю голосовое сообщение…")
+
+    try:
+        file = await bot.get_file(message.voice.file_id)
+        if file.file_path is None:
+            await message.answer("Не удалось скачать голосовое сообщение.")
+            return
+
+        buf = io.BytesIO()
+        await bot.download_file(file.file_path, buf)
+        buf.seek(0)
+        buf.name = "voice.ogg"
+
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        transcript = await client.audio.transcriptions.create(
+            model="whisper-1",
+            file=buf,
+            language="ru",
+        )
+        text = transcript.text.strip()
+        if not text:
+            await message.answer(
+                "Не удалось распознать текст из голосового сообщения. "
+                "Попробуй ещё раз или напиши текстом.",
+                reply_markup=_open_app_kb(),
+            )
+            return
+
+        await _handle_task_text(message, text)
+    except Exception:
+        log.exception("voice transcription failed")
+        await message.answer(
+            "Ой, не получилось распознать голосовое — попробуй ещё раз чуть позже.",
+            reply_markup=_open_app_kb(),
+        )
 
 
 async def configure_bot_commands(bot: Bot) -> None:
