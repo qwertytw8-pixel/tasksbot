@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
@@ -11,14 +11,19 @@ import {
   UserIcon,
 } from "./icons";
 import { getUserTimezone } from "./telegram";
-import { TodayPage } from "./pages/Today";
-import { AllPage } from "./pages/All";
-import { CategoriesPage } from "./pages/Categories";
-import { TaskFormPage } from "./pages/TaskForm";
-import { CalendarPage } from "./pages/Calendar";
-import { ProfileRoutes } from "./pages/Profile";
+
+const TodayPage = lazy(() => import("./pages/Today").then((m) => ({ default: m.TodayPage })));
+const AllPage = lazy(() => import("./pages/All").then((m) => ({ default: m.AllPage })));
+const CategoriesPage = lazy(() => import("./pages/Categories").then((m) => ({ default: m.CategoriesPage })));
+const TaskFormPage = lazy(() => import("./pages/TaskForm").then((m) => ({ default: m.TaskFormPage })));
+const CalendarPage = lazy(() => import("./pages/Calendar").then((m) => ({ default: m.CalendarPage })));
+const ProfileRoutes = lazy(() => import("./pages/Profile").then((m) => ({ default: m.ProfileRoutes })));
 
 const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about"];
+
+function PageFallback() {
+  return <div className="spinner">Загрузка…</div>;
+}
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -44,22 +49,24 @@ export function App() {
   }, []);
 
   if (!ready) {
-    return <div className="spinner">Загрузка…</div>;
+    return <PageFallback />;
   }
 
   return (
     <div className="app">
-      <Routes>
-        <Route path="/" element={<Navigate to="/all" replace />} />
-        <Route path="/today" element={<TodayPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/all" element={<AllPage />} />
-        <Route path="/categories" element={<CategoriesPage />} />
-        <Route path="/profile/*" element={<ProfileRoutes />} />
-        <Route path="/about" element={<Navigate to="/profile" replace />} />
-        <Route path="/new" element={<TaskFormPage />} />
-        <Route path="/edit/:id" element={<TaskFormPage />} />
-      </Routes>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/all" replace />} />
+          <Route path="/today" element={<TodayPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/all" element={<AllPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/profile/*" element={<ProfileRoutes />} />
+          <Route path="/about" element={<Navigate to="/profile" replace />} />
+          <Route path="/new" element={<TaskFormPage />} />
+          <Route path="/edit/:id" element={<TaskFormPage />} />
+        </Routes>
+      </Suspense>
       <Fab />
       <TabBar />
     </div>
