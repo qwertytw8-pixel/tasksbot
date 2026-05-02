@@ -9,8 +9,14 @@ import {
 
 const PLANS = [
   { key: "1m", label: "1 месяц", stars: 99, perMonth: 99 },
-  { key: "3m", label: "3 месяца", stars: 249, perMonth: 83, save: "16%" },
-  { key: "12m", label: "12 месяцев", stars: 799, perMonth: 67, save: "33%", best: true },
+  {
+    key: "3m", label: "3 месяца", stars: 249,
+    perMonth: 83, save: "16%",
+  },
+  {
+    key: "12m", label: "12 месяцев", stars: 799,
+    perMonth: 67, save: "33%", best: true,
+  },
 ];
 
 function PremiumIcon({ size = 56 }: { size?: number }) {
@@ -37,6 +43,8 @@ export function SubscriptionPage() {
   const [plans, setPlans] = useState<PlansOut | null>(null);
   const [botUsername, setBotUsername] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState("12m");
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -55,6 +63,28 @@ export function SubscriptionPage() {
     })();
   }, []);
 
+  const handleBuy = async () => {
+    const tgWebApp = window.Telegram?.WebApp;
+    setBuying(true);
+    try {
+      const { invoice_url } = await api.createInvoice(selectedPlan);
+      if (tgWebApp?.openInvoice) {
+        tgWebApp.openInvoice(invoice_url, (invoiceStatus) => {
+          if (invoiceStatus === "paid") {
+            void api.subscriptionStatus().then(setStatus);
+          }
+          setBuying(false);
+        });
+      } else {
+        window.open(invoice_url, "_blank");
+        setBuying(false);
+      }
+    } catch (e) {
+      setError(String(e));
+      setBuying(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="page">
@@ -69,6 +99,8 @@ export function SubscriptionPage() {
   if (!status || !plans) {
     return <div className="spinner">Загрузка…</div>;
   }
+
+  const currentPlan = PLANS.find((p) => p.key === selectedPlan) ?? PLANS[0];
 
   const premiumLink = botUsername
     ? `https://t.me/${botUsername}?start=premium`
@@ -136,9 +168,15 @@ export function SubscriptionPage() {
           </div>
           <div className="premium-tiers">
             {PLANS.map((p) => (
-              <div
+              <button
                 key={p.key}
-                className={`premium-tier${p.best ? " premium-tier--best" : ""}`}
+                type="button"
+                className={
+                  `premium-tier` +
+                  (p.best ? " premium-tier--best" : "") +
+                  (selectedPlan === p.key ? " premium-tier--selected" : "")
+                }
+                onClick={() => setSelectedPlan(p.key)}
               >
                 {p.best && <span className="premium-tier__badge">Выгодно</span>}
                 {p.save && !p.best && (
@@ -154,21 +192,31 @@ export function SubscriptionPage() {
                 <div className="premium-tier__per-month">
                   {p.perMonth} ⭐/мес
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
-          <a
+          <button
+            type="button"
             className="premium-buy-btn"
+            disabled={buying}
+            onClick={() => void handleBuy()}
+          >
+            {buying
+              ? "Загрузка…"
+              : `💎 Оплатить ${currentPlan.stars} ⭐`}
+          </button>
+          <p className="premium-buy-hint">
+            Оплата через Telegram Stars — безопасно и мгновенно
+          </p>
+          <a
+            className="premium-bot-link"
             href={premiumLink}
             target="_blank"
             rel="noopener noreferrer"
           >
-            💎 Оплатить в боте
+            Или оплатить в чате с ботом →
           </a>
-          <p className="premium-buy-hint">
-            Оплата через Telegram Stars — безопасно и мгновенно
-          </p>
         </div>
       )}
 

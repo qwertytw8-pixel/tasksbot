@@ -26,6 +26,7 @@ export interface TelegramWebApp {
   showAlert?(message: string): void;
   setHeaderColor?(color: string): void;
   setBackgroundColor?(color: string): void;
+  openInvoice?(url: string, cb?: (status: string) => void): void;
 }
 
 export function initTelegram(): void {
