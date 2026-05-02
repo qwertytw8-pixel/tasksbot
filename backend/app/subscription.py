@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import Subscription, Task, User
 
 FREE_MAX_TASKS = 5
+FREE_DAILY_LIMIT = 5
 
 # Pricing tiers: (label, days, stars)
 PREMIUM_PLANS = [
@@ -55,11 +56,35 @@ async def count_active_tasks(session: AsyncSession, user_id: int) -> int:
     return result.scalar_one()
 
 
-async def can_create_task(session: AsyncSession, user_id: int) -> bool:
+async def count_tasks_created_today(session: AsyncSession, user_id: int, tz: str = "UTC") -> int:
+    """Count tasks created today in the user's timezone."""
+    try:
+        from zoneinfo import ZoneInfo
+        user_tz = ZoneInfo(tz)
+    except (KeyError, ImportError):
+        from zoneinfo import ZoneInfo
+        user_tz = ZoneInfo("UTC")
+
+    now_user = datetime.now(user_tz)
+    start_of_day = now_user.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_of_day_utc = start_of_day.astimezone(UTC)
+
+    result = await session.execute(
+        select(func.count())
+        .select_from(Task)
+        .where(
+            Task.user_id == user_id,
+            Task.created_at >= start_of_day_utc,
+        )
+    )
+    return result.scalar_one()
+
+
+async def can_create_task(session: AsyncSession, user_id: int, tz: str = "UTC") -> bool:
     if await is_premium(session, user_id):
         return True
-    count = await count_active_tasks(session, user_id)
-    return count < FREE_MAX_TASKS
+    count = await count_tasks_created_today(session, user_id, tz)
+    return count < FREE_DAILY_LIMIT
 
 
 async def can_create_category(session: AsyncSession, user_id: int) -> bool:

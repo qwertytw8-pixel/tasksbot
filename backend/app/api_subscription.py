@@ -21,11 +21,13 @@ from app.schemas import (
     SubscriptionStatus,
 )
 from app.subscription import (
+    FREE_DAILY_LIMIT,
     FREE_MAX_TASKS,
     PREMIUM_PLANS,
     PREMIUM_PRICE_STARS,
     can_create_category,
     count_active_tasks,
+    count_tasks_created_today,
     get_active_subscription,
     is_premium,
 )
@@ -53,10 +55,11 @@ async def get_subscription_status(
     tg: TelegramUser = Depends(_get_dep()),
     session: AsyncSession = Depends(get_session),
 ) -> SubscriptionStatus:
-    await _ensure_user(session, tg)
+    user = await _ensure_user(session, tg)
     premium = await is_premium(session, tg.id)
     sub = await get_active_subscription(session, tg.id)
     active_count = await count_active_tasks(session, tg.id)
+    daily_count = await count_tasks_created_today(session, tg.id, user.tz)
     can_cats = await can_create_category(session, tg.id)
 
     sub_out = SubscriptionOut.model_validate(sub) if sub else None
@@ -66,6 +69,8 @@ async def get_subscription_status(
         subscription=sub_out,
         active_tasks_count=active_count,
         max_tasks=999_999 if premium else FREE_MAX_TASKS,
+        daily_tasks_count=daily_count,
+        max_daily_tasks=999_999 if premium else FREE_DAILY_LIMIT,
         can_create_categories=can_cats,
     )
 
@@ -81,7 +86,7 @@ async def get_plans(
             name="Free",
             price_stars=0,
             features=[
-                f"До {FREE_MAX_TASKS} активных задач",
+                f"До {FREE_DAILY_LIMIT} задач в день",
                 "4 стандартные категории",
                 "Напоминания",
                 "Светлая и тёмная тема",

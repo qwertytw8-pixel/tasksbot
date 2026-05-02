@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import { api, type Category, type Task, type TaskInput } from "../api";
+import { api, type Category, type SubscriptionStatus, type Task, type TaskInput } from "../api";
 import { DatePicker } from "../components/DatePicker";
+import { LimitModal } from "../components/LimitModal";
 import { WheelTimePicker } from "../components/WheelTimePicker";
 import {
   ArrowRightIcon,
@@ -67,6 +68,8 @@ export function TaskFormPage() {
   const [recurrence, setRecurrence] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [subtasks, setSubtasks] = useState<Task[]>([]);
@@ -166,6 +169,18 @@ export function TaskFormPage() {
 
   async function save() {
     if (!title.trim()) return;
+    if (!editing) {
+      try {
+        const st = await api.subscriptionStatus();
+        setSubStatus(st);
+        if (!st.is_premium && st.daily_tasks_count >= st.max_daily_tasks) {
+          setShowLimitModal(true);
+          return;
+        }
+      } catch {
+        // proceed if status check fails
+      }
+    }
     setBusy(true);
     try {
       const payload = buildPayload();
@@ -176,6 +191,16 @@ export function TaskFormPage() {
       }
       haptic("medium");
       navigate(-1);
+    } catch (err) {
+      if (String(err).includes("403")) {
+        try {
+          const st = await api.subscriptionStatus();
+          setSubStatus(st);
+          setShowLimitModal(true);
+        } catch {
+          alert("Дневной лимит задач исчерпан.");
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -226,6 +251,13 @@ export function TaskFormPage() {
 
   return (
     <div className="page">
+      {showLimitModal && subStatus && (
+        <LimitModal
+          dailyCount={subStatus.daily_tasks_count}
+          maxDaily={subStatus.max_daily_tasks}
+          onClose={() => setShowLimitModal(false)}
+        />
+      )}
       <div className="page-header">
         <div className="page-header__stack">
           <span className="page-header__eyebrow">
