@@ -6,7 +6,6 @@ import { DatePicker } from "../components/DatePicker";
 import { LimitModal } from "../components/LimitModal";
 import { WheelTimePicker } from "../components/WheelTimePicker";
 import {
-  ArrowRightIcon,
   BellIcon,
   CalendarIcon,
   CheckIcon,
@@ -108,13 +107,18 @@ export function TaskFormPage() {
           } else {
             setWhenMode("none");
           }
-          setRemind(found.remind_minutes_before);
+          const loadedRemind = found.remind_minutes_before;
+          if (!st.is_premium && loadedRemind !== null && loadedRemind > 0) {
+            setRemind(0);
+          } else {
+            setRemind(loadedRemind);
+          }
           setRecurrence(found.recurrence ?? null);
           if (
-            found.remind_minutes_before !== null &&
-            found.remind_minutes_before > 0
+            loadedRemind !== null &&
+            loadedRemind > 0
           ) {
-            setRemindCustom(String(found.remind_minutes_before));
+            setRemindCustom(String(loadedRemind));
           }
           setSubtasks(t.filter((x) => x.parent_task_id === found.id));
         }
@@ -273,9 +277,6 @@ export function TaskFormPage() {
       )}
       <div className="page-header">
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            {editing ? <ArrowRightIcon /> : <PlusIcon />} {editing ? "edit" : "create"}
-          </span>
           <div className="page-header__title-row">
             <h1>{editing ? "Задача" : "Новая задача"}</h1>
           </div>
@@ -363,7 +364,7 @@ export function TaskFormPage() {
                 className={`segmented__item ${whenMode === "datetime" ? "segmented__item--active" : ""}`}
                 onClick={() => setWhenMode("datetime")}
               >
-                <ClockIcon /> Время
+                <ClockIcon /> Дата и время
               </button>
             </div>
 
@@ -469,7 +470,7 @@ export function TaskFormPage() {
                 )}
               </div>
 
-              {toRemindMode(remind) === "before" && (
+              {isPremium && toRemindMode(remind) === "before" && (
                 <div className="remind-custom">
                   <div className="remind-custom__row">
                     <input

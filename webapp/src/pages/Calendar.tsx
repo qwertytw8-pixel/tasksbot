@@ -162,9 +162,6 @@ export function CalendarPage() {
     <div className="page">
       <div className="page-header">
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            <CalendarIcon /> calendar
-          </span>
           <div className="page-header__title-row">
             <h1>Календарь</h1>
           </div>
