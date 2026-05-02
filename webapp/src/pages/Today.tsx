@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { api, type Category, type Task } from "../api";
+import { FocusWidget } from "../components/FocusWidget";
 import { TaskRow, isTaskOverdue } from "../components/TaskRow";
 import {
   AlertTriangleIcon,
@@ -93,9 +94,16 @@ export function TodayPage() {
       has_time: task.has_time,
       due_at: task.due_at,
       remind_minutes_before: task.remind_minutes_before,
+      recurrence: task.recurrence,
       is_done: !task.is_done,
     });
-    setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+    setTasks((prev) => {
+      const list = prev ?? [];
+      if (updated.archived_at) {
+        return list.filter((t) => t.id !== task.id);
+      }
+      return list.map((t) => (t.id === task.id ? updated : t));
+    });
   }
 
   async function postpone(task: Task) {
@@ -208,6 +216,10 @@ export function TodayPage() {
           </span>
         </div>
       </div>
+
+      {!isEmpty && (
+        <FocusWidget tasks={[...(overdue ?? []), ...(todayTasks ?? [])]} />
+      )}
 
       {isEmpty && (
         <div className="empty">

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { api, type Category, type Task, type TaskInput } from "../api";
+import { DatePicker } from "../components/DatePicker";
+import { WheelTimePicker } from "../components/WheelTimePicker";
 import {
   ArrowRightIcon,
   BellIcon,
@@ -34,20 +36,7 @@ function toRemindMode(value: number | null): RemindMode {
   return "before";
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
 
-function toLocalInputValue(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function localInputToISO(v: string): string | null {
-  if (!v) return null;
-  return new Date(v).toISOString();
-}
 
 export function TaskFormPage() {
   const { id } = useParams<{ id?: string }>();
@@ -71,9 +60,11 @@ export function TaskFormPage() {
 
   const [whenMode, setWhenMode] = useState<WhenMode>(presetDay ? "date" : "none");
   const [dueDate, setDueDate] = useState<string>(presetDay ?? todayISO());
-  const [dueDateTime, setDueDateTime] = useState<string>("");
+  const [timeHours, setTimeHours] = useState<number>(12);
+  const [timeMinutes, setTimeMinutes] = useState<number>(0);
   const [remind, setRemind] = useState<number | null>(15);
   const [remindCustom, setRemindCustom] = useState<string>("15");
+  const [recurrence, setRecurrence] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
@@ -95,7 +86,9 @@ export function TaskFormPage() {
           setParentId(found.parent_task_id);
           if (found.has_time && found.due_at) {
             setWhenMode("datetime");
-            setDueDateTime(toLocalInputValue(found.due_at));
+            const dtObj = new Date(found.due_at);
+            setTimeHours(dtObj.getHours());
+            setTimeMinutes(dtObj.getMinutes());
             if (found.due_date) setDueDate(found.due_date);
           } else if (found.due_date) {
             setWhenMode("date");
@@ -104,6 +97,7 @@ export function TaskFormPage() {
             setWhenMode("none");
           }
           setRemind(found.remind_minutes_before);
+          setRecurrence(found.recurrence ?? null);
           if (
             found.remind_minutes_before !== null &&
             found.remind_minutes_before > 0
@@ -126,16 +120,19 @@ export function TaskFormPage() {
   );
 
   function buildPayload(): TaskInput {
-    if (whenMode === "datetime" && dueDateTime) {
+    if (whenMode === "datetime" && dueDate) {
+      const dateObj = fromISODate(dueDate);
+      dateObj.setHours(timeHours, timeMinutes, 0, 0);
       return {
         title: title.trim(),
         description: description.trim() || null,
         category_id: categoryId,
         parent_task_id: parentId,
         has_time: true,
-        due_at: localInputToISO(dueDateTime),
+        due_at: dateObj.toISOString(),
         due_date: null,
         remind_minutes_before: remind,
+        recurrence,
         is_done: task?.is_done ?? false,
       };
     }
@@ -149,6 +146,7 @@ export function TaskFormPage() {
         due_date: dueDate,
         due_at: null,
         remind_minutes_before: null,
+        recurrence,
         is_done: task?.is_done ?? false,
       };
     }
@@ -161,6 +159,7 @@ export function TaskFormPage() {
       due_date: null,
       due_at: null,
       remind_minutes_before: null,
+      recurrence: null,
       is_done: task?.is_done ?? false,
     };
   }
@@ -213,6 +212,7 @@ export function TaskFormPage() {
       has_time: sub.has_time,
       due_at: sub.due_at,
       remind_minutes_before: sub.remind_minutes_before,
+      recurrence: sub.recurrence,
       is_done: !sub.is_done,
     });
     setSubtasks((prev) => prev.map((s) => (s.id === sub.id ? updated : s)));
@@ -323,22 +323,7 @@ export function TaskFormPage() {
             </div>
 
             {whenMode === "date" && (
-              <input
-                className="input"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                style={{ marginTop: 10 }}
-              />
-            )}
-            {whenMode === "datetime" && (
-              <input
-                className="input"
-                type="datetime-local"
-                value={dueDateTime}
-                onChange={(e) => setDueDateTime(e.target.value)}
-                style={{ marginTop: 10 }}
-              />
+              <DatePicker value={dueDate} onChange={setDueDate} />
             )}
             {whenMode === "date" && dueDate && (
               <div className="hint">
@@ -348,6 +333,28 @@ export function TaskFormPage() {
                   month: "long",
                 })}
               </div>
+            )}
+            {whenMode === "datetime" && (
+              <>
+                <WheelTimePicker
+                  hours={timeHours}
+                  minutes={timeMinutes}
+                  onChange={(h, m) => {
+                    setTimeHours(h);
+                    setTimeMinutes(m);
+                  }}
+                />
+                {dueDate && (
+                  <div className="hint">
+                    {fromISODate(dueDate).toLocaleDateString("ru-RU", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}{" "}
+                    в {String(timeHours).padStart(2, "0")}:{String(timeMinutes).padStart(2, "0")}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -437,6 +444,42 @@ export function TaskFormPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {whenMode !== "none" && (
+            <div className="field">
+              <span className="field__label">Повторение</span>
+              <div className="segmented">
+                <button
+                  type="button"
+                  className={`segmented__item ${recurrence === null ? "segmented__item--active" : ""}`}
+                  onClick={() => setRecurrence(null)}
+                >
+                  Без
+                </button>
+                <button
+                  type="button"
+                  className={`segmented__item ${recurrence === "daily" ? "segmented__item--active" : ""}`}
+                  onClick={() => setRecurrence("daily")}
+                >
+                  День
+                </button>
+                <button
+                  type="button"
+                  className={`segmented__item ${recurrence === "weekly" ? "segmented__item--active" : ""}`}
+                  onClick={() => setRecurrence("weekly")}
+                >
+                  Неделя
+                </button>
+                <button
+                  type="button"
+                  className={`segmented__item ${recurrence === "monthly" ? "segmented__item--active" : ""}`}
+                  onClick={() => setRecurrence("monthly")}
+                >
+                  Месяц
+                </button>
+              </div>
             </div>
           )}
 

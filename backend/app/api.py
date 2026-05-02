@@ -1,3 +1,4 @@
+from calendar import monthrange
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -114,6 +115,42 @@ async def _validate_parent(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "bad parent_task_id")
     if task_id is not None and parent.id == task_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "task cannot be its own parent")
+
+
+def _next_due_date(current: date, recurrence: str) -> date:
+    if recurrence == "daily":
+        return current + timedelta(days=1)
+    if recurrence == "weekly":
+        return current + timedelta(weeks=1)
+    if recurrence == "monthly":
+        y, m = current.year, current.month + 1
+        if m > 12:
+            y += 1
+            m = 1
+        day = min(current.day, monthrange(y, m)[1])
+        return date(y, m, day)
+    return current + timedelta(days=1)
+
+
+def _create_next_recurrence(task: Task, user_id: int) -> Task:
+    next_date = _next_due_date(task.due_date, task.recurrence)
+    next_due_at = None
+    if task.has_time and task.due_at:
+        delta = next_date - task.due_date
+        next_due_at = task.due_at + delta
+    return Task(
+        user_id=user_id,
+        title=task.title,
+        description=task.description,
+        category_id=task.category_id,
+        parent_task_id=None,
+        due_date=next_date,
+        has_time=task.has_time,
+        due_at=next_due_at,
+        remind_minutes_before=task.remind_minutes_before,
+        recurrence=task.recurrence,
+        is_done=False,
+    )
 
 
 # -------------------- /me --------------------
@@ -336,6 +373,7 @@ async def create_task(
         has_time=has_time,
         due_at=due_at,
         remind_minutes_before=remind,
+        recurrence=payload.recurrence,
         is_done=payload.is_done,
         done_at=datetime.now(UTC) if payload.is_done else None,
     )
@@ -370,11 +408,16 @@ async def update_task(
     task.has_time = has_time
     task.due_at = due_at
     task.remind_minutes_before = remind
-    # Track when a task was marked done so we can auto-archive later.
+    task.recurrence = payload.recurrence
     if payload.is_done and not task.is_done:
         task.done_at = datetime.now(UTC)
+        # Create next occurrence for recurring tasks
+        if task.recurrence and task.due_date:
+            next_task = _create_next_recurrence(task, tg.id)
+            session.add(next_task)
     elif not payload.is_done:
         task.done_at = None
+        task.archived_at = None
     task.is_done = payload.is_done
     await session.flush()
     await _sync_reminders(session, task)

@@ -87,6 +87,9 @@ class Task(Base):
     has_time: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     remind_minutes_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recurrence: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )  # "daily", "weekly", "monthly" or null
     is_done: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     done_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -253,6 +256,7 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
             "due_date = COALESCE(due_date, CAST(due_at AT TIME ZONE 'UTC' AS DATE)), "
             "has_time = CASE WHEN due_at IS NOT NULL THEN TRUE ELSE has_time END"
         ),
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(16)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE",
         # Premium subscription tables
         (

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { Category, Task } from "../api";
+import { Confetti } from "./Confetti";
 import {
   AlertTriangleIcon,
   ArchiveIcon,
@@ -120,6 +121,7 @@ export function TaskRow({
   onUnarchive,
 }: TaskRowProps) {
   const navigate = useNavigate();
+  const [confettiOrigin, setConfettiOrigin] = useState<{ x: number; y: number } | null>(null);
 
   const { label: dueLabel, icon: dueIcon } = dueLabelFor(task);
   const childCount = subtasks?.length ?? 0;
@@ -259,6 +261,7 @@ export function TaskRow({
   const swipeClass = [
     "task-swipe",
     open ? "task-swipe--open" : "",
+    dragging || dx !== 0 ? "task-swipe--active" : "",
     compact ? "task-swipe--compact" : "",
     !hasActions ? "task-swipe--no-actions" : "",
   ]
@@ -369,12 +372,24 @@ export function TaskRow({
               onClick={(e) => {
                 e.stopPropagation();
                 haptic("light");
+                if (!task.is_done) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setConfettiOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+                  haptic("heavy");
+                }
                 onToggle(task);
               }}
               aria-label={task.is_done ? "Отметить невыполненной" : "Отметить выполненной"}
             >
               {task.is_done ? <CheckIcon /> : null}
             </button>
+            {confettiOrigin && (
+              <Confetti
+                originX={confettiOrigin.x}
+                originY={confettiOrigin.y}
+                onDone={() => setConfettiOrigin(null)}
+              />
+            )}
 
             <div className="task__content">
               <div className="task__title">{task.title}</div>

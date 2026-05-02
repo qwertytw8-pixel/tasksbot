@@ -25,6 +25,7 @@ export interface Task {
   has_time: boolean;
   due_at: string | null;
   remind_minutes_before: number | null;
+  recurrence: string | null;
   is_done: boolean;
   done_at: string | null;
   archived_at: string | null;
@@ -40,6 +41,7 @@ export interface TaskInput {
   has_time?: boolean;
   due_at?: string | null;
   remind_minutes_before?: number | null;
+  recurrence?: string | null;
   is_done?: boolean;
 }
 

@@ -1,18 +1,20 @@
-"""Reminder dispatcher.
+"""Reminder dispatcher + daily summary.
 
 Triggered externally via `POST /cron/tick` (e.g. from GitHub Actions cron).
 Scans `reminders` table for entries that should fire and sends Telegram messages.
+Daily summary sends end-of-day notification about incomplete tasks.
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from aiogram import Bot
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
-from app.db import Reminder, Task, get_sessionmaker
+from app.db import Reminder, Task, User, get_sessionmaker
 
 log = logging.getLogger(__name__)
 
@@ -67,3 +69,97 @@ async def run_tick(bot: Bot) -> int:
             )
         await session.commit()
     return sent_count
+
+
+async def run_daily_summary(bot: Bot) -> int:
+    """Send end-of-day summary to users whose local time is ~21:00.
+
+    Returns the number of summaries sent.
+    """
+    sm = get_sessionmaker()
+    now = datetime.now(UTC)
+    sent_count = 0
+
+    async with sm() as session:
+        users = (await session.execute(select(User))).scalars().all()
+
+        for user in users:
+            try:
+                tz = ZoneInfo(user.tz) if user.tz and user.tz != "UTC" else ZoneInfo("UTC")
+            except (KeyError, ValueError):
+                tz = ZoneInfo("UTC")
+
+            local_now = now.astimezone(tz)
+            if local_now.hour != 21:
+                continue
+
+            today_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = today_start + timedelta(days=1)
+
+            today_start_utc = today_start.astimezone(UTC)
+            today_end_utc = today_end.astimezone(UTC)
+            today_date = local_now.date()
+
+            incomplete = (
+                await session.execute(
+                    select(func.count())
+                    .select_from(Task)
+                    .where(
+                        Task.user_id == user.id,
+                        Task.is_done.is_(False),
+                        Task.archived_at.is_(None),
+                        Task.parent_task_id.is_(None),
+                        (
+                            (Task.due_date == today_date)
+                            | (
+                                (Task.has_time.is_(True))
+                                & (Task.due_at >= today_start_utc)
+                                & (Task.due_at < today_end_utc)
+                            )
+                        ),
+                    )
+                )
+            ).scalar_one()
+
+            if incomplete == 0:
+                continue
+
+            completed = (
+                await session.execute(
+                    select(func.count())
+                    .select_from(Task)
+                    .where(
+                        Task.user_id == user.id,
+                        Task.is_done.is_(True),
+                        Task.parent_task_id.is_(None),
+                        Task.done_at >= today_start_utc,
+                        Task.done_at < today_end_utc,
+                    )
+                )
+            ).scalar_one()
+
+            task_word = _pluralize_tasks(incomplete)
+            done_part = f"\n✅ Выполнено сегодня: {completed}" if completed > 0 else ""
+
+            try:
+                await bot.send_message(
+                    chat_id=user.id,
+                    text=(
+                        f"📋 <b>Итоги дня</b>\n\n"
+                        f"У тебя {incomplete} {task_word} на сегодня.{done_part}\n\n"
+                        f"Открой приложение и заверши их! 💪"
+                    ),
+                )
+                sent_count += 1
+            except Exception:
+                log.exception("failed to send daily summary to user %s", user.id)
+
+    return sent_count
+
+
+def _pluralize_tasks(n: int) -> str:
+    if n % 10 == 1 and n % 100 != 11:
+        return "незавершённая задача"
+    if 2 <= n % 10 <= 4 and not (12 <= n % 100 <= 14):
+        return "незавершённые задачи"
+    return "незавершённых задач"

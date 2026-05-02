@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     cors_origins: str = Field(alias="CORS_ORIGINS", default="*")
     log_level: str = Field(alias="LOG_LEVEL", default="INFO")
     admin_user_id: int | None = Field(alias="ADMIN_USER_ID", default=None)
+    openai_api_key: str | None = Field(alias="OPENAI_API_KEY", default=None)
 
     @property
     def webhook_path(self) -> str:

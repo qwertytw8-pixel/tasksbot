@@ -9,6 +9,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import Update
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api import router as api_router
 from app.api_admin import router as admin_router
@@ -16,7 +17,7 @@ from app.api_subscription import router as subscription_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
-from app.scheduler import run_tick
+from app.scheduler import run_daily_summary, run_tick
 
 
 def _setup_logging(level: str) -> None:
@@ -83,6 +84,35 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.post("/migrate/neon")
+async def migrate_neon(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> JSONResponse:
+    settings = get_settings()
+    if authorization != f"Bearer {settings.cron_secret}":
+        raise HTTPException(status_code=403, detail="bad secret")
+    payload = await request.json()
+    statements = payload.get("statements", [])
+    if not statements:
+        raise HTTPException(status_code=400, detail="no statements")
+    engine = get_engine()
+    from sqlalchemy import text as sa_text
+    ok = 0
+    errors = []
+    async with engine.begin() as conn:
+        for stmt in statements:
+            try:
+                await conn.execute(sa_text(stmt))
+                ok += 1
+            except Exception as e:
+                errors.append(f"{str(e)[:200]}")
+    return JSONResponse({
+        "status": "migrated", "ok": ok,
+        "errors_count": len(errors), "errors": errors[:10],
+    })
+
+
 @app.post("/tg/webhook")
 async def telegram_webhook(
     request: Request,
@@ -107,4 +137,5 @@ async def cron_tick(
     if authorization != expected:
         raise HTTPException(status_code=403, detail="bad cron secret")
     sent = await run_tick(request.app.state.bot)
-    return {"status": "ok", "sent": sent}
+    summaries = await run_daily_summary(request.app.state.bot)
+    return {"status": "ok", "sent": sent, "summaries": summaries}
