@@ -31,7 +31,7 @@ from app.auth import TelegramUser
 from app.config import get_settings
 from app.db import Subscription, Task, User, get_sessionmaker
 from app.nlp import ParsedTask, commit_parsed, format_summary, parse_ru
-from app.subscription import PREMIUM_PLANS, is_premium
+from app.subscription import PREMIUM_PLANS, RENEWAL_DISCOUNT_PLAN, is_premium
 
 log = logging.getLogger(__name__)
 
@@ -374,10 +374,50 @@ async def cb_buy_premium(cq: CallbackQuery) -> None:
         description=(
             f"Premium {plan['label']}: "
             "безлимитные задачи, "
-            "свои категории, AI."
+            "свои категории и все возможности."
         ),
         payload=json.dumps({
             "type": f"premium_{plan_key}",
+            "user_id": cq.from_user.id,
+            "days": plan["days"],
+        }),
+        currency="XTR",
+        prices=[
+            LabeledPrice(
+                label=f"Premium {plan['label']}",
+                amount=plan["stars"],
+            )
+        ],
+    )
+    await cq.answer()
+
+
+@dp.callback_query(F.data == "renew_discount")
+async def cb_renew_discount(cq: CallbackQuery) -> None:
+    if not cq.message or not cq.from_user:
+        await cq.answer()
+        return
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        if await is_premium(session, cq.from_user.id):
+            await cq.message.answer(
+                "У тебя уже есть активная "
+                "Premium-подписка! 🎉"
+            )
+            await cq.answer()
+            return
+
+    plan = RENEWAL_DISCOUNT_PLAN
+    await cq.message.answer_invoice(
+        title="Task Blo Premium — скидка",
+        description=(
+            f"Premium {plan['label']}: "
+            "безлимитные задачи, "
+            "свои категории и все возможности."
+        ),
+        payload=json.dumps({
+            "type": "premium_renewal_1m",
             "user_id": cq.from_user.id,
             "days": plan["days"],
         }),
@@ -439,10 +479,11 @@ async def on_successful_payment(message: Message) -> None:
         "🎉 <b>Добро пожаловать в Premium!</b>\n\n"
         "Спасибо, что выбрал Task Blo Premium. "
         "Теперь тебе доступны все возможности:\n\n"
-        "• Безлимитные задачи\n"
+        "• Безлимитные задачи каждый день\n"
         "• Свои категории\n"
-        "• Умный ввод текстом\n"
-        "• Голосовые сообщения\n\n"
+        "• Создавай задачи прямо из чата\n"
+        "• Создавай задачи голосом\n"
+        "• Напоминания заранее\n\n"
         f"Подписка активна до {exp_str}.\n"
         "Просто напиши или запиши голосовое — "
         "я создам задачу за тебя!"
