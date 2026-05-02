@@ -1,7 +1,7 @@
 from calendar import monthrange
 from datetime import UTC, date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -21,6 +21,13 @@ from app.schemas import (
 from app.subscription import can_create_category, can_create_task
 
 router = APIRouter(prefix="/api", tags=["api"])
+
+
+@router.get("/bot-info")
+async def bot_info(request: Request) -> dict:
+    username = getattr(request.app.state, "bot_username", "")
+    return {"bot_username": username}
+
 
 SUPPORT_LABEL = "Поддержка и приватность"
 SUPPORT_TEXT = (

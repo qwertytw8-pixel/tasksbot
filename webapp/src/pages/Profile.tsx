@@ -86,7 +86,7 @@ function ProfileHome() {
         <NavRow
           to="/profile/subscription"
           icon={<SparkIcon />}
-          title={subStatus?.is_premium ? "⭐ Premium активен" : "Подписка"}
+          title={subStatus?.is_premium ? "💎 Premium активен" : "💎 Premium"}
           subtitle={
             subStatus?.is_premium
               ? subStatus.subscription?.expires_at
@@ -102,19 +102,17 @@ function ProfileHome() {
           <TagIcon /> Промокод
         </div>
         <div className="form">
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="promo-row">
             <input
               className="input"
               placeholder="Введи промокод"
               value={promoCode}
               onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-              style={{ flex: 1 }}
             />
             <button
               className="btn"
               disabled={promoBusy || !promoCode.trim()}
               onClick={() => void activatePromo()}
-              style={{ whiteSpace: "nowrap" }}
             >
               Активировать
             </button>
