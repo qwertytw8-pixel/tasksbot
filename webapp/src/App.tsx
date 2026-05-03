@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
+import { OnboardingTour } from "./components/OnboardingTour";
 import {
   CalendarIcon,
   ListIcon,
@@ -27,6 +28,8 @@ function PageFallback() {
 }
 
 export function App() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -35,6 +38,9 @@ export function App() {
         const tz = getUserTimezone();
         if (!cancelled && me.tz !== tz && tz && tz !== "UTC") {
           await api.updateMe(tz);
+        }
+        if (!cancelled && !me.onboarding_completed) {
+          setShowOnboarding(true);
         }
       } catch {
         // ignore — user will see error in pages
@@ -47,6 +53,9 @@ export function App() {
 
   return (
     <div className="app">
+      {showOnboarding && (
+        <OnboardingTour onComplete={() => setShowOnboarding(false)} />
+      )}
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<Navigate to="/all" replace />} />

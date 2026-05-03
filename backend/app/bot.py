@@ -322,6 +322,13 @@ async def cmd_premium(message: Message) -> None:
 
 @dp.callback_query(F.data == "show_premium")
 async def cb_show_premium(cq: CallbackQuery) -> None:
+    if cq.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            user = await session.get(User, cq.from_user.id)
+            if user and user.premium_interest_at is None:
+                user.premium_interest_at = datetime.now(UTC)
+                await session.commit()
     if cq.message:
         img = _premium_image()
         if img:

@@ -6,6 +6,7 @@ export interface User {
   id: number;
   tz: string;
   is_admin: boolean;
+  onboarding_completed: boolean;
 }
 
 export interface Category {
@@ -26,6 +27,7 @@ export interface Task {
   due_at: string | null;
   remind_minutes_before: number | null;
   recurrence: string | null;
+  priority: number;
   is_done: boolean;
   done_at: string | null;
   archived_at: string | null;
@@ -42,6 +44,7 @@ export interface TaskInput {
   due_at?: string | null;
   remind_minutes_before?: number | null;
   recurrence?: string | null;
+  priority?: number;
   is_done?: boolean;
 }
 
@@ -163,6 +166,8 @@ export const api = {
   me: () => request<User>("/api/me"),
   updateMe: (tz: string) =>
     request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ tz }) }),
+  completeOnboarding: () =>
+    request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ onboarding_completed: true }) }),
   privacy: () => request<PrivacyInfo>("/api/privacy"),
 
   listCategories: () => request<Category[]>("/api/categories"),
