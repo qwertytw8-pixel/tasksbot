@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { api, type Category } from "../api";
+import { useI18n } from "../i18n";
 import { FolderIcon, PlusIcon } from "../icons";
 
 const PALETTE = [
@@ -15,6 +16,7 @@ const PALETTE = [
 ];
 
 export function CategoriesPage() {
+  const { t } = useI18n();
   const [cats, setCats] = useState<Category[] | null>(null);
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("🏷");
@@ -42,22 +44,22 @@ export function CategoriesPage() {
   }
 
   async function remove(id: number) {
-    if (!confirm("Удалить категорию?")) return;
+    if (!confirm(t("confirm.delete_category"))) return;
     await api.deleteCategory(id);
     await load();
   }
 
-  if (!cats) return <div className="spinner">Загрузка…</div>;
+  if (!cats) return <div className="spinner">{t("loading")}</div>;
 
   return (
     <div className="page">
       <div className="page-header">
         <div className="page-header__stack">
           <div className="page-header__title-row">
-            <h1>Категории</h1>
+            <h1>{t("cat.title")}</h1>
           </div>
           <div className="page-header__subtitle">
-            Собери свой рабочий ритм: личное, созвоны, спорт, дедлайны — как удобно тебе.
+            {t("cat.subtitle")}
           </div>
         </div>
       </div>
@@ -65,16 +67,16 @@ export function CategoriesPage() {
       <div className="surface" style={{ marginBottom: 14 }}>
         <div className="form">
           <div className="field">
-            <span className="field__label">Название</span>
+            <span className="field__label">{t("cat.name")}</span>
             <input
               className="input"
-              placeholder="Напр. Спорт"
+              placeholder={t("cat.name_placeholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
           <div className="field">
-            <span className="field__label">Эмодзи</span>
+            <span className="field__label">{t("cat.emoji")}</span>
             <input
               className="input"
               maxLength={4}
@@ -83,7 +85,7 @@ export function CategoriesPage() {
             />
           </div>
           <div className="field">
-            <span className="field__label">Цвет</span>
+            <span className="field__label">{t("cat.color")}</span>
             <div className="chips">
               {PALETTE.map((c) => (
                 <button
@@ -100,7 +102,7 @@ export function CategoriesPage() {
           </div>
           <button className="btn" disabled={busy || !name.trim()} onClick={() => void add()}>
             <PlusIcon style={{ width: 16, height: 16, marginRight: 8, verticalAlign: "-3px" }} />
-            Добавить категорию
+            {t("cat.add")}
           </button>
         </div>
       </div>
@@ -110,8 +112,8 @@ export function CategoriesPage() {
           <div className="empty__icon">
             <FolderIcon />
           </div>
-          <div className="empty__title">Категорий пока нет</div>
-          <div>Создай первую, чтобы задачи выглядели аккуратнее и были легче для навигации.</div>
+          <div className="empty__title">{t("cat.empty_title")}</div>
+          <div>{t("cat.empty_text")}</div>
         </div>
       )}
 
@@ -129,7 +131,7 @@ export function CategoriesPage() {
                 </div>
               </div>
               <button className="chip" onClick={() => void remove(c.id)}>
-                Удалить
+                {t("cat.delete")}
               </button>
             </div>
           </div>

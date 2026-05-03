@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, type Category, type Task } from "../api";
 import { FocusWidget } from "../components/FocusWidget";
 import { TaskRow, isTaskOverdue } from "../components/TaskRow";
+import { useI18n } from "../i18n";
 import {
   AlertTriangleIcon,
   BellIcon,
@@ -14,6 +15,7 @@ import {
 import { todayISO, tomorrowISO } from "../utils/date";
 
 export function TodayPage() {
+  const { t, lang } = useI18n();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +111,6 @@ export function TodayPage() {
 
   async function postpone(task: Task) {
     const nextDate = tomorrowISO();
-    // If the task had a time (has_time), keep the time-of-day and move to tomorrow.
     let due_at: string | null = null;
     let has_time = task.has_time;
     if (has_time && task.due_at) {
@@ -134,7 +135,7 @@ export function TodayPage() {
   }
 
   async function remove(task: Task) {
-    if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
+    if (!window.confirm(t("confirm.delete_task").replace("{title}", task.title))) return;
     await api.deleteTask(task.id);
     setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id && t.parent_task_id !== task.id));
   }
@@ -144,7 +145,8 @@ export function TodayPage() {
     setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
   }
 
-  const todayLabel = new Date().toLocaleDateString("ru-RU", {
+  const locale = lang === "ru" ? "ru-RU" : "en-US";
+  const todayLabel = new Date().toLocaleDateString(locale, {
     day: "numeric",
     month: "long",
     weekday: "long",
@@ -157,7 +159,7 @@ export function TodayPage() {
           <div className="empty__icon">
             <BellIcon />
           </div>
-          <div className="empty__title">Ошибка</div>
+          <div className="empty__title">{t("today.error")}</div>
           <div>{error}</div>
         </div>
       </div>
@@ -165,7 +167,7 @@ export function TodayPage() {
   }
 
   if (!tasks) {
-    return <div className="spinner">Загрузка…</div>;
+    return <div className="spinner">{t("loading")}</div>;
   }
 
   const catById = new Map(cats.map((c) => [c.id, c] as const));
@@ -177,11 +179,11 @@ export function TodayPage() {
       <div className="page-header">
         <div className="page-header__stack">
           <div className="page-header__title-row">
-            <h1>Сегодня</h1>
+            <h1>{t("today.title")}</h1>
             <span className="page-header__date">{todayLabel}</span>
           </div>
           <div className="page-header__subtitle">
-            Спокойный обзор дня: главное, просроченное и всё, что ждёт внимания.
+            {t("today.subtitle")}
           </div>
         </div>
       </div>
@@ -189,13 +191,13 @@ export function TodayPage() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-card__label">
-            <ClockIcon /> В фокусе
+            <ClockIcon /> {t("today.focus")}
           </div>
           <div className="stat-card__value">{totalOpen}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card__label">
-            <CheckIcon /> Закрыто
+            <CheckIcon /> {t("today.closed")}
           </div>
           <div className="stat-card__value">{done?.length ?? 0}</div>
         </div>
@@ -212,20 +214,20 @@ export function TodayPage() {
           <div className="empty__icon">
             <SparkIcon />
           </div>
-          <div className="empty__title">Чисто и спокойно</div>
-          <div>Пока задач нет. Нажми на круглую кнопку внизу и добавь первую.</div>
+          <div className="empty__title">{t("today.empty_title")}</div>
+          <div>{t("today.empty_text")}</div>
         </div>
       )}
 
       {overdue && overdue.length > 0 && (
-        <Section title="Просрочено" count={overdue.length} icon={AlertTriangleIcon}>
-          {overdue.map((t) => (
+        <Section title={t("today.section_overdue")} count={overdue.length} icon={AlertTriangleIcon}>
+          {overdue.map((task) => (
             <TaskRow
-              key={t.id}
-              task={t}
-              category={t.category_id ? catById.get(t.category_id) : null}
+              key={task.id}
+              task={task}
+              category={task.category_id ? catById.get(task.category_id) : null}
               onToggle={toggle}
-              subtasks={childrenByParent.get(t.id)}
+              subtasks={childrenByParent.get(task.id)}
               onToggleSub={toggle}
               onPostpone={postpone}
               onArchive={archive}
@@ -236,14 +238,14 @@ export function TodayPage() {
       )}
 
       {todayTasks && todayTasks.length > 0 && (
-        <Section title="На сегодня" count={todayTasks.length} icon={ClockIcon}>
-          {todayTasks.map((t) => (
+        <Section title={t("today.section_today")} count={todayTasks.length} icon={ClockIcon}>
+          {todayTasks.map((task) => (
             <TaskRow
-              key={t.id}
-              task={t}
-              category={t.category_id ? catById.get(t.category_id) : null}
+              key={task.id}
+              task={task}
+              category={task.category_id ? catById.get(task.category_id) : null}
               onToggle={toggle}
-              subtasks={childrenByParent.get(t.id)}
+              subtasks={childrenByParent.get(task.id)}
               onToggleSub={toggle}
               onPostpone={postpone}
               onDelete={remove}
@@ -253,14 +255,14 @@ export function TodayPage() {
       )}
 
       {inbox && inbox.length > 0 && (
-        <Section title="Без даты" count={inbox.length} icon={InboxIcon}>
-          {inbox.map((t) => (
+        <Section title={t("today.section_inbox")} count={inbox.length} icon={InboxIcon}>
+          {inbox.map((task) => (
             <TaskRow
-              key={t.id}
-              task={t}
-              category={t.category_id ? catById.get(t.category_id) : null}
+              key={task.id}
+              task={task}
+              category={task.category_id ? catById.get(task.category_id) : null}
               onToggle={toggle}
-              subtasks={childrenByParent.get(t.id)}
+              subtasks={childrenByParent.get(task.id)}
               onToggleSub={toggle}
               onPostpone={postpone}
               onDelete={remove}
@@ -270,14 +272,14 @@ export function TodayPage() {
       )}
 
       {done && done.length > 0 && (
-        <Section title="Готово сегодня" count={done.length} icon={CheckIcon}>
-          {done.map((t) => (
+        <Section title={t("today.section_done")} count={done.length} icon={CheckIcon}>
+          {done.map((task) => (
             <TaskRow
-              key={t.id}
-              task={t}
-              category={t.category_id ? catById.get(t.category_id) : null}
+              key={task.id}
+              task={task}
+              category={task.category_id ? catById.get(task.category_id) : null}
               onToggle={toggle}
-              subtasks={childrenByParent.get(t.id)}
+              subtasks={childrenByParent.get(task.id)}
               onToggleSub={toggle}
               onArchive={archive}
               onDelete={remove}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { Category, Task } from "../api";
+import { useI18n, type Lang } from "../i18n";
 import { Confetti } from "./Confetti";
 import {
   AlertTriangleIcon,
@@ -35,13 +36,14 @@ export interface TaskRowProps {
   onUnarchive?: (task: Task) => void;
 }
 
-function dueLabelFor(task: Task): { label: string | null; icon: "time" | "date" | null } {
+function dueLabelFor(task: Task, lang: Lang, t: (k: string) => string): { label: string | null; icon: "time" | "date" | null } {
+  const locale = lang === "ru" ? "ru-RU" : "en-US";
   if (task.has_time && task.due_at) {
     const d = new Date(task.due_at);
     const today = new Date();
     const sameDay = isSameDay(d, today);
     return {
-      label: d.toLocaleString("ru-RU", {
+      label: d.toLocaleString(locale, {
         hour: "2-digit",
         minute: "2-digit",
         day: sameDay ? undefined : "numeric",
@@ -53,9 +55,9 @@ function dueLabelFor(task: Task): { label: string | null; icon: "time" | "date" 
   if (task.due_date) {
     const d = fromISODate(task.due_date);
     const today = new Date();
-    if (isSameDay(d, today)) return { label: "Сегодня", icon: "date" };
+    if (isSameDay(d, today)) return { label: t("section.today"), icon: "date" };
     return {
-      label: d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }),
+      label: d.toLocaleDateString(locale, { day: "numeric", month: "short" }),
       icon: "date",
     };
   }
@@ -76,27 +78,28 @@ export function isTaskOverdue(task: Task, now: Date = new Date()): boolean {
   return false;
 }
 
-function overdueLabelFor(task: Task, now: Date = new Date()): string | null {
+function overdueLabelFor(task: Task, t: (k: string) => string, now: Date = new Date()): string | null {
   if (!isTaskOverdue(task, now)) return null;
+  const od = t("task.overdue");
   if (task.has_time && task.due_at) {
     const diffMin = Math.floor((now.getTime() - new Date(task.due_at).getTime()) / 60000);
-    if (diffMin < 1) return "Просрочено только что";
-    if (diffMin < 60) return `Просрочено ${diffMin} мин`;
+    if (diffMin < 1) return `${od} ${t("task.just_now")}`;
+    if (diffMin < 60) return `${od} ${diffMin} ${t("task.min")}`;
     const hours = Math.floor(diffMin / 60);
     const mins = diffMin % 60;
-    if (hours < 24) return mins === 0 ? `Просрочено ${hours} ч` : `Просрочено ${hours} ч ${mins} мин`;
+    if (hours < 24) return mins === 0 ? `${od} ${hours} ${t("task.hr")}` : `${od} ${hours} ${t("task.hr")} ${mins} ${t("task.min")}`;
     const days = Math.floor(hours / 24);
-    return `Просрочено ${days} дн`;
+    return `${od} ${days} ${t("task.day_short")}`;
   }
   if (task.due_date) {
     const due = fromISODate(task.due_date);
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const diffDays = Math.floor((today.getTime() - due.getTime()) / (24 * 60 * 60 * 1000));
-    if (diffDays <= 0) return "Просрочено";
-    if (diffDays === 1) return "Просрочено на 1 день";
-    return `Просрочено на ${diffDays} дн`;
+    if (diffDays <= 0) return od;
+    if (diffDays === 1) return `${od} ${t("task.by_1_day")}`;
+    return `${od} ${t("task.by")} ${diffDays} ${t("task.day_short")}`;
   }
-  return "Просрочено";
+  return od;
 }
 
 // Dispatched when any task-swipe opens so all others close.
@@ -121,13 +124,14 @@ export function TaskRow({
   onArchive,
   onUnarchive,
 }: TaskRowProps) {
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [confettiOrigin, setConfettiOrigin] = useState<{ x: number; y: number } | null>(null);
 
-  const { label: dueLabel, icon: dueIcon } = dueLabelFor(task);
+  const { label: dueLabel, icon: dueIcon } = dueLabelFor(task, lang, t);
   const childCount = subtasks?.length ?? 0;
   const childDone = subtasks?.filter((c) => c.is_done).length ?? 0;
-  const overdueLabel = overdueLabelFor(task);
+  const overdueLabel = overdueLabelFor(task, t);
 
   // Hide "Завтра" if the task is already scheduled for tomorrow.
   const isAlreadyTomorrow = task.due_date === tomorrowISO();
@@ -315,7 +319,7 @@ export function TaskRow({
                 }}
               >
                 <SunriseIcon />
-                <span>Завтра</span>
+                <span>{t("task.tomorrow")}</span>
               </button>
             )}
             {hasToggleInSwipe && (
@@ -328,7 +332,7 @@ export function TaskRow({
                 }}
               >
                 <CheckIcon />
-                <span>{task.is_done ? "Вернуть" : "Готово"}</span>
+                <span>{task.is_done ? t("task.undone") : t("task.done")}</span>
               </button>
             )}
             {onArchive && (
@@ -341,7 +345,7 @@ export function TaskRow({
                 }}
               >
                 <ArchiveIcon />
-                <span>В архив</span>
+                <span>{t("task.archive")}</span>
               </button>
             )}
             {onUnarchive && (
@@ -354,7 +358,7 @@ export function TaskRow({
                 }}
               >
                 <RotateCcwIcon />
-                <span>Вернуть</span>
+                <span>{t("task.restore")}</span>
               </button>
             )}
             {onDelete && (
@@ -367,7 +371,7 @@ export function TaskRow({
                 }}
               >
                 <TrashIcon />
-                <span>Удалить</span>
+                <span>{t("task.delete")}</span>
               </button>
             )}
           </div>
@@ -398,7 +402,7 @@ export function TaskRow({
                 }
                 onToggle(task);
               }}
-              aria-label={task.is_done ? "Отметить невыполненной" : "Отметить выполненной"}
+              aria-label={task.is_done ? t("task.mark_undone") : t("task.mark_done")}
             >
               {task.is_done ? <CheckIcon /> : null}
             </button>
@@ -444,7 +448,7 @@ export function TaskRow({
                   )}
                   {task.remind_minutes_before != null && (
                     <span className="task__meta-item">
-                      <BellIcon />−{task.remind_minutes_before} мин
+                      <BellIcon />−{task.remind_minutes_before} {t("task.min")}
                     </span>
                   )}
                   {childCount > 0 && (
@@ -481,6 +485,7 @@ export function TaskRow({
 }
 
 function SubtaskRow({ task, onToggle }: { task: Task; onToggle: (t: Task) => void }) {
+  const { t: tr } = useI18n();
   const navigate = useNavigate();
   return (
     <div
@@ -497,7 +502,7 @@ function SubtaskRow({ task, onToggle }: { task: Task; onToggle: (t: Task) => voi
           haptic("light");
           onToggle(task);
         }}
-        aria-label={task.is_done ? "Отметить невыполненной" : "Отметить выполненной"}
+        aria-label={task.is_done ? tr("task.mark_undone") : tr("task.mark_done")}
       >
         {task.is_done ? <CheckIcon /> : null}
       </button>

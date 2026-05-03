@@ -1104,6 +1104,28 @@ button {
   backdrop-filter: var(--tb-blur-light);
 }
 
+.segmented--compact {
+  gap: 4px;
+}
+.segmented--compact .segmented__item {
+  padding: 6px 10px;
+  font-size: 13px;
+  min-height: unset;
+}
+
+/* ---------- Settings row ---------- */
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-row__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tb-text);
+}
+
 /* ---------- Calendar ---------- */
 
 .cal {

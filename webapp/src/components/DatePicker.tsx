@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
 
+import { useI18n } from "../i18n";
 import { ChevronLeftIcon, ChevronRightIcon } from "../icons";
 import { haptic } from "../telegram";
 import {
-  RU_MONTHS,
-  RU_WEEKDAYS_SHORT,
   addMonths,
   buildMonthGrid,
   fromISODate,
@@ -20,6 +19,7 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ value, onChange }: DatePickerProps) {
+  const { t } = useI18n();
   const selected = fromISODate(value || todayISO());
   const [monthAnchor, setMonthAnchor] = useState<Date>(() =>
     startOfMonth(selected)
@@ -30,7 +30,9 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
   const today = new Date();
   const todayStr = todayISO();
 
-  const monthLabel = `${RU_MONTHS[monthAnchor.getMonth()]} ${monthAnchor.getFullYear()}`;
+  const monthLabel = `${t(`month.${monthAnchor.getMonth()}`)} ${monthAnchor.getFullYear()}`;
+
+  const weekdays = Array.from({ length: 7 }, (_, i) => t(`wd.${i}`));
 
   function selectDay(d: Date) {
     haptic("light");
@@ -80,7 +82,7 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
           className={`dp__quick-btn ${value === todayStr ? "dp__quick-btn--active" : ""}`}
           onClick={goToday}
         >
-          Сегодня
+          {t("dp.today")}
         </button>
         <button
           type="button"
@@ -94,13 +96,13 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
             setMonthAnchor(startOfMonth(d));
           }}
         >
-          Завтра
+          {t("dp.tomorrow")}
         </button>
       </div>
 
       <div className="dp__weekdays">
-        {RU_WEEKDAYS_SHORT.map((wd) => (
-          <div key={wd} className="dp__wd">
+        {weekdays.map((wd, i) => (
+          <div key={i} className="dp__wd">
             {wd}
           </div>
         ))}

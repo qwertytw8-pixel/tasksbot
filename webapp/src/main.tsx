@@ -5,6 +5,7 @@ import { AppRoot } from "@telegram-apps/telegram-ui";
 import "@telegram-apps/telegram-ui/dist/styles.css";
 
 import { App } from "./App";
+import { I18nProvider } from "./i18n";
 import { initTelegram } from "./telegram";
 import { applyTheme, getStoredMode } from "./theme";
 import "./styles.css";
@@ -15,9 +16,11 @@ const initialResolved = applyTheme(getStoredMode());
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AppRoot appearance={initialResolved}>
-        <App />
-      </AppRoot>
+      <I18nProvider>
+        <AppRoot appearance={initialResolved}>
+          <App />
+        </AppRoot>
+      </I18nProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

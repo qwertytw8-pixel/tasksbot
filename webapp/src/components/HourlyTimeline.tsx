@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 import type { Category, Task } from "../api";
+import { useI18n } from "../i18n";
 import { FlagIcon } from "../icons";
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -15,6 +16,7 @@ interface HourlyTimelineProps {
 }
 
 export function HourlyTimeline({ tasks, categories }: HourlyTimelineProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   const timedTasks = tasks
@@ -39,22 +41,22 @@ export function HourlyTimeline({ tasks, categories }: HourlyTimelineProps) {
     <div className="hourly-timeline">
       {untimedTasks.length > 0 && (
         <div className="hourly-timeline__untimed">
-          <div className="hourly-timeline__untimed-label">Весь день</div>
+          <div className="hourly-timeline__untimed-label">{t("calendar.all_day")}</div>
           <div className="hourly-timeline__untimed-list">
-            {untimedTasks.map((t) => {
-              const cat = t.category_id ? categories.get(t.category_id) : null;
+            {untimedTasks.map((task) => {
+              const cat = task.category_id ? categories.get(task.category_id) : null;
               return (
                 <div
-                  key={t.id}
-                  className={`ht-task ${t.is_done ? "ht-task--done" : ""}`}
-                  onClick={() => navigate(`/edit/${t.id}`)}
+                  key={task.id}
+                  className={`ht-task ${task.is_done ? "ht-task--done" : ""}`}
+                  onClick={() => navigate(`/edit/${task.id}`)}
                 >
-                  {t.priority > 0 && (
-                    <span className="ht-task__priority" style={{ color: PRIORITY_COLORS[t.priority] }}>
+                  {task.priority > 0 && (
+                    <span className="ht-task__priority" style={{ color: PRIORITY_COLORS[task.priority] }}>
                       <FlagIcon />
                     </span>
                   )}
-                  <span className="ht-task__title">{t.title}</span>
+                  <span className="ht-task__title">{task.title}</span>
                   {cat && (
                     <span className="ht-task__cat" style={cat.color ? { color: cat.color } : undefined}>
                       {cat.emoji ?? ""} {cat.name}
@@ -81,21 +83,21 @@ export function HourlyTimeline({ tasks, categories }: HourlyTimelineProps) {
               </div>
               <div className="ht-row__line" />
               <div className="ht-row__tasks">
-                {hTasks.map((t) => {
-                  const cat = t.category_id ? categories.get(t.category_id) : null;
-                  const mins = new Date(t.due_at!).getMinutes();
+                {hTasks.map((task) => {
+                  const cat = task.category_id ? categories.get(task.category_id) : null;
+                  const mins = new Date(task.due_at!).getMinutes();
                   return (
                     <div
-                      key={t.id}
-                      className={`ht-task ${t.is_done ? "ht-task--done" : ""}`}
-                      onClick={() => navigate(`/edit/${t.id}`)}
+                      key={task.id}
+                      className={`ht-task ${task.is_done ? "ht-task--done" : ""}`}
+                      onClick={() => navigate(`/edit/${task.id}`)}
                     >
-                      {t.priority > 0 && (
-                        <span className="ht-task__priority" style={{ color: PRIORITY_COLORS[t.priority] }}>
+                      {task.priority > 0 && (
+                        <span className="ht-task__priority" style={{ color: PRIORITY_COLORS[task.priority] }}>
                           <FlagIcon />
                         </span>
                       )}
-                      <span className="ht-task__title">{t.title}</span>
+                      <span className="ht-task__title">{task.title}</span>
                       <span className="ht-task__time">
                         {String(h).padStart(2, "0")}:{String(mins).padStart(2, "0")}
                       </span>
