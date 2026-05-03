@@ -285,7 +285,11 @@ export function TaskRow({
         {hasActions && (
           <div
             className="task-swipe__actions"
-            style={{ width: maxOffset }}
+            style={{
+              width: maxOffset,
+              opacity: open ? 1 : Math.max(0, Math.min(1, (Math.abs(dx) - 20) / 20)),
+              visibility: Math.abs(dx) < 4 && !open ? "hidden" : "visible",
+            }}
             aria-hidden={!open}
           >
             {onPostpone && (

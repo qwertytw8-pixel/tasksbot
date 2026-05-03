@@ -5,6 +5,7 @@ const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 export interface User {
   id: number;
   tz: string;
+  onboarding_completed: boolean;
 }
 
 export interface Category {
@@ -99,6 +100,8 @@ export const api = {
   me: () => request<User>("/api/me"),
   updateMe: (tz: string) =>
     request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ tz }) }),
+  updateMeFields: (fields: { tz?: string; onboarding_completed?: boolean }) =>
+    request<User>("/api/me", { method: "PATCH", body: JSON.stringify(fields) }),
   privacy: () => request<PrivacyInfo>("/api/privacy"),
 
   listCategories: () => request<Category[]>("/api/categories"),

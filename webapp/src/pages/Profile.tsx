@@ -11,6 +11,7 @@ import {
   HelpIcon,
   MonitorIcon,
   MoonIcon,
+  RotateCcwIcon,
   ShieldIcon,
   SparkIcon,
   SunIcon,
@@ -21,7 +22,8 @@ import { applyTheme, getStoredMode, setStoredMode, type ThemeMode } from "../the
 const SUPPORT_TG = "@ficsyk";
 const SUPPORT_TG_URL = "https://t.me/ficsyk";
 
-function ProfileHome() {
+function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<ThemeMode>(() => getStoredMode());
 
   function pick(next: ThemeMode) {
@@ -77,6 +79,24 @@ function ProfileHome() {
             onClick={() => pick("dark")}
           />
         </div>
+      </div>
+
+      <div className="surface" style={{ marginBottom: 14 }}>
+        <button
+          type="button"
+          className="onboarding-reset-btn"
+          onClick={async () => {
+            try {
+              await api.updateMeFields({ onboarding_completed: false });
+            } catch {
+              // best-effort
+            }
+            if (onResetOnboarding) onResetOnboarding();
+            navigate("/all");
+          }}
+        >
+          <RotateCcwIcon /> Пройти обучение заново
+        </button>
       </div>
 
       <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
@@ -375,10 +395,10 @@ function ArchivePage() {
   );
 }
 
-export function ProfileRoutes() {
+export function ProfileRoutes({ onResetOnboarding }: { onResetOnboarding?: () => void }) {
   return (
     <Routes>
-      <Route index element={<ProfileHome />} />
+      <Route index element={<ProfileHome onResetOnboarding={onResetOnboarding} />} />
       <Route path="archive" element={<ArchivePage />} />
       <Route path="support" element={<SupportPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
