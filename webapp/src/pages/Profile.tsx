@@ -184,9 +184,10 @@ function ProfileHome() {
           type="button"
           className="btn btn--outline"
           style={{ width: "100%" }}
-          onClick={async () => {
-            await api.resetOnboarding();
-            window.location.href = "/all";
+          onClick={() => {
+            void api.resetOnboarding().finally(() => {
+              window.location.replace("/all");
+            });
           }}
         >
           <RotateCcwIcon style={{ width: 16, height: 16, marginRight: 8, verticalAlign: "-3px" }} />
