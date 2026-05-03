@@ -3,7 +3,7 @@ import { Link, Route, Routes, useNavigate } from "react-router-dom";
 
 import { api, type Category, type PrivacyInfo, type SubscriptionStatus, type Task } from "../api";
 import { TaskRow } from "../components/TaskRow";
-import { useI18n, getStoredHorizon, setStoredHorizon, type Lang } from "../i18n";
+import { useI18n, getStoredHorizon, setStoredHorizon } from "../i18n";
 import {
   ArchiveIcon,
   ArrowRightIcon,

@@ -41,7 +41,7 @@ const SECTION_ORDER: SectionDef[] = [
 ];
 
 export function AllPage() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
   const [filterCat, setFilterCat] = useState<number | null>(null);
