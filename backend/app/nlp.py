@@ -27,26 +27,26 @@ MAX_REMIND_MIN = 10_080  # 7 days
 
 _GREETING_PATTERNS: list[re.Pattern[str]] = [
     re.compile(
-        r"\b(?:привет|здравствуй\w*|добрый\s+(?:день|вечер|утро)|"
+        r"^\s*(?:привет|здравствуй\w*|добрый\s+(?:день|вечер|утро)|"
         r"здорово|хай|хэлло|hello|hi)\b[,!.\s]*",
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:слушай|смотри|короче|значит|ну\s+вот|вот|"
+        r"^\s*(?:слушай|смотри|короче|значит|ну\s+вот|вот|"
         r"ладно|окей|ок|давай)\b[,.\s]*",
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:у\s+меня|мне\s+(?:нужно|надо|необходимо)|"
+        r"^\s*(?:у\s+меня|мне\s+(?:нужно|надо|необходимо)|"
         r"(?:вот\s+)?(?:мои|такие|следующие)\s+(?:задач\w*|план\w*|дел\w*))\b[,.:!\s]*",
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:(?:на\s+)?сегодня\s+(?:(?:вот\s+)?такие\s+)?(?:задач\w*|план\w*|дел\w*))\b[,.:!\s]*",
+        r"^\s*(?:(?:на\s+)?сегодня\s+(?:(?:вот\s+)?такие\s+)?(?:задач\w*|план\w*|дел\w*))\b[,.:!\s]*",
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?\b[,.:!\s]*",
+        r"^\s*(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?\b[,.:!\s]*",
         re.IGNORECASE,
     ),
 ]
@@ -67,7 +67,7 @@ _FILLER_ONLY = re.compile(
 
 _RE_MULTI_SPLIT = re.compile(
     r"(?:\.\s+)|(?:;\s*)|"
-    r"(?:\b(?:потом|затем|далее|ещ[её]|также|и\s+ещ[её]|следующ(?:ая|ее|ий))\b[,.]?\s*)",
+    r"(?:\b(?:потом|затем|далее|также|и\s+ещ[её]|следующ(?:ая|ее|ий))\b[,.]?\s*)",
     re.IGNORECASE,
 )
 
@@ -88,8 +88,14 @@ _RE_TIME_RANGE = re.compile(
 def _strip_greetings(text: str) -> str:
     """Remove greetings and filler from the beginning of text."""
     result = text
-    for pat in _GREETING_PATTERNS:
-        result = pat.sub(" ", result, count=1)
+    changed = True
+    while changed:
+        changed = False
+        for pat in _GREETING_PATTERNS:
+            new = pat.sub("", result, count=1)
+            if new != result:
+                result = new
+                changed = True
     return re.sub(r"\s+", " ", result).strip()
 
 
@@ -222,10 +228,6 @@ def parse_ru(
     `now` is only used in tests; production code should pass None.
     """
     if not text or not text.strip():
-        return ParsedTask(title="")
-
-    text = _strip_greetings(text)
-    if not text:
         return ParsedTask(title="")
 
     priority, text = _extract_voice_priority(text)

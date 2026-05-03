@@ -560,6 +560,23 @@ async def cmd_new(message: Message, command: CommandObject) -> None:
     if not text:
         await message.answer(NEW_TASK_HINT, reply_markup=_open_app_kb())
         return
+    if message.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            if not await is_premium(session, message.from_user.id):
+                await message.answer(
+                    "💎 Добавление задач через сообщения доступно "
+                    "с Premium-подпиской.",
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="💎 Купить Premium",
+                                callback_data="show_premium",
+                            )
+                        ]]
+                    ),
+                )
+                return
     await _handle_task_text(message, text)
 
 
@@ -690,17 +707,24 @@ async def _transcribe_google(ogg_bytes: bytes) -> str | None:
             ogg_f.write(ogg_bytes)
             ogg_f.flush()
             wav_path = ogg_f.name + ".wav"
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", ogg_f.name, "-ar", "16000", "-ac", "1", wav_path],
-                capture_output=True,
-            )
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(wav_path) as source:
-                audio = recognizer.record(source)
             try:
-                return recognizer.recognize_google(audio, language="ru-RU")
-            except (sr.UnknownValueError, sr.RequestError):
-                return None
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", ogg_f.name, "-ar", "16000", "-ac", "1", wav_path],
+                    capture_output=True,
+                )
+                recognizer = sr.Recognizer()
+                with sr.AudioFile(wav_path) as source:
+                    audio = recognizer.record(source)
+                try:
+                    return recognizer.recognize_google(audio, language="ru-RU")
+                except (sr.UnknownValueError, sr.RequestError):
+                    return None
+            finally:
+                import contextlib
+                import os
+
+                with contextlib.suppress(OSError):
+                    os.unlink(wav_path)
 
     return await asyncio.to_thread(_sync_transcribe)
 
