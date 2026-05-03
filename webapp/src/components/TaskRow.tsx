@@ -151,14 +151,17 @@ export function TaskRow({
     decided: "horizontal" | "vertical" | null;
   } | null>(null);
 
+  const actionsRef = useRef<HTMLDivElement | null>(null);
+
   // Close on global open of another task or outside taps.
   useEffect(() => {
     function onOpen(e: Event) {
       const detail = (e as CustomEvent<SwipeOpenDetail>).detail;
       if (!detail || detail.id !== task.id) setDx(0);
     }
-    function onGlobalDown() {
-      // Close any open row when the user taps somewhere not on this row.
+    function onGlobalDown(e: Event) {
+      const target = e.target as HTMLElement;
+      if (actionsRef.current?.contains(target)) return;
       setDx(0);
     }
     window.addEventListener(SWIPE_EVENT, onOpen);
@@ -256,9 +259,12 @@ export function TaskRow({
     .filter(Boolean)
     .join(" ");
 
+  const showActions = dragging || open || dx !== 0;
+
   const swipeClass = [
     "task-swipe",
     open ? "task-swipe--open" : "",
+    showActions ? "task-swipe--revealing" : "",
     compact ? "task-swipe--compact" : "",
     !hasActions ? "task-swipe--no-actions" : "",
   ]
@@ -279,6 +285,7 @@ export function TaskRow({
       <div className={swipeClass}>
         {hasActions && (
           <div
+            ref={actionsRef}
             className="task-swipe__actions"
             style={{ width: maxOffset }}
             aria-hidden={!open}

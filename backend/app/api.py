@@ -221,15 +221,35 @@ async def delete_category(
 
 
 async def _sync_reminders(session: AsyncSession, task: Task) -> None:
-    await session.execute(delete(Reminder).where(Reminder.task_id == task.id))
-    if (
-        task.due_at
+    need_reminder = (
+        task.due_at is not None
         and task.remind_minutes_before is not None
         and not task.is_done
         and task.archived_at is None
-    ):
-        fire_at = task.due_at - timedelta(minutes=task.remind_minutes_before)
-        session.add(Reminder(task_id=task.id, fire_at=fire_at))
+    )
+
+    if not need_reminder:
+        await session.execute(delete(Reminder).where(Reminder.task_id == task.id))
+        return
+
+    fire_at = task.due_at - timedelta(minutes=task.remind_minutes_before)
+
+    existing = await session.execute(
+        select(Reminder).where(Reminder.task_id == task.id)
+    )
+    existing_reminders = list(existing.scalars().all())
+
+    matching = next((r for r in existing_reminders if r.fire_at == fire_at), None)
+    if matching is not None:
+        for r in existing_reminders:
+            if r.id != matching.id:
+                await session.delete(r)
+        return
+
+    for r in existing_reminders:
+        await session.delete(r)
+    await session.flush()
+    session.add(Reminder(task_id=task.id, fire_at=fire_at, sent=False))
 
 
 AUTO_ARCHIVE_AFTER = timedelta(hours=24)
