@@ -1944,7 +1944,8 @@ button {
 }
 
 .task-swipe--active .task-swipe__actions,
-.task-swipe--open .task-swipe__actions {
+.task-swipe--open .task-swipe__actions,
+.task-swipe--revealing .task-swipe__actions {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -2823,4 +2824,72 @@ button {
 
 .limit-modal__close:active {
   color: var(--tb-text);
+}
+
+/* ---------- Time toggle (date+time combined) ---------- */
+
+.time-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.time-toggle__track {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--tb-cell-bg-muted);
+  border: 1px solid var(--tb-glass-border);
+  transition: background 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 280ms ease;
+  flex-shrink: 0;
+}
+
+.time-toggle__track--on {
+  background: var(--tb-accent-strong);
+  border-color: var(--tb-accent-strong);
+}
+
+.time-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.time-toggle__track--on .time-toggle__thumb {
+  transform: translateX(20px);
+}
+
+.time-toggle__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tb-hint);
+  transition: color 200ms ease;
+}
+
+.time-toggle__track--on ~ .time-toggle__label {
+  color: var(--tb-text);
+}
+
+.time-toggle__label svg {
+  width: 16px;
+  height: 16px;
+}
+
+.time-section-enter {
+  animation: tb-rise 0.28s ease both;
 }
