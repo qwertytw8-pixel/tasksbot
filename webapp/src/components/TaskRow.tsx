@@ -12,7 +12,7 @@ import {
   CheckIcon,
   ClockIcon,
   CornerDownRightIcon,
-  FlagIcon,
+
   LayersIcon,
   RotateCcwIcon,
   SunriseIcon,
@@ -20,12 +20,6 @@ import {
 } from "../icons";
 import { haptic } from "../telegram";
 import { fromISODate, isSameDay } from "../utils/date";
-
-const PRIORITY_COLORS: Record<number, string> = {
-  1: "#4caf50",
-  2: "#ff9800",
-  3: "#f44336",
-};
 
 export interface TaskRowProps {
   task: Task;
@@ -278,11 +272,16 @@ export function TaskRow({
     .filter(Boolean)
     .join(" ");
 
+  const priorityClass = task.priority
+    ? `task-card--priority-${task.priority}`
+    : "";
+
   const cardClass = [
     "task-card",
     task.is_done ? "task-card--done" : "",
     overdueLabel ? "task-card--overdue" : "",
     isArchived ? "task-card--archived" : "",
+    priorityClass,
   ]
     .filter(Boolean)
     .join(" ");
@@ -409,17 +408,9 @@ export function TaskRow({
                 dueLabel ||
                 overdueLabel ||
                 task.remind_minutes_before != null ||
-                childCount > 0 ||
-                task.priority > 0) && (
+                childCount > 0) && (
                 <div className="task__meta">
-                  {task.priority > 0 && (
-                    <span
-                      className="task__meta-item task__meta-item--priority"
-                      style={{ color: PRIORITY_COLORS[task.priority] }}
-                    >
-                      <FlagIcon />
-                    </span>
-                  )}
+
                   {category && (
                     <span
                       className="task__cat"

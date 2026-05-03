@@ -23,6 +23,125 @@ from app.db import Category, Task, User
 DEFAULT_REMIND_IF_TIME = 15
 MAX_REMIND_MIN = 10_080  # 7 days
 
+# --------------- greeting / filler filter --------------------------------
+
+_GREETING_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(
+        r"\b(?:привет|здравствуй\w*|добрый\s+(?:день|вечер|утро)|"
+        r"здорово|хай|хэлло|hello|hi)\b[,!.\s]*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:слушай|смотри|короче|значит|ну\s+вот|вот|"
+        r"ладно|окей|ок|давай)\b[,.\s]*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:у\s+меня|мне\s+(?:нужно|надо|необходимо)|"
+        r"(?:вот\s+)?(?:мои|такие|следующие)\s+(?:задач\w*|план\w*|дел\w*))\b[,.:!\s]*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:(?:на\s+)?сегодня\s+(?:(?:вот\s+)?такие\s+)?(?:задач\w*|план\w*|дел\w*))\b[,.:!\s]*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?\b[,.:!\s]*",
+        re.IGNORECASE,
+    ),
+]
+
+_FILLER_ONLY = re.compile(
+    r"^[\s,.:;!?\-—]*"
+    r"(?:привет\w*|здравствуй\w*|добрый\s+(?:день|вечер|утро)|"
+    r"смотри|слушай|короче|значит|ну|вот|ладно|окей|ок|давай|"
+    r"у\s+меня|мне\s+нужно|мне\s+надо|"
+    r"(?:вот\s+)?(?:мои|такие|следующие)\s+(?:задач\w*|план\w*|дел\w*)|"
+    r"(?:на\s+)?сегодня\s+(?:(?:вот\s+)?такие\s+)?(?:задач\w*|план\w*|дел\w*)|"
+    r"(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?)"
+    r"[\s,.:;!?\-—]*$",
+    re.IGNORECASE,
+)
+
+# --------------- multi-task splitter -------------------------------------
+
+_RE_MULTI_SPLIT = re.compile(
+    r"(?:\.\s+)|(?:;\s*)|"
+    r"(?:\b(?:потом|затем|далее|ещ[её]|также|и\s+ещ[её]|следующ(?:ая|ее|ий))\b[,.]?\s*)",
+    re.IGNORECASE,
+)
+
+# --------------- voice priority / time range -----------------------------
+
+_RE_PRIORITY_VOICE = re.compile(
+    r"\b(?:важность|приоритет|степень\s+важности)\s+"
+    r"(низк\w+|средн\w+|высок\w+)\b",
+    re.IGNORECASE,
+)
+
+_RE_TIME_RANGE = re.compile(
+    r"\bс\s+(\d{1,2})(?::(\d{2}))?\s+до\s+(\d{1,2})(?::(\d{2}))?\b",
+    re.IGNORECASE,
+)
+
+
+def _strip_greetings(text: str) -> str:
+    """Remove greetings and filler from the beginning of text."""
+    result = text
+    for pat in _GREETING_PATTERNS:
+        result = pat.sub(" ", result, count=1)
+    return re.sub(r"\s+", " ", result).strip()
+
+
+def _is_filler_only(chunk: str) -> bool:
+    """Return True if the chunk is purely a greeting/filler with no real task."""
+    return bool(_FILLER_ONLY.match(chunk.strip()))
+
+
+def _extract_voice_priority(text: str) -> tuple[int, str]:
+    """Extract priority from voice phrases like 'важность средняя'."""
+    m = _RE_PRIORITY_VOICE.search(text)
+    if m:
+        word = m.group(1).lower()
+        for prefix, val in [("низк", 1), ("средн", 2), ("высок", 3)]:
+            if word.startswith(prefix):
+                cleaned = text[: m.start()] + text[m.end() :]
+                return val, re.sub(r"\s+", " ", cleaned).strip()
+    return 0, text
+
+
+def _extract_time_range(text: str) -> tuple[time | None, str | None, str]:
+    """Extract 'с 9 до 13'. Returns (start_time, end_desc, cleaned_text)."""
+    m = _RE_TIME_RANGE.search(text)
+    if m:
+        h_start = int(m.group(1))
+        m_start = int(m.group(2)) if m.group(2) else 0
+        h_end = int(m.group(3))
+        m_end = int(m.group(4)) if m.group(4) else 0
+        cleaned = text[: m.start()] + text[m.end() :]
+        end_str = f"{h_end:02d}:{m_end:02d}"
+        if 0 <= h_start <= 23 and 0 <= m_start <= 59:
+            return time(h_start, m_start), f"до {end_str}", cleaned.strip()
+    return None, None, text
+
+
+def split_into_tasks(text: str) -> list[str]:
+    """Split text into multiple task chunks, filtering out greetings/filler."""
+    text = _strip_greetings(text)
+    if not text:
+        return []
+
+    chunks = _RE_MULTI_SPLIT.split(text)
+    result = []
+    for chunk in chunks:
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if _is_filler_only(chunk):
+            continue
+        result.append(chunk)
+    return result
+
 
 @dataclass
 class ParsedTask:
@@ -32,6 +151,8 @@ class ParsedTask:
     due_at: datetime | None = None  # always UTC
     remind_minutes_before: int | None = None
     category_name: str | None = None
+    priority: int = 0
+    description: str | None = None
 
 
 # --- lookup tables ------------------------------------------------------
@@ -103,11 +224,18 @@ def parse_ru(
     if not text or not text.strip():
         return ParsedTask(title="")
 
+    text = _strip_greetings(text)
+    if not text:
+        return ParsedTask(title="")
+
+    priority, text = _extract_voice_priority(text)
+    range_time, range_desc, text = _extract_time_range(text)
+
     tz = ZoneInfo(tz_name or "UTC")
     local_now = (now or datetime.now(tz)).astimezone(tz)
     today = local_now.date()
 
-    result = ParsedTask(title=text.strip())
+    result = ParsedTask(title=text.strip(), priority=priority, description=range_desc)
     working = " " + text.strip() + " "
 
     # 1) hashtag category
@@ -144,6 +272,8 @@ def parse_ru(
     if extracted is not None:
         working = extracted["working"]
         t = time(extracted["h"], extracted["m"])
+    elif range_time is not None:
+        t = range_time
     else:
         t = None
 
@@ -468,12 +598,13 @@ async def commit_parsed(
         user_id=user.id,
         category_id=category_id,
         title=(parsed.title or "Без названия")[:255],
-        description=None,
+        description=parsed.description,
         parent_task_id=None,
         due_date=parsed.due_date,
         has_time=parsed.has_time,
         due_at=parsed.due_at,
         remind_minutes_before=parsed.remind_minutes_before if parsed.has_time else None,
+        priority=parsed.priority,
         is_done=False,
     )
     session.add(task)

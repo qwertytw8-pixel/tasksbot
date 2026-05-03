@@ -30,9 +30,9 @@ const REMIND_QUICK_PRESETS: { label: string; minutes: number }[] = [
 
 const PRIORITY_OPTIONS: { value: number; label: string; color: string }[] = [
   { value: 0, label: "Без", color: "var(--tb-hint)" },
-  { value: 1, label: "Низкий", color: "#4caf50" },
-  { value: 2, label: "Средний", color: "#ff9800" },
-  { value: 3, label: "Высокий", color: "#f44336" },
+  { value: 1, label: "Низкий", color: "var(--tb-priority-low)" },
+  { value: 2, label: "Средний", color: "var(--tb-priority-med)" },
+  { value: 3, label: "Высокий", color: "var(--tb-priority-high)" },
 ];
 
 type WhenMode = "none" | "date";
