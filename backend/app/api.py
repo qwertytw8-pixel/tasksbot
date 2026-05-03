@@ -135,6 +135,8 @@ async def update_me(
     user = await _ensure_user(session, tg)
     if payload.tz is not None:
         user.tz = payload.tz
+    if payload.onboarding_completed is not None:
+        user.onboarding_completed = payload.onboarding_completed
     await session.commit()
     await session.refresh(user)
     return user

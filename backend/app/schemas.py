@@ -52,10 +52,12 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     tz: str
+    onboarding_completed: bool
 
 
 class UserUpdate(BaseModel):
     tz: str | None = Field(default=None, max_length=64)
+    onboarding_completed: bool | None = None
 
 
 class PrivacyInfo(BaseModel):

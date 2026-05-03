@@ -33,6 +33,9 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)  # telegram user id
     tz: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    onboarding_completed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False
     )
@@ -180,6 +183,10 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
         "CREATE INDEX IF NOT EXISTS ix_tasks_due_date ON tasks (due_date)",
         "CREATE INDEX IF NOT EXISTS ix_tasks_archived_at ON tasks (archived_at)",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 0",
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
         (
             "UPDATE tasks SET "
             "due_date = COALESCE(due_date, CAST(due_at AT TIME ZONE 'UTC' AS DATE)), "

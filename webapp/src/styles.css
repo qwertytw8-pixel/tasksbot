@@ -636,6 +636,10 @@ button {
   grid-template-columns: repeat(5, 1fr);
 }
 
+.tabbar--four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .tab {
   appearance: none;
   background: transparent;
@@ -2228,4 +2232,193 @@ button {
   color: var(--tb-priority-high);
   border-color: var(--tb-priority-high);
   background: var(--tb-priority-high-bg);
+}
+
+/* ---------- Onboarding reset button ---------- */
+
+.onboarding-reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-radius: var(--tb-radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tb-link);
+  transition: background 150ms ease;
+}
+
+.onboarding-reset-btn:active {
+  background: var(--tb-accent-soft);
+}
+
+.onboarding-reset-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ---------- Onboarding Tour ---------- */
+
+.onboarding-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.onboarding-tour__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  pointer-events: auto;
+  animation: tb-fade-overlay 300ms ease both;
+}
+
+@keyframes tb-fade-overlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.onboarding-tour__spotlight {
+  pointer-events: none;
+  z-index: 10000;
+  animation: tb-spotlight-pulse 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes tb-spotlight-pulse {
+  from {
+    box-shadow: 0 0 0 4px rgba(109, 93, 252, 0.5), 0 0 24px 8px rgba(109, 93, 252, 0.3);
+  }
+  to {
+    box-shadow: 0 0 0 4px rgba(109, 93, 252, 0.7), 0 0 32px 12px rgba(109, 93, 252, 0.45);
+  }
+}
+
+.onboarding-tour__tooltip {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  max-width: 380px;
+  margin: 0 auto;
+  background: var(--tb-glass-strong);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius);
+  padding: 20px;
+  pointer-events: auto;
+  box-shadow: var(--tb-shadow);
+  animation: tb-tooltip-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  z-index: 10001;
+}
+
+.onboarding-tour__tooltip--center {
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%);
+}
+
+.onboarding-tour__tooltip--above {
+  animation: tb-tooltip-in-above 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes tb-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tb-tooltip-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.onboarding-tour__progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--tb-separator);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.onboarding-tour__progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--tb-accent-grad);
+  transition: width 350ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.onboarding-tour__emoji {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.onboarding-tour__title {
+  font-family: "Manrope", "Inter", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--tb-text);
+  margin-bottom: 6px;
+}
+
+.onboarding-tour__desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tb-hint);
+  margin-bottom: 18px;
+}
+
+.onboarding-tour__buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.onboarding-tour__btn {
+  padding: 10px 20px;
+  border-radius: var(--tb-radius-xs);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 150ms ease;
+}
+
+.onboarding-tour__btn--skip {
+  background: transparent;
+  color: var(--tb-hint);
+}
+
+.onboarding-tour__btn--skip:active {
+  background: var(--tb-accent-soft);
+}
+
+.onboarding-tour__btn--next {
+  background: var(--tb-accent-grad);
+  color: #ffffff;
+  flex: 1;
+  max-width: 160px;
+}
+
+.onboarding-tour__btn--next:active {
+  filter: brightness(0.9);
 }
