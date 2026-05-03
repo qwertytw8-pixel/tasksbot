@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     database_url: str = Field(alias="DATABASE_URL")
     cors_origins: str = Field(alias="CORS_ORIGINS", default="*")
     log_level: str = Field(alias="LOG_LEVEL", default="INFO")
+    openai_api_key: str | None = Field(alias="OPENAI_API_KEY", default=None)
 
     @property
     def webhook_path(self) -> str:

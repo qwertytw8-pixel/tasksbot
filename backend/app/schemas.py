@@ -26,6 +26,7 @@ class TaskIn(BaseModel):
     has_time: bool = False
     due_at: datetime | None = None
     remind_minutes_before: int | None = Field(default=None, ge=0, le=10_080)
+    priority: int = Field(default=0, ge=0, le=3)
     is_done: bool = False
 
 
@@ -40,6 +41,7 @@ class TaskOut(BaseModel):
     has_time: bool
     due_at: datetime | None
     remind_minutes_before: int | None
+    priority: int
     is_done: bool
     done_at: datetime | None
     archived_at: datetime | None

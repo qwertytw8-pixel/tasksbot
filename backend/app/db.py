@@ -80,6 +80,7 @@ class Task(Base):
     has_time: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     remind_minutes_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_done: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     done_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -178,6 +179,7 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
         "CREATE INDEX IF NOT EXISTS ix_tasks_parent_task_id ON tasks (parent_task_id)",
         "CREATE INDEX IF NOT EXISTS ix_tasks_due_date ON tasks (due_date)",
         "CREATE INDEX IF NOT EXISTS ix_tasks_archived_at ON tasks (archived_at)",
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 0",
         (
             "UPDATE tasks SET "
             "due_date = COALESCE(due_date, CAST(due_at AT TIME ZONE 'UTC' AS DATE)), "

@@ -75,6 +75,7 @@ export function TaskFormPage() {
   const [remind, setRemind] = useState<number | null>(15);
   const [remindCustom, setRemindCustom] = useState<string>("15");
 
+  const [priority, setPriority] = useState(0);
   const [busy, setBusy] = useState(false);
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
@@ -103,6 +104,7 @@ export function TaskFormPage() {
           } else {
             setWhenMode("none");
           }
+          setPriority(found.priority ?? 0);
           setRemind(found.remind_minutes_before);
           if (
             found.remind_minutes_before !== null &&
@@ -136,6 +138,7 @@ export function TaskFormPage() {
         due_at: localInputToISO(dueDateTime),
         due_date: null,
         remind_minutes_before: remind,
+        priority,
         is_done: task?.is_done ?? false,
       };
     }
@@ -149,6 +152,7 @@ export function TaskFormPage() {
         due_date: dueDate,
         due_at: null,
         remind_minutes_before: null,
+        priority,
         is_done: task?.is_done ?? false,
       };
     }
@@ -161,6 +165,7 @@ export function TaskFormPage() {
       due_date: null,
       due_at: null,
       remind_minutes_before: null,
+      priority,
       is_done: task?.is_done ?? false,
     };
   }
@@ -213,6 +218,7 @@ export function TaskFormPage() {
       has_time: sub.has_time,
       due_at: sub.due_at,
       remind_minutes_before: sub.remind_minutes_before,
+      priority: sub.priority,
       is_done: !sub.is_done,
     });
     setSubtasks((prev) => prev.map((s) => (s.id === sub.id ? updated : s)));
@@ -349,6 +355,31 @@ export function TaskFormPage() {
                 })}
               </div>
             )}
+          </div>
+
+          <div className="field">
+            <span className="field__label">Важность</span>
+            <div className="priority-selector">
+              {([
+                { value: 0, label: "Без", cls: "" },
+                { value: 1, label: "Низкий", cls: "priority-selector__btn--low" },
+                { value: 2, label: "Средний", cls: "priority-selector__btn--med" },
+                { value: 3, label: "Высокий", cls: "priority-selector__btn--high" },
+              ] as const).map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={[
+                    "priority-selector__btn",
+                    p.cls,
+                    priority === p.value ? "priority-selector__btn--active" : "",
+                  ].filter(Boolean).join(" ")}
+                  onClick={() => setPriority(p.value)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {whenMode === "datetime" && (
