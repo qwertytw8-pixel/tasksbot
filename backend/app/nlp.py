@@ -4,7 +4,10 @@ Supports:
 - Dates: «сегодня», «завтра», «послезавтра», «в понедельник», «25 мая», «25.05.2025»
 - Time: «в 15:00», «в 3 часа», «с 9 до 13»
 - Priority: «!», «важно», «важность высокая», «приоритет средний»
-- Multi-task splitting: «потом», «ещё», «также», «и ещё», periods, semicolons
+- Multi-task splitting: periods, semicolons, newlines, «потом», «затем», «и ещё», etc.
+- Greeting / filler stripping at the start of input
+- Global date context: date mentioned before first split propagates to all chunks
+- Category hints via «категория ...» / «проект ...»
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ class ParsedTask:
     due_at: datetime | None = None
     priority: int = 0
     description: str | None = None
+    category_name: str | None = None
 
 
 # ── weekday map ──────────────────────────────────────────────────────────
@@ -70,12 +74,15 @@ _PRIORITY_MAP = {
     "низкий": 1,
     "низкая": 1,
     "низкое": 1,
+    "низк": 1,
     "средний": 2,
     "средняя": 2,
     "среднее": 2,
+    "средн": 2,
     "высокий": 3,
     "высокая": 3,
     "высокое": 3,
+    "высок": 3,
 }
 
 # ── regex patterns ───────────────────────────────────────────────────────
@@ -113,7 +120,49 @@ _RE_IMPORTANT = re.compile(r"\bважно\b|!", re.IGNORECASE)
 # Splitting pattern for multi-task voice
 _RE_SPLIT = re.compile(
     r"(?:\.\s+)|(?:;\s*)|(?:\n)|"
-    r"(?:\b(?:потом|затем|далее|ещ[её]|также|и\s+ещ[её]|следующ(?:ая|ее|ий))\b[,.]?\s*)",
+    r"(?:\b(?:потом|затем|далее|также|и\s+ещ[её]|"
+    r"следующ(?:ая|ее|ий)|"
+    r"а\s+ещ[её]|плюс|кроме\s+того|"
+    r"ну\s+и|и\s+потом)\b[,.]?\s*)",
+    re.IGNORECASE,
+)
+
+# Greetings and filler at the start of the text
+_RE_GREETINGS = [
+    re.compile(
+        r"^\s*(?:привет|здравствуй\w*|добр(?:ый|ое|ого)\s+(?:день|вечер|утро)|"
+        r"здорово|хай|хэлло|hello|hi)\s*[,!.]?\s*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:слушай|смотри|короче|значит|ну\s+вот|вот|ладно|окей|ок|давай)\s*[,.]?\s*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:у\s+меня\s+(?:(?:сегодня|завтра)\s+)?(?:такие\s+)?(?:задач[иа]|дела|планы))\s*[,:.]?\s*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:вот\s+мои\s+(?:задач[иа]|дела|планы))\s*[,:.]?\s*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:запиши|добавь|создай)(?:\s+(?:задач[уи]|мне))?\s*[,:.]?\s*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:мне\s+(?:нужно|надо|необходимо))\s*[,:.]?\s*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:напомни(?:\s+мне)?)\s*[,:.]?\s*",
+        re.IGNORECASE,
+    ),
+]
+
+# Category detection: «категория Работа», «проект Учёба»
+_RE_CATEGORY = re.compile(
+    r"\b(?:категория|проект|тег)\s+([А-Яа-яЁёA-Za-z0-9_\- ]{1,30})\b",
     re.IGNORECASE,
 )
 
@@ -123,6 +172,19 @@ def _next_weekday(today: date, target_weekday: int) -> date:
     if days_ahead <= 0:
         days_ahead += 7
     return today + timedelta(days=days_ahead)
+
+
+def _strip_greetings(text: str) -> str:
+    """Remove greetings, fillers and intro phrases from the beginning of text."""
+    changed = True
+    while changed:
+        changed = False
+        for pattern in _RE_GREETINGS:
+            new_text = pattern.sub("", text, count=1)
+            if new_text != text:
+                text = new_text
+                changed = True
+    return text.strip()
 
 
 def _extract_date(text: str, today: date) -> tuple[date | None, str]:
@@ -208,6 +270,16 @@ def _extract_priority(text: str) -> tuple[int, str]:
     return 0, text
 
 
+def _extract_category(text: str) -> tuple[str | None, str]:
+    m = _RE_CATEGORY.search(text)
+    if m:
+        cat_name = m.group(1).strip().rstrip(".,;:!?")
+        cleaned = text[: m.start()] + text[m.end() :]
+        if cat_name:
+            return cat_name, cleaned
+    return None, text
+
+
 def _clean_title(title: str) -> str:
     title = re.sub(r"\s+", " ", title).strip()
     title = title.strip(".,;:!?- ")
@@ -217,25 +289,70 @@ def _clean_title(title: str) -> str:
 
 
 def parse_tasks(text: str, today: date | None = None) -> list[ParsedTask]:
-    """Parse raw Russian text into a list of ``ParsedTask`` objects."""
+    """Parse raw Russian text into a list of ``ParsedTask`` objects.
+
+    Improvements over basic parsing:
+    - Strips greetings/fillers from the beginning
+    - Extracts a "global" date from text before splitting (propagates to all chunks)
+    - Extracts a "global" priority if set before first split
+    - Detects category hints via «категория ...» / «проект ...»
+    """
     if today is None:
         today = date.today()
 
-    chunks = _RE_SPLIT.split(text)
+    # Strip greetings and filler phrases
+    text = _strip_greetings(text)
+    if not text:
+        return []
+
+    # Try to extract a global date from the full text before splitting.
+    # This handles cases like: "завтра купить молоко, позвонить маме, написать отчёт"
+    # where "завтра" applies to all tasks.
+    global_date, text_after_global_date = _extract_date(text, today)
+    # Also try to extract a global priority from the full text before splitting.
+    global_priority, text_after_global_priority = _extract_priority(
+        text_after_global_date
+    )
+    # Also try to extract a global category
+    global_category, text_after_global_category = _extract_category(
+        text_after_global_priority
+    )
+
+    # Split into chunks
+    chunks = _RE_SPLIT.split(text_after_global_category)
     chunks = [c.strip() for c in chunks if c and c.strip()]
 
     if not chunks:
+        # If stripping removed everything but we had a global date, skip
         return []
+
+    # Also try splitting by commas when we have 2+ items separated by commas
+    # but only if the initial split produced a single chunk with commas in it.
+    if len(chunks) == 1 and "," in chunks[0]:
+        comma_parts = [p.strip() for p in chunks[0].split(",") if p.strip()]
+        # Heuristic: if each comma-separated part is short (< ~60 chars),
+        # treat them as separate tasks.
+        if len(comma_parts) >= 2 and all(len(p) < 60 for p in comma_parts):
+            chunks = comma_parts
 
     results: list[ParsedTask] = []
     for chunk in chunks:
         due_date, chunk = _extract_date(chunk, today)
         t, end_desc, chunk = _extract_time(chunk)
         priority, chunk = _extract_priority(chunk)
+        category, chunk = _extract_category(chunk)
 
         title = _clean_title(chunk)
-        if not title:
+        if not title or len(title) < 2:
             continue
+
+        # Apply global context if chunk didn't have its own
+        if due_date is None:
+            due_date = global_date
+        if priority == 0 and global_priority > 0:
+            priority = global_priority
+        if category is None:
+            category = global_category
 
         has_time = t is not None
         due_at: datetime | None = None
@@ -253,6 +370,7 @@ def parse_tasks(text: str, today: date | None = None) -> list[ParsedTask]:
                 due_at=due_at,
                 priority=priority,
                 description=description,
+                category_name=category,
             )
         )
     return results

@@ -24,7 +24,7 @@ from aiogram.types import (
 )
 
 from app.config import get_settings
-from app.db import Task, User, get_sessionmaker
+from app.db import Category, Task, User, get_sessionmaker
 from app.nlp import ParsedTask, parse_tasks
 
 log = logging.getLogger(__name__)
@@ -171,13 +171,30 @@ async def _ensure_bot_user(user_id: int) -> None:
 async def _save_parsed_tasks(
     user_id: int, parsed: list[ParsedTask]
 ) -> list[Task]:
+    from sqlalchemy import select
+
     sm = get_sessionmaker()
     created: list[Task] = []
     async with sm() as session:
+        # Pre-load user categories for category_name matching
+        cat_map: dict[str, int] = {}
+        cat_rows = (
+            await session.execute(
+                select(Category).where(Category.user_id == user_id)
+            )
+        ).scalars().all()
+        for c in cat_rows:
+            cat_map[c.name.lower()] = c.id
+
         for p in parsed:
             due_at = p.due_at
             if due_at is not None and due_at.tzinfo is None:
                 due_at = due_at.replace(tzinfo=UTC)
+
+            category_id: int | None = None
+            if p.category_name:
+                category_id = cat_map.get(p.category_name.lower())
+
             task = Task(
                 user_id=user_id,
                 title=p.title,
@@ -186,6 +203,7 @@ async def _save_parsed_tasks(
                 has_time=p.has_time,
                 due_at=due_at,
                 priority=p.priority,
+                category_id=category_id,
             )
             session.add(task)
             created.append(task)
