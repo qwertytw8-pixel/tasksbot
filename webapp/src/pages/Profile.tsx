@@ -23,7 +23,8 @@ import { applyTheme, getStoredMode, setStoredMode, type ThemeMode } from "../the
 const SUPPORT_TG = "@ficsyk";
 const SUPPORT_TG_URL = "https://t.me/ficsyk";
 
-function ProfileHome() {
+function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<ThemeMode>(() => getStoredMode());
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -185,8 +186,9 @@ function ProfileHome() {
           className="btn btn--outline"
           style={{ width: "100%" }}
           onClick={() => {
-            void api.resetOnboarding().finally(() => {
-              window.location.replace("/all");
+            void api.resetOnboarding().then(() => {
+              if (onResetOnboarding) onResetOnboarding();
+              navigate("/all");
             });
           }}
         >
@@ -478,10 +480,10 @@ function ArchivePage() {
   );
 }
 
-export function ProfileRoutes() {
+export function ProfileRoutes({ onResetOnboarding }: { onResetOnboarding?: () => void }) {
   return (
     <Routes>
-      <Route index element={<ProfileHome />} />
+      <Route index element={<ProfileHome onResetOnboarding={onResetOnboarding} />} />
       <Route path="archive" element={<ArchivePage />} />
       <Route path="support" element={<SupportPage />} />
       <Route path="privacy" element={<PrivacyPage />} />

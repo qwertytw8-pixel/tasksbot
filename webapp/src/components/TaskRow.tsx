@@ -269,7 +269,7 @@ export function TaskRow({
   const swipeClass = [
     "task-swipe",
     open ? "task-swipe--open" : "",
-    dragging || dx !== 0 ? "task-swipe--active task-swipe--revealing" : "",
+    dragging || dx !== 0 ? "task-swipe--active" : "",
     compact ? "task-swipe--compact" : "",
     !hasActions ? "task-swipe--no-actions" : "",
   ]
@@ -297,7 +297,12 @@ export function TaskRow({
           <div
             ref={actionsRef}
             className="task-swipe__actions"
-            style={{ width: maxOffset }}
+            style={{
+              width: maxOffset,
+              opacity: open ? 1 : Math.max(0, Math.min(1, (Math.abs(dx) - 20) / 20)),
+              visibility: Math.abs(dx) < 4 && !open ? "hidden" : "visible",
+              pointerEvents: open || Math.abs(dx) >= 20 ? "auto" : "none",
+            }}
             aria-hidden={!open}
           >
             {effectivePostpone && (
