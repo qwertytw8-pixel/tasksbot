@@ -11,6 +11,7 @@ import {
   HelpIcon,
   MonitorIcon,
   MoonIcon,
+  RotateCcwIcon,
   ShieldIcon,
   SparkIcon,
   SunIcon,
@@ -176,6 +177,21 @@ function ProfileHome() {
           title="Приватность"
           subtitle="Что хранится и кто это видит"
         />
+      </div>
+
+      <div className="surface" style={{ marginBottom: 14 }}>
+        <button
+          type="button"
+          className="btn btn--outline"
+          style={{ width: "100%" }}
+          onClick={async () => {
+            await api.resetOnboarding();
+            window.location.href = "/all";
+          }}
+        >
+          <RotateCcwIcon style={{ width: 16, height: 16, marginRight: 8, verticalAlign: "-3px" }} />
+          Пройти обучение заново
+        </button>
       </div>
 
       {isAdmin && (

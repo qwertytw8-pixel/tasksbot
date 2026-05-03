@@ -84,6 +84,11 @@ export function TaskFormPage() {
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [subtasks, setSubtasks] = useState<Task[]>([]);
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatEmoji, setNewCatEmoji] = useState("🏷");
+  const [newCatColor, setNewCatColor] = useState("#6D5DFC");
+  const [newCatBusy, setNewCatBusy] = useState(false);
 
   const isPremium = subStatus?.is_premium ?? true;
 
@@ -356,7 +361,68 @@ export function TaskFormPage() {
                   {c.name}
                 </button>
               ))}
+              <button
+                type="button"
+                className="chip chip--add"
+                onClick={() => setShowNewCat((v) => !v)}
+              >
+                <PlusIcon style={{ width: 14, height: 14 }} />
+                Новая
+              </button>
             </div>
+            {showNewCat && (
+              <div className="inline-cat-form">
+                <input
+                  className="input input--sm"
+                  placeholder="Название"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                />
+                <input
+                  className="input input--sm input--emoji"
+                  maxLength={4}
+                  value={newCatEmoji}
+                  onChange={(e) => setNewCatEmoji(e.target.value)}
+                />
+                <div className="chips chips--mini">
+                  {["#6D5DFC","#3B82F6","#10B981","#F59E0B","#8B5CF6","#EF4444","#06B6D4","#EC4899"].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`chip chip--dot ${newCatColor === c ? "chip--soft-active" : ""}`}
+                      style={{ borderColor: newCatColor === c ? c : undefined }}
+                      onClick={() => setNewCatColor(c)}
+                    >
+                      <span className="swatch" style={{ ["--c" as never]: c }} />
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--sm"
+                  disabled={newCatBusy || !newCatName.trim()}
+                  onClick={async () => {
+                    setNewCatBusy(true);
+                    try {
+                      const created = await api.createCategory({
+                        name: newCatName.trim(),
+                        emoji: newCatEmoji || null,
+                        color: newCatColor,
+                      });
+                      setCats((prev) => [...prev, created]);
+                      setCategoryId(created.id);
+                      setNewCatName("");
+                      setShowNewCat(false);
+                    } finally {
+                      setNewCatBusy(false);
+                    }
+                  }}
+                >
+                  <PlusIcon style={{ width: 14, height: 14 }} />
+                  Добавить
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="field">

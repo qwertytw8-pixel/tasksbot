@@ -19,7 +19,7 @@ import {
   TrashIcon,
 } from "../icons";
 import { haptic } from "../telegram";
-import { fromISODate, isSameDay } from "../utils/date";
+import { fromISODate, isSameDay, tomorrowISO } from "../utils/date";
 
 export interface TaskRowProps {
   task: Task;
@@ -129,12 +129,16 @@ export function TaskRow({
   const childDone = subtasks?.filter((c) => c.is_done).length ?? 0;
   const overdueLabel = overdueLabelFor(task);
 
+  // Hide "Завтра" if the task is already scheduled for tomorrow.
+  const isAlreadyTomorrow = task.due_date === tomorrowISO();
+  const effectivePostpone = onPostpone && !isAlreadyTomorrow ? onPostpone : undefined;
+
   // Toggle (Готово/Вернуть) shows only for live tasks that also have another action.
   const isArchived = Boolean(task.archived_at);
-  const hasToggleInSwipe = !isArchived && Boolean(onPostpone || onDelete || onArchive);
+  const hasToggleInSwipe = !isArchived && Boolean(effectivePostpone || onDelete || onArchive);
   const actionsCount =
     (hasToggleInSwipe ? 1 : 0) +
-    (onPostpone ? 1 : 0) +
+    (effectivePostpone ? 1 : 0) +
     (onArchive ? 1 : 0) +
     (onUnarchive ? 1 : 0) +
     (onDelete ? 1 : 0);
@@ -296,13 +300,13 @@ export function TaskRow({
             style={{ width: maxOffset }}
             aria-hidden={!open}
           >
-            {onPostpone && (
+            {effectivePostpone && (
               <button
                 type="button"
                 className="task-swipe__action task-swipe__action--postpone"
                 onClick={(e) => {
                   e.stopPropagation();
-                  runAction(() => onPostpone(task));
+                  runAction(() => effectivePostpone(task));
                 }}
               >
                 <SunriseIcon />

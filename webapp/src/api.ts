@@ -168,6 +168,8 @@ export const api = {
     request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ tz }) }),
   completeOnboarding: () =>
     request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ onboarding_completed: true }) }),
+  resetOnboarding: () =>
+    request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ onboarding_completed: false }) }),
   privacy: () => request<PrivacyInfo>("/api/privacy"),
 
   listCategories: () => request<Category[]>("/api/categories"),
