@@ -36,7 +36,7 @@ const SECTION_ORDER: SectionDef[] = [
   { key: "week", title: "Ближайшие 7 дней", icon: CalendarIcon },
   { key: "later", title: "Позже", icon: ClockIcon },
   { key: "undated", title: "Без даты", icon: InboxIcon },
-  { key: "done", title: "Готово за последние 24 часа", icon: CheckIcon },
+  { key: "done", title: "Готово сегодня", icon: CheckIcon },
 ];
 
 export function AllPage() {
@@ -69,7 +69,7 @@ export function AllPage() {
     const today = todayISO();
     const tomorrow = tomorrowISO();
     const in7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
-    const last24 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const buckets: Record<SectionKey, Task[]> = {
       overdue: [],
@@ -88,7 +88,7 @@ export function AllPage() {
     for (const t of filtered) {
       if (t.is_done) {
         const doneAt = t.done_at ? new Date(t.done_at) : new Date(t.created_at);
-        if (doneAt >= last24) buckets.done.push(t);
+        if (doneAt >= startOfDay) buckets.done.push(t);
         continue;
       }
       if (isTaskOverdue(t, now)) {
