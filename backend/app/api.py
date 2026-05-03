@@ -325,6 +325,7 @@ async def create_task(
         has_time=has_time,
         due_at=due_at,
         remind_minutes_before=remind,
+        priority=payload.priority,
         is_done=payload.is_done,
         done_at=datetime.now(UTC) if payload.is_done else None,
     )
@@ -359,6 +360,7 @@ async def update_task(
     task.has_time = has_time
     task.due_at = due_at
     task.remind_minutes_before = remind
+    task.priority = payload.priority
     # Track when a task was marked done so we can auto-archive later.
     if payload.is_done and not task.is_done:
         task.done_at = datetime.now(UTC)

@@ -265,11 +265,16 @@ export function TaskRow({
     .filter(Boolean)
     .join(" ");
 
+  const priorityClass = task.priority
+    ? `task-card--priority-${task.priority}`
+    : "";
+
   const cardClass = [
     "task-card",
     task.is_done ? "task-card--done" : "",
     overdueLabel ? "task-card--overdue" : "",
     isArchived ? "task-card--archived" : "",
+    priorityClass,
   ]
     .filter(Boolean)
     .join(" ");

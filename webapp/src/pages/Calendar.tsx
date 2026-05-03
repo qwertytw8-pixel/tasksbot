@@ -91,6 +91,7 @@ export function CalendarPage() {
       has_time: task.has_time,
       due_at: task.due_at,
       remind_minutes_before: task.remind_minutes_before,
+      priority: task.priority,
       is_done: !task.is_done,
     });
     setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
@@ -114,6 +115,7 @@ export function CalendarPage() {
       has_time: task.has_time,
       due_at,
       remind_minutes_before: task.remind_minutes_before,
+      priority: task.priority,
       is_done: task.is_done,
     });
     setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
