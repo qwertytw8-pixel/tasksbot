@@ -82,6 +82,20 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
     return () => window.removeEventListener("resize", updateRect);
   }, [updateRect]);
 
+  useEffect(() => {
+    if (!current.target) return;
+    const el = document.querySelector<HTMLElement>(current.target);
+    if (!el) return;
+    const prevPos = el.style.position;
+    const prevZ = el.style.zIndex;
+    el.style.position = "relative";
+    el.style.zIndex = "10000";
+    return () => {
+      el.style.position = prevPos;
+      el.style.zIndex = prevZ;
+    };
+  }, [current.target]);
+
   function next() {
     if (step < STEPS.length - 1) {
       setStep(step + 1);
