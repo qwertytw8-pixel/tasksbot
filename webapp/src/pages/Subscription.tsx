@@ -2,22 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { api, type PlansOut, type SubscriptionStatus } from "../api";
+import { useI18n } from "../i18n";
 import {
   CheckIcon,
   ChevronLeftIcon,
 } from "../icons";
-
-const PLANS = [
-  { key: "1m", label: "1 месяц", stars: 99, perMonth: 99 },
-  {
-    key: "3m", label: "3 месяца", stars: 249,
-    perMonth: 83, save: "16%",
-  },
-  {
-    key: "12m", label: "12 месяцев", stars: 799,
-    perMonth: 67, save: "33%", best: true,
-  },
-];
 
 function PremiumIcon({ size = 56 }: { size?: number }) {
   return (
@@ -38,6 +27,7 @@ function PremiumIcon({ size = 56 }: { size?: number }) {
 }
 
 export function SubscriptionPage() {
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [plans, setPlans] = useState<PlansOut | null>(null);
@@ -45,6 +35,18 @@ export function SubscriptionPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState("12m");
   const [buying, setBuying] = useState(false);
+
+  const PLANS = [
+    { key: "1m", label: t("sub.1m"), stars: 99, perMonth: 99 },
+    {
+      key: "3m", label: t("sub.3m"), stars: 249,
+      perMonth: 83, save: "16%",
+    },
+    {
+      key: "12m", label: t("sub.12m"), stars: 799,
+      perMonth: 67, save: "33%", best: true,
+    },
+  ];
 
   useEffect(() => {
     void (async () => {
@@ -89,7 +91,7 @@ export function SubscriptionPage() {
     return (
       <div className="page">
         <div className="empty">
-          <div className="empty__title">Ошибка</div>
+          <div className="empty__title">{t("sub.error")}</div>
           <div>{error}</div>
         </div>
       </div>
@@ -97,10 +99,11 @@ export function SubscriptionPage() {
   }
 
   if (!status || !plans) {
-    return <div className="spinner">Загрузка…</div>;
+    return <div className="spinner">{t("loading")}</div>;
   }
 
   const currentPlan = PLANS.find((p) => p.key === selectedPlan) ?? PLANS[0];
+  const locale = lang === "ru" ? "ru-RU" : "en-US";
 
   const premiumLink = botUsername
     ? `https://t.me/${botUsername}?start=premium`
@@ -113,14 +116,14 @@ export function SubscriptionPage() {
           type="button"
           className="page-header__back"
           onClick={() => navigate(-1)}
-          aria-label="Назад"
+          aria-label="Back"
         >
           <ChevronLeftIcon />
-          <span>Профиль</span>
+          <span>{t("sub.back")}</span>
         </button>
         <div className="page-header__stack">
           <div className="page-header__title-row">
-            <h1>Premium</h1>
+            <h1>{t("sub.title")}</h1>
           </div>
         </div>
       </div>
@@ -130,18 +133,18 @@ export function SubscriptionPage() {
         <PremiumIcon size={64} />
         {status.is_premium && status.subscription ? (
           <>
-            <h2 className="premium-hero__title">Premium активен</h2>
+            <h2 className="premium-hero__title">{t("sub.active")}</h2>
             <p className="premium-hero__sub">
               {status.subscription.expires_at
-                ? `Действует до ${new Date(status.subscription.expires_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`
-                : "Бессрочная подписка"}
+                ? `${t("sub.active_until")} ${new Date(status.subscription.expires_at).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })}`
+                : t("sub.lifetime")}
             </p>
           </>
         ) : (
           <>
-            <h2 className="premium-hero__title">Разблокируй всё</h2>
+            <h2 className="premium-hero__title">{t("sub.unlock")}</h2>
             <p className="premium-hero__sub">
-              Безлимитные задачи, свои категории, AI-парсинг текста и голоса
+              {t("sub.unlock_sub")}
             </p>
           </>
         )}
@@ -149,7 +152,7 @@ export function SubscriptionPage() {
 
       {/* Features */}
       <div className="surface premium-features" style={{ marginBottom: 14 }}>
-        <div className="surface__heading">Что входит в Premium</div>
+        <div className="surface__heading">{t("sub.features_heading")}</div>
         <ul className="premium-features__list">
           {plans.premium.features.map((f, i) => (
             <li key={i}>
@@ -164,7 +167,7 @@ export function SubscriptionPage() {
       {!status.is_premium && (
         <div style={{ marginBottom: 14 }}>
           <div className="surface__heading" style={{ padding: "0 16px", marginBottom: 8 }}>
-            Выбери тариф
+            {t("sub.pick_plan")}
           </div>
           <div className="premium-tiers">
             {PLANS.map((p) => (
@@ -178,7 +181,7 @@ export function SubscriptionPage() {
                 }
                 onClick={() => setSelectedPlan(p.key)}
               >
-                {p.best && <span className="premium-tier__badge">Выгодно</span>}
+                {p.best && <span className="premium-tier__badge">{t("sub.best")}</span>}
                 {p.save && !p.best && (
                   <span className="premium-tier__badge premium-tier__badge--save">
                     −{p.save}
@@ -190,7 +193,7 @@ export function SubscriptionPage() {
                   <span className="premium-tier__currency"> ⭐</span>
                 </div>
                 <div className="premium-tier__per-month">
-                  {p.perMonth} ⭐/мес
+                  {p.perMonth} {t("sub.per_month")}
                 </div>
               </button>
             ))}
@@ -203,11 +206,11 @@ export function SubscriptionPage() {
             onClick={() => void handleBuy()}
           >
             {buying
-              ? "Загрузка…"
-              : `💎 Оплатить ${currentPlan.stars} ⭐`}
+              ? t("sub.buy_loading")
+              : `💎 ${t("sub.buy")} ${currentPlan.stars} ⭐`}
           </button>
           <p className="premium-buy-hint">
-            Оплата через Telegram Stars — безопасно и мгновенно
+            {t("sub.buy_hint")}
           </p>
           <a
             className="premium-bot-link"
@@ -215,7 +218,7 @@ export function SubscriptionPage() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Или оплатить в чате с ботом →
+            {t("sub.buy_bot")}
           </a>
         </div>
       )}
@@ -223,10 +226,10 @@ export function SubscriptionPage() {
       {/* Usage */}
       {!status.is_premium && (
         <div className="surface" style={{ marginBottom: 14 }}>
-          <div className="surface__heading">📊 Использование сегодня</div>
+          <div className="surface__heading">{t("sub.usage")}</div>
           <div style={{ padding: "8px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span>Задач создано сегодня</span>
+              <span>{t("sub.tasks_today")}</span>
               <span><b>{status.daily_tasks_count}</b> / {status.max_daily_tasks}</span>
             </div>
             <div className="premium-bar">
@@ -246,7 +249,7 @@ export function SubscriptionPage() {
 
       {/* Free plan comparison */}
       <div className="surface" style={{ marginBottom: 14, opacity: status.is_premium ? 0.5 : 0.7 }}>
-        <div className="surface__heading">Free план</div>
+        <div className="surface__heading">{t("sub.free_plan")}</div>
         <ul className="premium-features__list">
           {plans.free.features.map((f, i) => (
             <li key={i} style={{ opacity: 0.7 }}>

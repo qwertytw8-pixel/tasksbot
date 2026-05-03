@@ -11,7 +11,7 @@ declare global {
 
 export interface TelegramWebApp {
   initData: string;
-  initDataUnsafe: { user?: { id: number; first_name?: string; username?: string } };
+  initDataUnsafe: { user?: { id: number; first_name?: string; username?: string; language_code?: string } };
   colorScheme: "light" | "dark";
   themeParams: Record<string, string>;
   ready(): void;
@@ -54,6 +54,11 @@ export function haptic(style: "light" | "medium" | "heavy" = "light"): void {
   } catch {
     /* ignore */
   }
+}
+
+export function getUserLanguage(): "ru" | "en" {
+  const code = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ?? "";
+  return code.startsWith("ru") ? "ru" : "en";
 }
 
 export function getUserTimezone(): string {

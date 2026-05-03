@@ -16,23 +16,24 @@ import {
   PlusIcon,
   TagIcon,
 } from "../icons";
+import { useI18n } from "../i18n";
 import { haptic } from "../telegram";
 import { fromISODate, todayISO } from "../utils/date";
 
-const REMIND_QUICK_PRESETS: { label: string; minutes: number }[] = [
-  { label: "5 мин", minutes: 5 },
-  { label: "15 мин", minutes: 15 },
-  { label: "30 мин", minutes: 30 },
-  { label: "1 ч", minutes: 60 },
-  { label: "3 ч", minutes: 180 },
-  { label: "1 день", minutes: 60 * 24 },
+const REMIND_QUICK_KEYS = [
+  { key: "form.remind_5m", minutes: 5 },
+  { key: "form.remind_15m", minutes: 15 },
+  { key: "form.remind_30m", minutes: 30 },
+  { key: "form.remind_1h", minutes: 60 },
+  { key: "form.remind_3h", minutes: 180 },
+  { key: "form.remind_1d", minutes: 60 * 24 },
 ];
 
-const PRIORITY_OPTIONS: { value: number; label: string; color: string }[] = [
-  { value: 0, label: "Без", color: "var(--tb-hint)" },
-  { value: 1, label: "Низкий", color: "var(--tb-priority-low)" },
-  { value: 2, label: "Средний", color: "var(--tb-priority-med)" },
-  { value: 3, label: "Высокий", color: "var(--tb-priority-high)" },
+const PRIORITY_KEYS = [
+  { value: 0, key: "form.priority_none", color: "var(--tb-hint)" },
+  { value: 1, key: "form.priority_low", color: "var(--tb-priority-low)" },
+  { value: 2, key: "form.priority_med", color: "var(--tb-priority-med)" },
+  { value: 3, key: "form.priority_high", color: "var(--tb-priority-high)" },
 ];
 
 type WhenMode = "none" | "date";
@@ -47,6 +48,7 @@ function toRemindMode(value: number | null): RemindMode {
 
 
 export function TaskFormPage() {
+  const { t, lang } = useI18n();
   const { id } = useParams<{ id?: string }>();
   const editing = id !== undefined;
   const navigate = useNavigate();
@@ -234,7 +236,7 @@ export function TaskFormPage() {
           setModalVariant("daily_limit");
           setShowLimitModal(true);
         } catch {
-          alert("Дневной лимит задач исчерпан.");
+          alert(t("form.daily_limit_alert"));
         }
       }
     } finally {
@@ -244,7 +246,7 @@ export function TaskFormPage() {
 
   async function remove() {
     if (!task) return;
-    if (!confirm("Удалить задачу? Подзадачи тоже будут удалены.")) return;
+    if (!confirm(t("confirm.delete_task_subs"))) return;
     await api.deleteTask(task.id);
     navigate(-1);
   }
@@ -281,7 +283,7 @@ export function TaskFormPage() {
   }
 
   async function removeSubtask(sub: Task) {
-    if (!confirm("Удалить подзадачу?")) return;
+    if (!confirm(t("confirm.delete_subtask"))) return;
     await api.deleteTask(sub.id);
     setSubtasks((prev) => prev.filter((s) => s.id !== sub.id));
   }
@@ -300,24 +302,24 @@ export function TaskFormPage() {
       <div className="page-header">
         <div className="page-header__stack">
           <div className="page-header__title-row">
-            <h1>{editing ? "Задача" : "Новая задача"}</h1>
+            <h1>{editing ? t("form.edit") : t("form.new")}</h1>
           </div>
           <div className="page-header__subtitle">
-            Заголовок, категория и при желании дата, время или ссылка на проект.
+            {t("form.subtitle")}
           </div>
         </div>
         <button className="inline-action" onClick={() => navigate(-1)}>
-          Закрыть
+          {t("form.close")}
         </button>
       </div>
 
       <div className="surface">
         <div className="form">
           <div className="field">
-            <span className="field__label">Что нужно сделать</span>
+            <span className="field__label">{t("form.title_label")}</span>
             <input
               className="input"
-              placeholder="Например: Созвон с командой"
+              placeholder={t("form.title_placeholder")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus={!editing}
@@ -325,17 +327,17 @@ export function TaskFormPage() {
           </div>
 
           <div className="field">
-            <span className="field__label">Описание</span>
+            <span className="field__label">{t("form.desc_label")}</span>
             <textarea
               className="textarea"
-              placeholder="Короткий контекст, если нужен"
+              placeholder={t("form.desc_placeholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           <div className="field">
-            <span className="field__label">Категория</span>
+            <span className="field__label">{t("form.category")}</span>
             <div className="chips">
               <button
                 type="button"
@@ -343,7 +345,7 @@ export function TaskFormPage() {
                 onClick={() => setCategoryId(null)}
               >
                 <TagIcon style={{ width: 14, height: 14 }} />
-                Без
+                {t("form.cat_none")}
               </button>
               {cats.map((c) => (
                 <button
@@ -367,14 +369,14 @@ export function TaskFormPage() {
                 onClick={() => setShowNewCat((v) => !v)}
               >
                 <PlusIcon style={{ width: 14, height: 14 }} />
-                Новая
+                {t("form.cat_new")}
               </button>
             </div>
             {showNewCat && (
               <div className="inline-cat-form">
                 <input
                   className="input input--sm"
-                  placeholder="Название"
+                  placeholder={t("form.cat_name_placeholder")}
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                 />
@@ -419,16 +421,16 @@ export function TaskFormPage() {
                   }}
                 >
                   <PlusIcon style={{ width: 14, height: 14 }} />
-                  Добавить
+                  {t("form.cat_add")}
                 </button>
               </div>
             )}
           </div>
 
           <div className="field">
-            <span className="field__label">Важность</span>
+            <span className="field__label">{t("form.priority")}</span>
             <div className="segmented">
-              {PRIORITY_OPTIONS.map((p) => (
+              {PRIORITY_KEYS.map((p) => (
                 <button
                   key={p.value}
                   type="button"
@@ -437,28 +439,28 @@ export function TaskFormPage() {
                   onClick={() => setPriority(p.value)}
                 >
                   {p.value > 0 && <FlagIcon style={{ color: p.color }} />}
-                  {p.label}
+                  {t(p.key)}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="field">
-            <span className="field__label">Когда</span>
+            <span className="field__label">{t("form.when")}</span>
             <div className="segmented">
               <button
                 type="button"
                 className={`segmented__item ${whenMode === "none" ? "segmented__item--active" : ""}`}
                 onClick={() => { setWhenMode("none"); setIncludeTime(false); }}
               >
-                <LayersIcon /> Без даты
+                <LayersIcon /> {t("form.when_none")}
               </button>
               <button
                 type="button"
                 className={`segmented__item ${whenMode === "date" ? "segmented__item--active" : ""}`}
                 onClick={() => setWhenMode("date")}
               >
-                <CalendarIcon /> Дата
+                <CalendarIcon /> {t("form.when_date")}
               </button>
             </div>
 
@@ -467,13 +469,13 @@ export function TaskFormPage() {
                 <DatePicker value={dueDate} onChange={setDueDate} />
                 {dueDate && (
                   <div className="hint">
-                    {fromISODate(dueDate).toLocaleDateString("ru-RU", {
+                    {fromISODate(dueDate).toLocaleDateString(lang === "ru" ? "ru-RU" : "en-US", {
                       weekday: "long",
                       day: "numeric",
                       month: "long",
                     })}
                     {includeTime && (
-                      <> в {String(timeHours).padStart(2, "0")}:{String(timeMinutes).padStart(2, "0")}</>
+                      <> {lang === "ru" ? "в" : "at"} {String(timeHours).padStart(2, "0")}:{String(timeMinutes).padStart(2, "0")}</>
                     )}
                   </div>
                 )}
@@ -483,7 +485,7 @@ export function TaskFormPage() {
                     <span className="time-toggle__thumb" />
                   </span>
                   <span className="time-toggle__label">
-                    <ClockIcon /> Добавить время
+                    <ClockIcon /> {t("form.add_time")}
                   </span>
                 </label>
 
@@ -505,7 +507,7 @@ export function TaskFormPage() {
 
           {whenMode === "date" && includeTime && (
             <div className="field">
-              <span className="field__label">Напомнить</span>
+              <span className="field__label">{t("form.remind")}</span>
               <div className="remind-modes" role="tablist">
                 <button
                   type="button"
@@ -517,7 +519,7 @@ export function TaskFormPage() {
                   <span className="remind-mode__icon">
                     <BellIcon />
                   </span>
-                  Без
+                  {t("form.remind_off")}
                 </button>
                 <button
                   type="button"
@@ -529,7 +531,7 @@ export function TaskFormPage() {
                   <span className="remind-mode__icon">
                     <ClockIcon />
                   </span>
-                  Вовремя
+                  {t("form.remind_on_time")}
                 </button>
                 {isPremium && (
                   <button
@@ -548,7 +550,7 @@ export function TaskFormPage() {
                     <span className="remind-mode__icon">
                       <BellIcon />
                     </span>
-                    Заранее
+                    {t("form.remind_before")}
                   </button>
                 )}
                 {!isPremium && (
@@ -557,14 +559,14 @@ export function TaskFormPage() {
                     className="remind-mode remind-mode--locked"
                     onClick={() => {
                       setModalVariant("premium_feature");
-                      setModalFeatureTitle("Напоминание заранее");
+                      setModalFeatureTitle(t("form.remind_before"));
                       setShowLimitModal(true);
                     }}
                   >
                     <span className="remind-mode__icon">
                       <BellIcon />
                     </span>
-                    Заранее 💎
+                    {t("form.remind_before")} 💎
                   </button>
                 )}
               </div>
@@ -586,10 +588,10 @@ export function TaskFormPage() {
                         if (Number.isFinite(n) && n > 0) setRemind(n);
                       }}
                     />
-                    <span className="remind-custom__unit">минут до начала</span>
+                    <span className="remind-custom__unit">{t("form.remind_unit")}</span>
                   </div>
                   <div className="remind-quick">
-                    {REMIND_QUICK_PRESETS.map((p) => (
+                    {REMIND_QUICK_KEYS.map((p) => (
                       <button
                         type="button"
                         key={p.minutes}
@@ -601,7 +603,7 @@ export function TaskFormPage() {
                           setRemindCustom(String(p.minutes));
                         }}
                       >
-                        {p.label}
+                        {t(p.key)}
                       </button>
                     ))}
                   </div>
@@ -612,42 +614,42 @@ export function TaskFormPage() {
 
           {whenMode !== "none" && (
             <div className="field">
-              <span className="field__label">Повторение</span>
+              <span className="field__label">{t("form.recurrence")}</span>
               <div className="segmented">
                 <button
                   type="button"
                   className={`segmented__item ${recurrence === null ? "segmented__item--active" : ""}`}
                   onClick={() => setRecurrence(null)}
                 >
-                  Без
+                  {t("form.rec_none")}
                 </button>
                 <button
                   type="button"
                   className={`segmented__item ${recurrence === "daily" ? "segmented__item--active" : ""}`}
                   onClick={() => setRecurrence("daily")}
                 >
-                  День
+                  {t("form.rec_daily")}
                 </button>
                 <button
                   type="button"
                   className={`segmented__item ${recurrence === "weekly" ? "segmented__item--active" : ""}`}
                   onClick={() => setRecurrence("weekly")}
                 >
-                  Неделя
+                  {t("form.rec_weekly")}
                 </button>
                 <button
                   type="button"
                   className={`segmented__item ${recurrence === "monthly" ? "segmented__item--active" : ""}`}
                   onClick={() => setRecurrence("monthly")}
                 >
-                  Месяц
+                  {t("form.rec_monthly")}
                 </button>
               </div>
             </div>
           )}
 
           <div className="field">
-            <span className="field__label">Часть проекта</span>
+            <span className="field__label">{t("form.project")}</span>
             <div className="chips">
               <button
                 type="button"
@@ -655,7 +657,7 @@ export function TaskFormPage() {
                 onClick={() => setParentId(null)}
               >
                 <LayersIcon style={{ width: 14, height: 14 }} />
-                Самостоятельная
+                {t("form.project_standalone")}
               </button>
               {projectCandidates.map((p) => (
                 <button
@@ -670,18 +672,17 @@ export function TaskFormPage() {
               ))}
             </div>
             <div className="hint">
-              Можно вложить задачу в большой проект — например, проект «Сайт» и задача «Текст
-              на главную».
+              {t("form.project_hint")}
             </div>
           </div>
 
           <button className="btn" disabled={busy || !title.trim()} onClick={() => void save()}>
-            {editing ? "Сохранить" : "Добавить задачу"}
+            {editing ? t("form.save") : t("form.add_task")}
           </button>
 
           {editing && (
             <button className="btn btn--danger" onClick={() => void remove()}>
-              Удалить задачу
+              {t("form.delete_task")}
             </button>
           )}
         </div>
@@ -690,13 +691,13 @@ export function TaskFormPage() {
       {editing && task && (
         <div className="surface" style={{ marginTop: 14 }}>
           <div className="surface__heading">
-            <LayersIcon /> Подзадачи
+            <LayersIcon /> {t("form.subtasks")}
             <span className="surface__heading-count">{subtasks.length}</span>
           </div>
 
           {subtasks.length === 0 && !showSubtaskInput && (
             <div className="hint" style={{ marginTop: 4 }}>
-              Дроби крупную задачу на шаги — каждый можно отметить отдельно.
+              {t("form.subtasks_hint")}
             </div>
           )}
 
@@ -717,7 +718,7 @@ export function TaskFormPage() {
               <button
                 className="subtask__remove"
                 onClick={() => void removeSubtask(sub)}
-                aria-label="Удалить подзадачу"
+                aria-label={t("form.delete_subtask")}
               >
                 ×
               </button>
@@ -728,7 +729,7 @@ export function TaskFormPage() {
             <div className="subtask-form">
               <input
                 className="input"
-                placeholder="Название подзадачи"
+                placeholder={t("form.subtask_placeholder")}
                 value={newSubtaskTitle}
                 autoFocus
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
@@ -741,7 +742,7 @@ export function TaskFormPage() {
                 disabled={!newSubtaskTitle.trim()}
                 onClick={() => void addSubtask()}
               >
-                Добавить
+                {t("form.cat_add")}
               </button>
             </div>
           ) : (
@@ -751,7 +752,7 @@ export function TaskFormPage() {
               type="button"
             >
               <PlusIcon style={{ width: 16, height: 16, marginRight: 8, verticalAlign: "-3px" }} />
-              Добавить подзадачу
+              {t("form.add_subtask")}
             </button>
           )}
         </div>

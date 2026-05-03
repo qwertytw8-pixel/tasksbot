@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
+import { useI18n } from "../i18n";
 import { CheckIcon } from "../icons";
 
 interface LimitModalProps {
@@ -56,15 +57,6 @@ function PremiumIcon() {
   );
 }
 
-const PREMIUM_FEATURES = [
-  "Безлимитные задачи каждый день",
-  "Свои категории",
-  "Создавай задачи прямо из чата",
-  "Создавай задачи голосовым сообщением",
-  "Настраивай напоминания заранее",
-  "Подзадачи без ограничений",
-];
-
 export function LimitModal({
   variant,
   dailyCount,
@@ -72,9 +64,15 @@ export function LimitModal({
   featureTitle,
   onClose,
 }: LimitModalProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   const isDailyLimit = variant === "daily_limit";
+
+  const features = [
+    t("limit.f1"), t("limit.f2"), t("limit.f3"),
+    t("limit.f4"), t("limit.f5"), t("limit.f6"),
+  ];
 
   return (
     <div className="limit-modal__backdrop" onClick={onClose}>
@@ -83,28 +81,26 @@ export function LimitModal({
           {isDailyLimit ? <LimitIcon /> : <PremiumIcon />}
         </div>
         <h2 className="limit-modal__title">
-          {isDailyLimit ? "Дневной лимит задач" : "Доступно в Premium"}
+          {isDailyLimit ? t("limit.daily_title") : t("limit.premium_title")}
         </h2>
         <p className="limit-modal__text">
           {isDailyLimit ? (
             <>
-              Ты создал <b>{dailyCount}</b> из <b>{maxDaily}</b> задач сегодня
-              на бесплатном плане. Создание новых задач будет доступно завтра.
+              {t("limit.daily_text_before")} <b>{dailyCount}</b> {t("limit.daily_text_of")} <b>{maxDaily}</b> {t("limit.daily_text_after")}
             </>
           ) : (
             <>
-              {featureTitle ?? "Эта функция"} доступна только с подпиской
-              Premium.
+              {featureTitle ?? t("limit.premium_text_default")} {t("limit.premium_text_after")}
             </>
           )}
         </p>
 
         <div className="limit-modal__features">
           <div className="limit-modal__features-title">
-            С Premium ты получишь:
+            {t("limit.features_title")}
           </div>
           <ul>
-            {PREMIUM_FEATURES.map((f) => (
+            {features.map((f) => (
               <li key={f}>
                 <span className="limit-modal__check">
                   <CheckIcon />
@@ -123,10 +119,10 @@ export function LimitModal({
             navigate("/profile/subscription");
           }}
         >
-          💎 Купить подписку
+          {t("limit.buy")}
         </button>
         <button type="button" className="limit-modal__close" onClick={onClose}>
-          Закрыть
+          {t("limit.close")}
         </button>
       </div>
     </div>

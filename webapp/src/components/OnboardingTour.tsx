@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { api } from "../api";
+import { getUserLanguage } from "../telegram";
 
 interface TourStep {
   target: string | null;
   title: string;
+  titleEn: string;
   text: string;
+  textEn: string;
   emoji: string;
   position: "top" | "bottom" | "center";
 }
@@ -14,42 +17,54 @@ const STEPS: TourStep[] = [
   {
     target: null,
     title: "Добро пожаловать в Task Blo!",
+    titleEn: "Welcome to Task Blo!",
     text: "Твой удобный планировщик задач прямо в Telegram. Давай быстро покажем, как всё устроено.",
+    textEn: "Your handy task planner right inside Telegram. Let us show you around.",
     emoji: "👋",
     position: "center",
   },
   {
     target: ".tabbar",
     title: "Навигация",
+    titleEn: "Navigation",
     text: "Внизу — основные разделы: все задачи, сегодняшние, календарь и профиль. Переключайся между ними одним нажатием.",
+    textEn: "The main sections are at the bottom: all tasks, today, calendar, and profile. Switch between them with one tap.",
     emoji: "📱",
     position: "top",
   },
   {
     target: ".fab",
     title: "Создание задачи",
+    titleEn: "Create a task",
     text: "Нажми «+» чтобы создать задачу. Можно указать дату, время, приоритет, категорию и напоминание.",
+    textEn: "Tap «+» to create a task. You can set a date, time, priority, category, and reminder.",
     emoji: "➕",
     position: "top",
   },
   {
     target: '.tab[href="/today"]',
     title: "Сегодня",
+    titleEn: "Today",
     text: "Все задачи на сегодня в одном месте: просроченные, текущие и уже выполненные.",
+    textEn: "All tasks for today in one place: overdue, current, and completed.",
     emoji: "⭐",
     position: "top",
   },
   {
     target: '.tab[href="/calendar"]',
     title: "Календарь",
+    titleEn: "Calendar",
     text: "Планируй по дням — выбери дату и увидишь задачи по часам.",
+    textEn: "Plan by day — pick a date and see tasks by the hour.",
     emoji: "📅",
     position: "top",
   },
   {
     target: '.tab[href="/profile"]',
     title: "Профиль",
+    titleEn: "Profile",
     text: "Настройки, подписка Premium, темы оформления и поддержка.",
+    textEn: "Settings, Premium subscription, themes, and support.",
     emoji: "👤",
     position: "top",
   },
@@ -89,6 +104,8 @@ function buildMaskImage(rect: Rect, pad: number): string {
 export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
+  const lang = getUserLanguage();
+  const isRu = lang === "ru";
 
   const current = STEPS[step];
 
@@ -124,7 +141,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   const pad = 10;
 
-  const overlayStyle: React.CSSProperties = rect
+  const overlayMask: React.CSSProperties = rect
     ? {
         maskImage: buildMaskImage(rect, pad),
         WebkitMaskImage: buildMaskImage(rect, pad),
@@ -135,17 +152,10 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   const spotStyle: React.CSSProperties | undefined = rect
     ? {
-        position: "fixed",
         top: rect.top - pad,
         left: rect.left - pad,
         width: rect.width + pad * 2,
         height: rect.height + pad * 2,
-        borderRadius: 14,
-        boxShadow:
-          "0 0 0 3px rgba(109, 93, 252, 0.6), 0 0 24px 4px rgba(109, 93, 252, 0.3)",
-        pointerEvents: "none" as const,
-        zIndex: 10000,
-        transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
       }
     : undefined;
 
@@ -161,11 +171,12 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
-    <div
-      className="onboarding-overlay"
-      style={overlayStyle}
-      onClick={(e) => { if (e.target === e.currentTarget) next(); }}
-    >
+    <div className="onboarding-wrap">
+      <div
+        className="onboarding-overlay"
+        style={overlayMask}
+        onClick={(e) => { if (e.target === e.currentTarget) next(); }}
+      />
       {rect && <div className="onboarding-spot" style={spotStyle} />}
       <div className="onboarding-tooltip" style={tooltipStyle}>
         <div className="onboarding-tooltip__progress">
@@ -178,22 +189,28 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
         <div className="onboarding-tooltip__step">
           {step + 1} / {STEPS.length}
         </div>
-        <div className="onboarding-tooltip__title">{current.title}</div>
-        <div className="onboarding-tooltip__text">{current.text}</div>
+        <div className="onboarding-tooltip__title">
+          {isRu ? current.title : current.titleEn}
+        </div>
+        <div className="onboarding-tooltip__text">
+          {isRu ? current.text : current.textEn}
+        </div>
         <div className="onboarding-tooltip__actions">
           <button
             type="button"
             className="onboarding-tooltip__skip"
             onClick={finish}
           >
-            Пропустить
+            {isRu ? "Пропустить" : "Skip"}
           </button>
           <button
             type="button"
             className="onboarding-tooltip__next"
             onClick={next}
           >
-            {step < STEPS.length - 1 ? "Далее →" : "Начать!"}
+            {step < STEPS.length - 1
+              ? (isRu ? "Далее →" : "Next →")
+              : (isRu ? "Начать!" : "Start!")}
           </button>
         </div>
       </div>

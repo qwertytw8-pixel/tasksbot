@@ -3,6 +3,7 @@ import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "reac
 
 import { api } from "./api";
 import { OnboardingTour } from "./components/OnboardingTour";
+import { useI18n } from "./i18n";
 import {
   CalendarIcon,
   ListIcon,
@@ -23,7 +24,8 @@ const AdminPage = lazy(() => import("./pages/Admin").then((m) => ({ default: m.A
 const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin"];
 
 function PageFallback() {
-  return <div className="spinner">Загрузка…</div>;
+  const { t } = useI18n();
+  return <div className="spinner">{t("loading")}</div>;
 }
 
 export function App() {
@@ -76,36 +78,38 @@ export function App() {
 }
 
 function Fab() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   if (HIDE_FAB_ON.some((p) => location.pathname.startsWith(p))) return null;
   return (
-    <button className="fab" aria-label="Новая задача" onClick={() => navigate("/new")}>
+    <button className="fab" aria-label={t("fab.label")} onClick={() => navigate("/new")}>
       <PlusIcon />
     </button>
   );
 }
 
 function TabBar() {
+  const { t } = useI18n();
   const tabs = [
-    { to: "/all", label: "Все", icon: ListIcon },
-    { to: "/today", label: "Сегодня", icon: SparkIcon },
-    { to: "/calendar", label: "Календарь", icon: CalendarIcon },
-    { to: "/profile", label: "Профиль", icon: UserIcon },
+    { to: "/all", label: t("tab.all"), icon: ListIcon },
+    { to: "/today", label: t("tab.today"), icon: SparkIcon },
+    { to: "/calendar", label: t("tab.calendar"), icon: CalendarIcon },
+    { to: "/profile", label: t("tab.profile"), icon: UserIcon },
   ];
 
   return (
     <nav className="tabbar tabbar--four">
-      {tabs.map((t) => {
-        const Icon = t.icon;
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
         return (
           <NavLink
-            key={t.to}
-            to={t.to}
+            key={tab.to}
+            to={tab.to}
             className={({ isActive }) => `tab ${isActive ? "tab--active" : ""}`}
           >
             <Icon className="tab__icon" />
-            <span>{t.label}</span>
+            <span>{tab.label}</span>
           </NavLink>
         );
       })}

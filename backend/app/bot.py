@@ -53,23 +53,51 @@ WELCOME_TEXT = (
     "Жми «Открыть приложение» — и поехали."
 )
 
+WELCOME_TEXT_EN = (
+    "<b>Your personal task space.</b>\n\n"
+    "Plan your day without noise: tasks, categories, and reminders "
+    "in one clean Mini App.\n\n"
+    "💎 <b>Premium</b> — unlimited tasks, custom categories, "
+    "create tasks via text and voice from 99 ⭐/mo.\n\n"
+    "Tap «Open app» to get started."
+)
+
 NEW_TASK_HINT = (
     "Просто напиши мне задачу как обычное сообщение — например, "
     "<i>купить молоко завтра в 19:00 #дом</i>. "
     "Я её разберу и добавлю в приложение."
 )
 
+NEW_TASK_HINT_EN = (
+    "Just send me a task as a regular message — for example, "
+    "<i>buy milk tomorrow at 7pm #home</i>. "
+    "I'll parse and add it to the app."
+)
+
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+
+
+def _is_ru(message: Message | None = None, cq: CallbackQuery | None = None) -> bool:
+    """Return True if user's Telegram language starts with 'ru'."""
+    user = None
+    if message and message.from_user:
+        user = message.from_user
+    elif cq and cq.from_user:
+        user = cq.from_user
+    if user and user.language_code:
+        return user.language_code.startswith("ru")
+    return True
 
 
 def _open_app_kb(
     show_premium: bool = True,
+    ru: bool = True,
 ) -> InlineKeyboardMarkup:
     settings = get_settings()
     rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
-                text="🚀 Открыть приложение",
+                text="🚀 Открыть приложение" if ru else "🚀 Open app",
                 web_app=WebAppInfo(url=settings.webapp_url),
             )
         ],
@@ -77,36 +105,36 @@ def _open_app_kb(
     if show_premium:
         rows.append([
             InlineKeyboardButton(
-                text="💎 Купить Premium",
+                text="💎 Купить Premium" if ru else "💎 Buy Premium",
                 callback_data="show_premium",
             )
         ])
     rows.append([
         InlineKeyboardButton(
-            text="➕ Новая задача",
+            text="➕ Новая задача" if ru else "➕ New task",
             callback_data="new_task",
         ),
         InlineKeyboardButton(
-            text="ℹ️ Помощь",
+            text="ℹ️ Помощь" if ru else "ℹ️ Help",
             callback_data="help",
         ),
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def _task_actions_kb(task_id: int) -> InlineKeyboardMarkup:
+def _task_actions_kb(task_id: int, ru: bool = True) -> InlineKeyboardMarkup:
     settings = get_settings()
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="📋 Открыть в приложении",
+                    text="📋 Открыть в приложении" if ru else "📋 Open in app",
                     web_app=WebAppInfo(url=settings.webapp_url),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="❌ Отменить",
+                    text="❌ Отменить" if ru else "❌ Cancel",
                     callback_data=f"del:{task_id}",
                 ),
             ],
@@ -114,13 +142,13 @@ def _task_actions_kb(task_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def _reply_kb() -> ReplyKeyboardMarkup:
+def _reply_kb(ru: bool = True) -> ReplyKeyboardMarkup:
     settings = get_settings()
     return ReplyKeyboardMarkup(
         keyboard=[
             [
                 KeyboardButton(
-                    text="🗂 Открыть задачи",
+                    text="🗂 Открыть задачи" if ru else "🗂 Open tasks",
                     web_app=WebAppInfo(url=settings.webapp_url),
                 )
             ]
@@ -154,13 +182,18 @@ async def cmd_start(message: Message) -> None:
 
 
 async def _do_start(message: Message) -> None:
-    img = _welcome_image()
-    if img is not None:
-        await message.answer_photo(
-            photo=img, caption=WELCOME_TEXT, reply_markup=_open_app_kb()
-        )
+    ru = _is_ru(message=message)
+    kb = _open_app_kb(ru=ru)
+    if ru:
+        welcome = WELCOME_TEXT
+        img = _welcome_image()
+        if img is not None:
+            await message.answer_photo(photo=img, caption=welcome, reply_markup=kb)
+        else:
+            await message.answer(welcome, reply_markup=kb)
     else:
-        await message.answer(WELCOME_TEXT, reply_markup=_open_app_kb())
+        welcome = WELCOME_TEXT_EN
+        await message.answer(welcome, reply_markup=kb)
 
     if message.from_user:
         asyncio.create_task(
@@ -172,19 +205,28 @@ async def _premium_nudge(message: Message) -> None:
     """Send a delayed premium promo to non-premium users."""
     if message.from_user is None:
         return
+    ru = _is_ru(message=message)
     await asyncio.sleep(3)
     sm = get_sessionmaker()
     async with sm() as session:
         if await is_premium(session, message.from_user.id):
             return
-    await message.answer(
+    text = (
         "💎 <b>Попробуй Premium!</b>\n\n"
         "Безлимитные задачи, свои категории, "
-        "ввод задач текстом и голосом — от 99 ⭐/мес.",
+        "ввод задач текстом и голосом — от 99 ⭐/мес."
+    ) if ru else (
+        "💎 <b>Try Premium!</b>\n\n"
+        "Unlimited tasks, custom categories, "
+        "create tasks via text and voice — from 99 ⭐/mo."
+    )
+    btn_text = "💎 Подробнее о Premium" if ru else "💎 Learn more about Premium"
+    await message.answer(
+        text,
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[
                 InlineKeyboardButton(
-                    text="💎 Подробнее о Premium",
+                    text=btn_text,
                     callback_data="show_premium",
                 )
             ]]
@@ -194,24 +236,41 @@ async def _premium_nudge(message: Message) -> None:
 
 @dp.message(Command("app"))
 async def cmd_app(message: Message) -> None:
-    await message.answer("Открой Mini App:", reply_markup=_open_app_kb())
+    ru = _is_ru(message=message)
+    text = "Открой Mini App:" if ru else "Open Mini App:"
+    await message.answer(text, reply_markup=_open_app_kb(ru=ru))
 
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message) -> None:
-    await message.answer(
-        "<b>Команды</b>\n"
-        "/start — приветствие и кнопка приложения\n"
-        "/new &lt;текст&gt; — добавить задачу из чата\n"
-        "/premium — купить Premium-подписку\n"
-        "/app — открыть Mini App\n"
-        "/privacy — как хранятся твои задачи\n"
-        "/support — связь и поддержка\n"
-        "/help — это сообщение\n\n"
-        "💡 Можно просто написать задачу текстом — например, "
-        "<i>позвонить маме завтра в 18:00 #семья</i>. Я распознаю дату, время и категорию.",
-        reply_markup=_open_app_kb(),
-    )
+    ru = _is_ru(message=message)
+    if ru:
+        text = (
+            "<b>Команды</b>\n"
+            "/start — приветствие и кнопка приложения\n"
+            "/new &lt;текст&gt; — добавить задачу из чата\n"
+            "/premium — купить Premium-подписку\n"
+            "/app — открыть Mini App\n"
+            "/privacy — как хранятся твои задачи\n"
+            "/support — связь и поддержка\n"
+            "/help — это сообщение\n\n"
+            "💡 Можно просто написать задачу текстом — например, "
+            "<i>позвонить маме завтра в 18:00 #семья</i>. Я распознаю дату, время и категорию."
+        )
+    else:
+        text = (
+            "<b>Commands</b>\n"
+            "/start — welcome message and app button\n"
+            "/new &lt;text&gt; — add a task from chat\n"
+            "/premium — buy Premium subscription\n"
+            "/app — open Mini App\n"
+            "/privacy — how your tasks are stored\n"
+            "/support — contact and support\n"
+            "/help — this message\n\n"
+            "💡 You can simply send a task as text — for example, "
+            "<i>call mom tomorrow at 6pm #family</i>. I'll parse the date, time, and category."
+        )
+    await message.answer(text, reply_markup=_open_app_kb(ru=ru))
 
 
 PRIVACY_TEXT = (
@@ -224,6 +283,16 @@ PRIVACY_TEXT = (
     "Данные хранятся в БД сервиса и нужны только для работы планировщика."
 )
 
+PRIVACY_TEXT_EN = (
+    "<b>Privacy</b>\n\n"
+    "Each user has their own tasks, categories, and subtasks. "
+    "Access is verified via Telegram <code>initData</code> and user id — "
+    "records are never mixed or shown to others.\n\n"
+    "The Mini App does not use logins or passwords. Authentication is automatic "
+    "via Telegram.\n\n"
+    "Data is stored in the service database and is only used for the planner."
+)
+
 SUPPORT_TEXT = (
     "<b>Поддержка</b>\n\n"
     "Если что-то не работает, ошибка или есть идея — напиши владельцу бота "
@@ -231,32 +300,53 @@ SUPPORT_TEXT = (
     "Команды: /privacy — приватность, /help — список команд, /app — открыть Mini App."
 )
 
+SUPPORT_TEXT_EN = (
+    "<b>Support</b>\n\n"
+    "If something isn't working, there's an error, or you have an idea — "
+    "send a direct message to the bot owner.\n\n"
+    "Commands: /privacy — privacy, /help — command list, /app — open Mini App."
+)
+
 
 @dp.message(Command("privacy"))
 async def cmd_privacy(message: Message) -> None:
-    await message.answer(PRIVACY_TEXT, reply_markup=_open_app_kb())
+    ru = _is_ru(message=message)
+    text = PRIVACY_TEXT if ru else PRIVACY_TEXT_EN
+    await message.answer(text, reply_markup=_open_app_kb(ru=ru))
 
 
 @dp.message(Command("support"))
 async def cmd_support(message: Message) -> None:
-    await message.answer(SUPPORT_TEXT, reply_markup=_open_app_kb())
+    ru = _is_ru(message=message)
+    text = SUPPORT_TEXT if ru else SUPPORT_TEXT_EN
+    await message.answer(text, reply_markup=_open_app_kb(ru=ru))
 
 
 @dp.callback_query(F.data == "help")
 async def cb_help(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
     if cq.message:
-        await cq.message.answer(
-            "Жми кнопку «🚀 Открыть приложение», создавай задачу, выбирай категорию "
-            "и время — бот пришлёт напоминание ровно тогда, когда попросишь.\n\n"
-            + NEW_TASK_HINT
-        )
+        if ru:
+            text = (
+                "Жми кнопку «🚀 Открыть приложение», создавай задачу, выбирай категорию "
+                "и время — бот пришлёт напоминание ровно тогда, когда попросишь.\n\n"
+                + NEW_TASK_HINT
+            )
+        else:
+            text = (
+                "Tap «🚀 Open app», create a task, pick a category "
+                "and time — the bot will send a reminder exactly when you ask.\n\n"
+                + NEW_TASK_HINT_EN
+            )
+        await cq.message.answer(text)
     await cq.answer()
 
 
 @dp.callback_query(F.data == "new_task")
 async def cb_new_task(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
     if cq.message:
-        await cq.message.answer(NEW_TASK_HINT)
+        await cq.message.answer(NEW_TASK_HINT if ru else NEW_TASK_HINT_EN)
     await cq.answer()
 
 
@@ -311,24 +401,47 @@ PREMIUM_TEXT = (
     "Выбери тариф ниже:"
 )
 
+PREMIUM_TEXT_EN = (
+    "<b>⭐ Task Blo Premium</b>\n\n"
+    "Unlimited tasks and no "
+    "restrictions.\n\n"
+    "<b>What's included:</b>\n"
+    "• ♾️ Unlimited tasks every day\n"
+    "• 🏷 Custom categories\n"
+    "• 📝 Create tasks from chat messages\n"
+    "• 🎤 Create tasks via voice\n"
+    "• ⏰ Early reminders\n\n"
+    "<b>Plans:</b>\n"
+    "• 1 month — 99 ⭐\n"
+    "• 3 months — 249 ⭐ "
+    "<i>(save 16%)</i>\n"
+    "• 12 months — 799 ⭐ "
+    "<i>(save 33%)</i>\n\n"
+    "Choose a plan below:"
+)
+
 
 @dp.message(Command("premium"))
 async def cmd_premium(message: Message) -> None:
-    img = _premium_image()
-    if img:
-        await message.answer_photo(
-            photo=img,
-            caption=PREMIUM_TEXT,
-            reply_markup=_premium_kb(),
-        )
-    else:
-        await message.answer(
-            PREMIUM_TEXT, reply_markup=_premium_kb(),
-        )
+    ru = _is_ru(message=message)
+    text = PREMIUM_TEXT if ru else PREMIUM_TEXT_EN
+    if ru:
+        img = _premium_image()
+        if img:
+            await message.answer_photo(
+                photo=img,
+                caption=text,
+                reply_markup=_premium_kb(),
+            )
+            return
+    await message.answer(
+        text, reply_markup=_premium_kb(),
+    )
 
 
 @dp.callback_query(F.data == "show_premium")
 async def cb_show_premium(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
     if cq.from_user:
         sm = get_sessionmaker()
         async with sm() as session:
@@ -336,18 +449,21 @@ async def cb_show_premium(cq: CallbackQuery) -> None:
             if user and user.premium_interest_at is None:
                 user.premium_interest_at = datetime.now(UTC)
                 await session.commit()
+    text = PREMIUM_TEXT if ru else PREMIUM_TEXT_EN
     if cq.message:
-        img = _premium_image()
-        if img:
-            await cq.message.answer_photo(
-                photo=img,
-                caption=PREMIUM_TEXT,
-                reply_markup=_premium_kb(),
-            )
-        else:
-            await cq.message.answer(
-                PREMIUM_TEXT, reply_markup=_premium_kb(),
-            )
+        if ru:
+            img = _premium_image()
+            if img:
+                await cq.message.answer_photo(
+                    photo=img,
+                    caption=text,
+                    reply_markup=_premium_kb(),
+                )
+                await cq.answer()
+                return
+        await cq.message.answer(
+            text, reply_markup=_premium_kb(),
+        )
     await cq.answer()
 
 
@@ -366,9 +482,10 @@ async def cb_buy_premium(cq: CallbackQuery) -> None:
 
     plan_key = cq.data.split(":", 1)[1]
     plan = _plan_by_key(plan_key)
+    ru = _is_ru(cq=cq)
     if plan is None:
         await cq.answer(
-            "Неизвестный тариф",
+            "Неизвестный тариф" if ru else "Unknown plan",
             show_alert=True,
         )
         return
@@ -377,19 +494,20 @@ async def cb_buy_premium(cq: CallbackQuery) -> None:
     async with sm() as session:
         if await is_premium(session, cq.from_user.id):
             await cq.message.answer(
-                "У тебя уже есть активная "
-                "Premium-подписка! 🎉"
+                "У тебя уже есть активная Premium-подписка! 🎉" if ru
+                else "You already have an active Premium subscription! 🎉"
             )
             await cq.answer()
             return
 
+    desc = (
+        f"Premium {plan['label']}: безлимитные задачи, свои категории и все возможности."
+    ) if ru else (
+        f"Premium {plan['label']}: unlimited tasks, custom categories, and all features."
+    )
     await cq.message.answer_invoice(
         title="Task Blo Premium",
-        description=(
-            f"Premium {plan['label']}: "
-            "безлимитные задачи, "
-            "свои категории и все возможности."
-        ),
+        description=desc,
         payload=json.dumps({
             "type": f"premium_{plan_key}",
             "user_id": cq.from_user.id,
@@ -412,24 +530,26 @@ async def cb_renew_discount(cq: CallbackQuery) -> None:
         await cq.answer()
         return
 
+    ru = _is_ru(cq=cq)
     sm = get_sessionmaker()
     async with sm() as session:
         if await is_premium(session, cq.from_user.id):
             await cq.message.answer(
-                "У тебя уже есть активная "
-                "Premium-подписка! 🎉"
+                "У тебя уже есть активная Premium-подписка! 🎉" if ru
+                else "You already have an active Premium subscription! 🎉"
             )
             await cq.answer()
             return
 
     plan = RENEWAL_DISCOUNT_PLAN
+    desc = (
+        f"Premium {plan['label']}: безлимитные задачи, свои категории и все возможности."
+    ) if ru else (
+        f"Premium {plan['label']}: unlimited tasks, custom categories, and all features."
+    )
     await cq.message.answer_invoice(
-        title="Task Blo Premium — скидка",
-        description=(
-            f"Premium {plan['label']}: "
-            "безлимитные задачи, "
-            "свои категории и все возможности."
-        ),
+        title="Task Blo Premium" if ru else "Task Blo Premium — discount",
+        description=desc,
         payload=json.dumps({
             "type": "premium_renewal_1m",
             "user_id": cq.from_user.id,
@@ -488,32 +608,49 @@ async def on_successful_payment(message: Message) -> None:
         session.add(sub)
         await session.commit()
 
+    ru = _is_ru(message=message)
     exp_str = expires_at.strftime("%d.%m.%Y")
-    success_text = (
-        "🎉 <b>Добро пожаловать в Premium!</b>\n\n"
-        "Спасибо, что выбрал Task Blo Premium. "
-        "Теперь тебе доступны все возможности:\n\n"
-        "• Безлимитные задачи каждый день\n"
-        "• Свои категории\n"
-        "• Создавай задачи прямо из чата\n"
-        "• Создавай задачи голосом\n"
-        "• Напоминания заранее\n\n"
-        f"Подписка активна до {exp_str}.\n"
-        "Просто напиши или запиши голосовое — "
-        "я создам задачу за тебя!"
-    )
-    kb = _open_app_kb(show_premium=False)
-    img = _premium_success_image()
-    if img is not None:
-        await message.answer_photo(
-            photo=img,
-            caption=success_text,
-            reply_markup=kb,
+    if ru:
+        success_text = (
+            "🎉 <b>Добро пожаловать в Premium!</b>\n\n"
+            "Спасибо, что выбрал Task Blo Premium. "
+            "Теперь тебе доступны все возможности:\n\n"
+            "• Безлимитные задачи каждый день\n"
+            "• Свои категории\n"
+            "• Создавай задачи прямо из чата\n"
+            "• Создавай задачи голосом\n"
+            "• Напоминания заранее\n\n"
+            f"Подписка активна до {exp_str}.\n"
+            "Просто напиши или запиши голосовое — "
+            "я создам задачу за тебя!"
         )
     else:
-        await message.answer(
-            success_text, reply_markup=kb,
+        success_text = (
+            "🎉 <b>Welcome to Premium!</b>\n\n"
+            "Thanks for choosing Task Blo Premium. "
+            "Now you have access to all features:\n\n"
+            "• Unlimited tasks every day\n"
+            "• Custom categories\n"
+            "• Create tasks from chat messages\n"
+            "• Create tasks via voice\n"
+            "• Early reminders\n\n"
+            f"Subscription active until {exp_str}.\n"
+            "Just send a message or a voice note — "
+            "I'll create the task for you!"
         )
+    kb = _open_app_kb(show_premium=False, ru=ru)
+    if ru:
+        img = _premium_success_image()
+        if img is not None:
+            await message.answer_photo(
+                photo=img,
+                caption=success_text,
+                reply_markup=kb,
+            )
+            return
+    await message.answer(
+        success_text, reply_markup=kb,
+    )
 
 
 # ---- natural-language task creation -----------------------------------
@@ -545,8 +682,9 @@ async def _create_task_from_text(
     return parsed, task, tz_name
 
 
-def _format_task_confirmation(parsed: ParsedTask, task: Task, tz_name: str) -> str:
-    lines = ["✅ <b>Задача добавлена</b>", f"<b>{_escape(task.title)}</b>"]
+def _format_task_confirmation(parsed: ParsedTask, task: Task, tz_name: str, ru: bool = True) -> str:
+    header = "✅ <b>Задача добавлена</b>" if ru else "✅ <b>Task added</b>"
+    lines = [header, f"<b>{_escape(task.title)}</b>"]
     summary = format_summary(parsed, tz_name)
     if summary:
         lines.append(f"🕒 {_escape(summary)}")
@@ -563,21 +701,28 @@ def _escape(text: str) -> str:
 
 @dp.message(Command("new"))
 async def cmd_new(message: Message, command: CommandObject) -> None:
+    ru = _is_ru(message=message)
     text = (command.args or "").strip()
     if not text:
-        await message.answer(NEW_TASK_HINT, reply_markup=_open_app_kb())
+        await message.answer(
+            NEW_TASK_HINT if ru else NEW_TASK_HINT_EN,
+            reply_markup=_open_app_kb(ru=ru),
+        )
         return
     if message.from_user:
         sm = get_sessionmaker()
         async with sm() as session:
             if not await is_premium(session, message.from_user.id):
+                msg = (
+                    "💎 Добавление задач через сообщения доступно с Premium-подпиской." if ru
+                    else "💎 Adding tasks via messages is available with a Premium subscription."
+                )
                 await message.answer(
-                    "💎 Добавление задач через сообщения доступно "
-                    "с Premium-подпиской.",
+                    msg,
                     reply_markup=InlineKeyboardMarkup(
                         inline_keyboard=[[
                             InlineKeyboardButton(
-                                text="💎 Купить Premium",
+                                text="💎 Купить Premium" if ru else "💎 Buy Premium",
                                 callback_data="show_premium",
                             )
                         ]]
@@ -592,17 +737,21 @@ async def on_plain_text(message: Message) -> None:
     text = (message.text or "").strip()
     if not text or text.startswith("/"):
         return
+    ru = _is_ru(message=message)
     if message.from_user:
         sm = get_sessionmaker()
         async with sm() as session:
             if not await is_premium(session, message.from_user.id):
+                msg = (
+                    "💎 Добавление задач через сообщения доступно с Premium-подпиской." if ru
+                    else "💎 Adding tasks via messages is available with a Premium subscription."
+                )
                 await message.answer(
-                    "💎 Добавление задач через сообщения доступно "
-                    "с Premium-подпиской.",
+                    msg,
                     reply_markup=InlineKeyboardMarkup(
                         inline_keyboard=[[
                             InlineKeyboardButton(
-                                text="💎 Купить Premium",
+                                text="💎 Купить Premium" if ru else "💎 Buy Premium",
                                 callback_data="show_premium",
                             )
                         ]]
@@ -637,23 +786,27 @@ async def _handle_task_text(message: Message, text: str) -> None:
             tz_name = user.tz or "UTC"
         global_date = extract_global_date_context(text, tz_name=tz_name)
 
+    ru = _is_ru(message=message)
     if len(chunks) == 1:
         try:
             result = await _create_task_from_text(message, chunks[0])
         except Exception:  # pragma: no cover
             log.exception("failed to create task from NL text")
-            await message.answer(
-                "Ой, не получилось добавить задачу — попробуй ещё раз чуть позже "
-                "или открой приложение:",
-                reply_markup=_open_app_kb(),
+            err = (
+                "Ой, не получилось добавить задачу — "
+                "попробуй ещё раз чуть позже или открой приложение:"
+            ) if ru else (
+                "Oops, couldn't add the task — "
+                "try again later or open the app:"
             )
+            await message.answer(err, reply_markup=_open_app_kb(ru=ru))
             return
         if result is None:
             return
         parsed, task, tz = result
         await message.answer(
-            _format_task_confirmation(parsed, task, tz),
-            reply_markup=_task_actions_kb(task.id),
+            _format_task_confirmation(parsed, task, tz, ru=ru),
+            reply_markup=_task_actions_kb(task.id, ru=ru),
         )
         return
 
@@ -678,13 +831,19 @@ async def _handle_task_text(message: Message, text: str) -> None:
             log.exception("failed to create task from chunk: %s", chunk)
 
     if not results:
-        await message.answer(
-            "Не удалось разобрать задачи — попробуй ещё раз.",
-            reply_markup=_open_app_kb(),
+        err = (
+            "Не удалось разобрать задачи — попробуй ещё раз." if ru
+            else "Couldn't parse the tasks — please try again."
         )
+        await message.answer(err, reply_markup=_open_app_kb(ru=ru))
         return
 
-    lines = [f"✅ <b>Создано задач: {len(results)}</b>\n"]
+    header = (
+        f"✅ <b>Создано задач: {len(results)}</b>"
+        if ru else
+        f"✅ <b>Tasks created: {len(results)}</b>"
+    )
+    lines = [header + "\n"]
     for i, (parsed, task, tz) in enumerate(results, 1):
         summary = format_summary(parsed, tz)
         priority_label = ""
@@ -702,34 +861,36 @@ async def _handle_task_text(message: Message, text: str) -> None:
 
     await message.answer(
         "\n".join(lines),
-        reply_markup=_open_app_kb(),
+        reply_markup=_open_app_kb(ru=ru),
     )
 
 
 @dp.callback_query(F.data.startswith("del:"))
 async def cb_delete_task(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
     if cq.data is None or cq.from_user is None:
         await cq.answer()
         return
     try:
         task_id = int(cq.data.split(":", 1)[1])
     except (ValueError, IndexError):
-        await cq.answer("неверный id", show_alert=False)
+        await cq.answer("неверный id" if ru else "invalid id", show_alert=False)
         return
     sm = get_sessionmaker()
     async with sm() as session:
         task = await session.get(Task, task_id)
         if task is None or task.user_id != cq.from_user.id:
-            await cq.answer("задача не найдена", show_alert=False)
+            await cq.answer("задача не найдена" if ru else "task not found", show_alert=False)
             return
         await session.delete(task)
         await session.commit()
+    deleted_text = "❌ Задача отменена." if ru else "❌ Task cancelled."
     if cq.message:
         try:
-            await cq.message.edit_text("❌ Задача отменена.")
+            await cq.message.edit_text(deleted_text)
         except Exception:  # noqa: BLE001
-            await cq.message.answer("❌ Задача отменена.")
-    await cq.answer("удалено")
+            await cq.message.answer(deleted_text)
+    await cq.answer("удалено" if ru else "deleted")
 
 
 async def _transcribe_google(ogg_bytes: bytes) -> str | None:
@@ -782,6 +943,7 @@ async def _transcribe_openai(ogg_bytes: bytes, api_key: str) -> str | None:
 
 @dp.message(F.voice)
 async def on_voice(message: Message) -> None:
+    ru = _is_ru(message=message)
     settings = get_settings()
     bot = message.bot
     if bot is None or message.voice is None:
@@ -791,13 +953,19 @@ async def on_voice(message: Message) -> None:
         sm = get_sessionmaker()
         async with sm() as session:
             if not await is_premium(session, message.from_user.id):
+                msg = (
+                    "💎 Добавление задач через голосовые "
+                    "сообщения доступно с Premium-подпиской."
+                ) if ru else (
+                    "💎 Adding tasks via voice messages is "
+                    "available with a Premium subscription."
+                )
                 await message.answer(
-                    "💎 Добавление задач через голосовые сообщения "
-                    "доступно с Premium-подпиской.",
+                    msg,
                     reply_markup=InlineKeyboardMarkup(
                         inline_keyboard=[[
                             InlineKeyboardButton(
-                                text="💎 Купить Premium",
+                                text="💎 Купить Premium" if ru else "💎 Buy Premium",
                                 callback_data="show_premium",
                             )
                         ]]
@@ -805,12 +973,18 @@ async def on_voice(message: Message) -> None:
                 )
                 return
 
-    await message.answer("🎙 Распознаю голосовое сообщение…")
+    await message.answer(
+        "🎙 Распознаю голосовое сообщение…" if ru
+        else "🎙 Recognizing voice message…"
+    )
 
     try:
         file = await bot.get_file(message.voice.file_id)
         if file.file_path is None:
-            await message.answer("Не удалось скачать голосовое сообщение.")
+            await message.answer(
+                "Не удалось скачать голосовое сообщение." if ru
+                else "Couldn't download the voice message."
+            )
             return
 
         buf = io.BytesIO()
@@ -825,9 +999,14 @@ async def on_voice(message: Message) -> None:
 
         if not text:
             await message.answer(
-                "Не удалось распознать текст из голосового сообщения. "
-                "Попробуй ещё раз или напиши текстом.",
-                reply_markup=_open_app_kb(),
+                (
+                    "Не удалось распознать текст из голосового. "
+                    "Попробуй ещё раз или напиши текстом."
+                ) if ru else (
+                    "Couldn't recognize text from voice. "
+                    "Try again or type it out."
+                ),
+                reply_markup=_open_app_kb(ru=ru),
             )
             return
 
@@ -835,8 +1014,9 @@ async def on_voice(message: Message) -> None:
     except Exception:
         log.exception("voice transcription failed")
         await message.answer(
-            "Ой, не получилось распознать голосовое — попробуй ещё раз чуть позже.",
-            reply_markup=_open_app_kb(),
+            "Ой, не получилось распознать голосовое — попробуй ещё раз чуть позже." if ru
+            else "Oops, couldn't recognize the voice message — try again later.",
+            reply_markup=_open_app_kb(ru=ru),
         )
 
 
@@ -850,5 +1030,17 @@ async def configure_bot_commands(bot: Bot) -> None:
             BotCommand(command="privacy", description="Приватность"),
             BotCommand(command="support", description="Поддержка"),
             BotCommand(command="help", description="Помощь"),
-        ]
+        ],
+        language_code="ru",
+    )
+    await bot.set_my_commands(
+        [
+            BotCommand(command="start", description="Welcome"),
+            BotCommand(command="new", description="Add a task from chat"),
+            BotCommand(command="premium", description="Buy Premium"),
+            BotCommand(command="app", description="Open Mini App"),
+            BotCommand(command="privacy", description="Privacy"),
+            BotCommand(command="support", description="Support"),
+            BotCommand(command="help", description="Help"),
+        ],
     )

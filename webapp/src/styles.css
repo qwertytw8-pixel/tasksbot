@@ -1104,6 +1104,28 @@ button {
   backdrop-filter: var(--tb-blur-light);
 }
 
+.segmented--compact {
+  gap: 4px;
+}
+.segmented--compact .segmented__item {
+  padding: 6px 10px;
+  font-size: 13px;
+  min-height: unset;
+}
+
+/* ---------- Settings row ---------- */
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-row__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tb-text);
+}
+
 /* ---------- Calendar ---------- */
 
 .cal {
@@ -3197,12 +3219,19 @@ button {
 
 /* ---------- Onboarding Tour ---------- */
 
-.onboarding-overlay {
+.onboarding-wrap {
   position: fixed;
   inset: 0;
   z-index: 9999;
+  pointer-events: none;
+}
+
+.onboarding-overlay {
+  position: absolute;
+  inset: 0;
   background: rgba(0, 0, 0, 0.65);
   animation: onboarding-fade-in 0.3s ease;
+  pointer-events: auto;
 }
 
 @keyframes onboarding-fade-in {
@@ -3233,6 +3262,7 @@ button {
   -webkit-backdrop-filter: var(--tb-blur-heavy);
   backdrop-filter: var(--tb-blur-heavy);
   animation: tb-rise 0.35s ease both;
+  pointer-events: auto;
 }
 
 .onboarding-tooltip__progress {
