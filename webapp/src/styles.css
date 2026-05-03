@@ -2036,9 +2036,7 @@ button {
   transition: opacity 180ms ease;
 }
 
-.task-swipe--active .task-swipe__actions,
-.task-swipe--open .task-swipe__actions,
-.task-swipe--revealing .task-swipe__actions {
+.task-swipe--open .task-swipe__actions {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -3216,11 +3214,10 @@ button {
   position: fixed;
   border-radius: 14px;
   box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.65),
     0 0 0 3px rgba(109, 93, 252, 0.6),
     0 0 24px 4px rgba(109, 93, 252, 0.3);
   background: transparent;
-  z-index: 9999;
+  z-index: 10000;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }

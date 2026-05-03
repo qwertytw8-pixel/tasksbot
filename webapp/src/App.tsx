@@ -62,7 +62,7 @@ export function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/all" element={<AllPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
-          <Route path="/profile/*" element={<ProfileRoutes />} />
+          <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/about" element={<Navigate to="/profile" replace />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/new" element={<TaskFormPage />} />

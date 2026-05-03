@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { api } from "../api";
 
@@ -59,9 +59,36 @@ interface OnboardingTourProps {
   onComplete: () => void;
 }
 
+interface Rect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+function getElementRect(selector: string): Rect | null {
+  const el = document.querySelector(selector);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { top: r.top, left: r.left, width: r.width, height: r.height };
+}
+
+function buildMaskImage(rect: Rect, pad: number): string {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>` +
+    `<rect width='100%' height='100%' fill='white'/>` +
+    `<rect x='${rect.left - pad}' y='${rect.top - pad}' ` +
+    `width='${rect.width + pad * 2}' height='${rect.height + pad * 2}' ` +
+    `rx='14' ry='14' fill='black'/>` +
+    `</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+
 export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const [step, setStep] = useState(0);
-  const [rect, setRect] = useState<DOMRect | null>(null);
+  const [rect, setRect] = useState<Rect | null>(null);
 
   const current = STEPS[step];
 
@@ -70,31 +97,17 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
       setRect(null);
       return;
     }
-    const el = document.querySelector(current.target);
-    if (el) {
-      setRect(el.getBoundingClientRect());
-    }
+    setRect(getElementRect(current.target));
   }, [current.target]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     updateRect();
-    window.addEventListener("resize", updateRect);
-    return () => window.removeEventListener("resize", updateRect);
   }, [updateRect]);
 
   useEffect(() => {
-    if (!current.target) return;
-    const el = document.querySelector<HTMLElement>(current.target);
-    if (!el) return;
-    const prevPos = el.style.position;
-    const prevZ = el.style.zIndex;
-    el.style.position = "relative";
-    el.style.zIndex = "10000";
-    return () => {
-      el.style.position = prevPos;
-      el.style.zIndex = prevZ;
-    };
-  }, [current.target]);
+    window.addEventListener("resize", updateRect);
+    return () => window.removeEventListener("resize", updateRect);
+  }, [updateRect]);
 
   function next() {
     if (step < STEPS.length - 1) {
@@ -111,12 +124,28 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   const pad = 10;
 
-  const spotStyle = rect
+  const overlayStyle: React.CSSProperties = rect
     ? {
+        maskImage: buildMaskImage(rect, pad),
+        WebkitMaskImage: buildMaskImage(rect, pad),
+        maskSize: "100% 100%",
+        WebkitMaskSize: "100% 100%",
+      }
+    : {};
+
+  const spotStyle: React.CSSProperties | undefined = rect
+    ? {
+        position: "fixed",
         top: rect.top - pad,
         left: rect.left - pad,
         width: rect.width + pad * 2,
         height: rect.height + pad * 2,
+        borderRadius: 14,
+        boxShadow:
+          "0 0 0 3px rgba(109, 93, 252, 0.6), 0 0 24px 4px rgba(109, 93, 252, 0.3)",
+        pointerEvents: "none" as const,
+        zIndex: 10000,
+        transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
       }
     : undefined;
 
@@ -126,13 +155,17 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
       : rect
         ? current.position === "top"
           ? { bottom: window.innerHeight - rect.top + pad + 16, left: 16, right: 16 }
-          : { top: rect.bottom + pad + 16, left: 16, right: 16 }
+          : { top: rect.top + rect.height + pad + 16, left: 16, right: 16 }
         : {};
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
-    <div className="onboarding-overlay" onClick={(e) => { if (e.target === e.currentTarget) next(); }}>
+    <div
+      className="onboarding-overlay"
+      style={overlayStyle}
+      onClick={(e) => { if (e.target === e.currentTarget) next(); }}
+    >
       {rect && <div className="onboarding-spot" style={spotStyle} />}
       <div className="onboarding-tooltip" style={tooltipStyle}>
         <div className="onboarding-tooltip__progress">
