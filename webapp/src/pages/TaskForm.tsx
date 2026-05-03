@@ -269,6 +269,7 @@ export function TaskFormPage() {
       due_at: sub.due_at,
       remind_minutes_before: sub.remind_minutes_before,
       recurrence: sub.recurrence,
+      priority: sub.priority,
       is_done: !sub.is_done,
     });
     setSubtasks((prev) => prev.map((s) => (s.id === sub.id ? updated : s)));
