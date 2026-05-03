@@ -64,13 +64,14 @@ export function TodayPage() {
 
   const done = useMemo(() => {
     if (!tasks) return null;
-    const last24 = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return tasks.filter((t) => {
       if (t.parent_task_id !== null || !t.is_done) return false;
       const d = t.done_at ? new Date(t.done_at) : new Date(t.created_at);
-      return d >= last24;
+      return d >= startOfDay;
     });
-  }, [tasks]);
+  }, [tasks, today]);
 
   const childrenByParent = useMemo(() => {
     const map = new Map<number, Task[]>();

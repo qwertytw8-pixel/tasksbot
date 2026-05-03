@@ -49,6 +49,14 @@ _GREETING_PATTERNS: list[re.Pattern[str]] = [
         r"^\s*(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?\b[,.:!\s]*",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"^\s*(?:поставить|поставь|записать|добавить|создать)\s+(?:\d+\s+)?(?:задач\w*|дел\w*|напоминан\w*)\s*[:.!,\s]*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:нужно|надо|необходимо)\s+(?:поставить|записать|добавить|создать)\s+(?:\d+\s+)?(?:задач\w*|дел\w*)?\s*[:.!,\s]*",
+        re.IGNORECASE,
+    ),
 ]
 
 _FILLER_ONLY = re.compile(
@@ -58,7 +66,9 @@ _FILLER_ONLY = re.compile(
     r"у\s+меня|мне\s+нужно|мне\s+надо|"
     r"(?:вот\s+)?(?:мои|такие|следующие)\s+(?:задач\w*|план\w*|дел\w*)|"
     r"(?:на\s+)?сегодня\s+(?:(?:вот\s+)?такие\s+)?(?:задач\w*|план\w*|дел\w*)|"
-    r"(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?)"
+    r"(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?|"
+    r"(?:поставить|записать|добавить|создать)\s+(?:\d+\s+)?(?:задач\w*|дел\w*)?|"
+    r"(?:нужно|надо)\s+(?:поставить|записать|добавить|создать)\s+(?:\d+\s+)?(?:задач\w*|дел\w*)?)"
     r"[\s,.:;!?\-—]*$",
     re.IGNORECASE,
 )
@@ -67,7 +77,8 @@ _FILLER_ONLY = re.compile(
 
 _RE_MULTI_SPLIT = re.compile(
     r"(?:\.\s+)|(?:;\s*)|"
-    r"(?:\b(?:потом|затем|далее|также|и\s+ещ[её]|следующ(?:ая|ее|ий))\b[,.]?\s*)",
+    r"(?:\b(?:потом|затем|далее|также|и\s+ещ[её]|следующ(?:ая|ее|ий)|"
+    r"а\s+ещ[её]|плюс|кроме\s+того|ну\s+и|и\s+потом)\b[,.]?\s*)",
     re.IGNORECASE,
 )
 
@@ -138,7 +149,7 @@ def split_into_tasks(text: str) -> list[str]:
         return []
 
     chunks = _RE_MULTI_SPLIT.split(text)
-    result = []
+    result: list[str] = []
     for chunk in chunks:
         chunk = chunk.strip()
         if not chunk:
@@ -146,7 +157,62 @@ def split_into_tasks(text: str) -> list[str]:
         if _is_filler_only(chunk):
             continue
         result.append(chunk)
+
+    # If the initial split produced a single chunk with commas, try splitting by
+    # commas (heuristic: each part < 60 chars and at least 2 parts).
+    if len(result) == 1 and "," in result[0]:
+        comma_parts = [p.strip() for p in result[0].split(",") if p.strip()]
+        if len(comma_parts) >= 2 and all(len(p) < 60 for p in comma_parts):
+            result = [p for p in comma_parts if not _is_filler_only(p)]
+
+    # Secondary split on " и " — only when both sides are substantial
+    # (>= 15 chars each) to avoid breaking "купить хлеб и молоко".
+    if len(result) == 1:
+        parts = re.split(r"\s+и\s+", result[0])
+        if len(parts) >= 2 and all(len(p.strip()) >= 15 for p in parts):
+            candidate = [p.strip() for p in parts if p.strip() and not _is_filler_only(p.strip())]
+            if len(candidate) >= 2:
+                result = candidate
+
     return result
+
+
+# ---- global date context helpers ----------------------------------------
+
+_GLOBAL_DATE_PATTERNS: list[tuple[re.Pattern[str], int | None]] = [
+    (re.compile(r"\bпослезавтра\b", re.IGNORECASE), 2),
+    (re.compile(r"\bзавтра\b", re.IGNORECASE), 1),
+    (re.compile(r"\bсегодня\b", re.IGNORECASE), 0),
+]
+
+
+def extract_global_date_context(
+    text: str, tz_name: str = "UTC", now: datetime | None = None
+) -> date | None:
+    """Try to extract a "global" date from the raw text (before splitting).
+
+    When the user says "завтра купить молоко, позвонить маме, написать отчёт",
+    the date "завтра" should apply to all tasks. This function detects that
+    date from the full text. The caller can then inject it into each chunk's
+    ``ParsedTask`` if the chunk has no date of its own.
+    """
+    tz = ZoneInfo(tz_name or "UTC")
+    local_now = (now or datetime.now(tz)).astimezone(tz)
+    today = local_now.date()
+
+    stripped = _strip_greetings(text).lower()
+
+    for pat, offset in _GLOBAL_DATE_PATTERNS:
+        if pat.search(stripped) and offset is not None:
+            return today + timedelta(days=offset)
+
+    # weekday
+    for key, wd in WEEKDAYS.items():
+        m = re.search(rf"\b(?:в\s+)?{key}\b", stripped, re.IGNORECASE)
+        if m:
+            return _next_weekday(today, wd)
+
+    return None
 
 
 @dataclass
