@@ -10,7 +10,7 @@ from pathlib import Path
 
 import httpx
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
     BotCommand,
     BufferedInputFile,
@@ -229,54 +229,55 @@ async def _transcribe_voice(bot: Bot, file_id: str) -> str | None:
 
     wav_path = ogg_path.replace(".ogg", ".wav")
     try:
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", ogg_path, "-ar", "16000", "-ac", "1", wav_path],
-            capture_output=True,
-            timeout=30,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        log.warning("ffmpeg not available for voice transcription")
-        return None
-
-    if not Path(wav_path).exists():
-        return None
-
-    openai_key = getattr(settings, "openai_api_key", None)
-    if openai_key:
         try:
-            with open(wav_path, "rb") as wav_file:
-                async with httpx.AsyncClient(timeout=60) as client:
-                    resp = await client.post(
-                        "https://api.openai.com/v1/audio/transcriptions",
-                        headers={"Authorization": f"Bearer {openai_key}"},
-                        files={"file": ("voice.wav", wav_file, "audio/wav")},
-                        data={"model": "whisper-1", "language": "ru"},
-                    )
-                    if resp.status_code == 200:
-                        return resp.json().get("text", "")
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", ogg_path, "-ar", "16000", "-ac", "1", wav_path],
+                capture_output=True,
+                timeout=30,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            log.warning("ffmpeg not available for voice transcription")
+            return None
+
+        if not Path(wav_path).exists():
+            return None
+
+        openai_key = getattr(settings, "openai_api_key", None)
+        if openai_key:
+            try:
+                with open(wav_path, "rb") as wav_file:
+                    async with httpx.AsyncClient(timeout=60) as client:
+                        resp = await client.post(
+                            "https://api.openai.com/v1/audio/transcriptions",
+                            headers={"Authorization": f"Bearer {openai_key}"},
+                            files={"file": ("voice.wav", wav_file, "audio/wav")},
+                            data={"model": "whisper-1", "language": "ru"},
+                        )
+                        if resp.status_code == 200:
+                            return resp.json().get("text", "")
+            except Exception:
+                log.exception("Whisper API error")
+
+        try:
+            import speech_recognition as sr
+
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(wav_path) as source:
+                audio = recognizer.record(source)
+            return recognizer.recognize_google(audio, language="ru-RU")
         except Exception:
-            log.exception("Whisper API error")
-
-    try:
-        import speech_recognition as sr
-
-        recognizer = sr.Recognizer()
-        with sr.AudioFile(wav_path) as source:
-            audio = recognizer.record(source)
-        return recognizer.recognize_google(audio, language="ru-RU")
-    except Exception:
-        log.exception("Google Speech Recognition error")
-        return None
+            log.exception("Google Speech Recognition error")
+            return None
     finally:
         Path(ogg_path).unlink(missing_ok=True)
         Path(wav_path).unlink(missing_ok=True)
 
 
 @dp.message(Command("new"))
-async def cmd_new(message: Message) -> None:
+async def cmd_new(message: Message, command: CommandObject) -> None:
     if not message.from_user:
         return
-    raw = (message.text or "").removeprefix("/new").strip()
+    raw = (command.args or "").strip()
     if not raw:
         await message.answer("Напиши: <code>/new Текст задачи</code>")
         return
