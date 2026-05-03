@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
     BotCommand,
     BufferedInputFile,
@@ -30,7 +30,7 @@ from app.api import _ensure_user, _sync_reminders
 from app.auth import TelegramUser
 from app.config import get_settings
 from app.db import Subscription, Task, User, get_sessionmaker
-from app.nlp import ParsedTask, commit_parsed, format_summary, parse_ru
+from app.nlp import ParsedTask, commit_parsed, format_summary, parse_ru, split_into_tasks
 from app.subscription import PREMIUM_PLANS, RENEWAL_DISCOUNT_PLAN, is_premium
 
 log = logging.getLogger(__name__)
@@ -555,11 +555,28 @@ def _escape(text: str) -> str:
 
 
 @dp.message(Command("new"))
-async def cmd_new(message: Message) -> None:
-    text = (message.text or "").partition(" ")[2].strip()
+async def cmd_new(message: Message, command: CommandObject) -> None:
+    text = (command.args or "").strip()
     if not text:
         await message.answer(NEW_TASK_HINT, reply_markup=_open_app_kb())
         return
+    if message.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            if not await is_premium(session, message.from_user.id):
+                await message.answer(
+                    "💎 Добавление задач через сообщения доступно "
+                    "с Premium-подпиской.",
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="💎 Купить Premium",
+                                callback_data="show_premium",
+                            )
+                        ]]
+                    ),
+                )
+                return
     await _handle_task_text(message, text)
 
 
@@ -589,22 +606,65 @@ async def on_plain_text(message: Message) -> None:
 
 
 async def _handle_task_text(message: Message, text: str) -> None:
-    try:
-        result = await _create_task_from_text(message, text)
-    except Exception:  # pragma: no cover
-        log.exception("failed to create task from NL text")
+    chunks = split_into_tasks(text)
+    if not chunks:
+        chunks = [text]
+
+    if len(chunks) == 1:
+        try:
+            result = await _create_task_from_text(message, chunks[0])
+        except Exception:  # pragma: no cover
+            log.exception("failed to create task from NL text")
+            await message.answer(
+                "Ой, не получилось добавить задачу — попробуй ещё раз чуть позже "
+                "или открой приложение:",
+                reply_markup=_open_app_kb(),
+            )
+            return
+        if result is None:
+            return
+        parsed, task, tz = result
         await message.answer(
-            "Ой, не получилось добавить задачу — попробуй ещё раз чуть позже "
-            "или открой приложение:",
+            _format_task_confirmation(parsed, task, tz),
+            reply_markup=_task_actions_kb(task.id),
+        )
+        return
+
+    results: list[tuple[ParsedTask, Task, str]] = []
+    for chunk in chunks:
+        try:
+            result = await _create_task_from_text(message, chunk)
+            if result is not None:
+                results.append(result)
+        except Exception:  # pragma: no cover
+            log.exception("failed to create task from chunk: %s", chunk)
+
+    if not results:
+        await message.answer(
+            "Не удалось разобрать задачи — попробуй ещё раз.",
             reply_markup=_open_app_kb(),
         )
         return
-    if result is None:
-        return
-    parsed, task, tz = result
+
+    lines = [f"✅ <b>Создано задач: {len(results)}</b>\n"]
+    for i, (parsed, task, tz) in enumerate(results, 1):
+        summary = format_summary(parsed, tz)
+        priority_label = ""
+        if task.priority == 1:
+            priority_label = " 🟢"
+        elif task.priority == 2:
+            priority_label = " 🟡"
+        elif task.priority == 3:
+            priority_label = " 🔴"
+        line = f"{i}. <b>{_escape(task.title)}</b>"
+        if summary:
+            line += f" · {_escape(summary)}"
+        line += priority_label
+        lines.append(line)
+
     await message.answer(
-        _format_task_confirmation(parsed, task, tz),
-        reply_markup=_task_actions_kb(task.id),
+        "\n".join(lines),
+        reply_markup=_open_app_kb(),
     )
 
 
@@ -647,17 +707,24 @@ async def _transcribe_google(ogg_bytes: bytes) -> str | None:
             ogg_f.write(ogg_bytes)
             ogg_f.flush()
             wav_path = ogg_f.name + ".wav"
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", ogg_f.name, "-ar", "16000", "-ac", "1", wav_path],
-                capture_output=True,
-            )
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(wav_path) as source:
-                audio = recognizer.record(source)
             try:
-                return recognizer.recognize_google(audio, language="ru-RU")
-            except (sr.UnknownValueError, sr.RequestError):
-                return None
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", ogg_f.name, "-ar", "16000", "-ac", "1", wav_path],
+                    capture_output=True,
+                )
+                recognizer = sr.Recognizer()
+                with sr.AudioFile(wav_path) as source:
+                    audio = recognizer.record(source)
+                try:
+                    return recognizer.recognize_google(audio, language="ru-RU")
+                except (sr.UnknownValueError, sr.RequestError):
+                    return None
+            finally:
+                import contextlib
+                import os
+
+                with contextlib.suppress(OSError):
+                    os.unlink(wav_path)
 
     return await asyncio.to_thread(_sync_transcribe)
 
