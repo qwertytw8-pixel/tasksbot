@@ -1,71 +1,176 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { api } from "../api";
-import { getUserLanguage } from "../telegram";
+import { useI18n } from "../i18n";
 
 interface TourStep {
   target: string | null;
-  title: string;
-  titleEn: string;
-  text: string;
-  textEn: string;
-  emoji: string;
+  titleKey: string;
+  textKey: string;
+  icon: React.ReactNode;
   position: "top" | "bottom" | "center";
+}
+
+function RocketIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-rocket" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#7c5cfc" />
+          <stop offset="100%" stopColor="#c084fc" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-rocket)" opacity="0.15" />
+      <path d="M24 12c-3 4-5 9-5 14h10c0-5-2-10-5-14Z" fill="url(#ob-rocket)" />
+      <path d="M21 26c-2 1-4 3-5 5l4 1 1-6Z" fill="#c084fc" opacity="0.7" />
+      <path d="M27 26c2 1 4 3 5 5l-4 1-1-6Z" fill="#c084fc" opacity="0.7" />
+      <circle cx="24" cy="21" r="2.5" fill="white" />
+      <path d="M22 32c0 2 1 4 2 5 1-1 2-3 2-5h-4Z" fill="#f97316" />
+    </svg>
+  );
+}
+
+function NavIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-nav" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#3b82f6" />
+          <stop offset="100%" stopColor="#60a5fa" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-nav)" opacity="0.15" />
+      <rect x="10" y="30" width="28" height="8" rx="4" fill="url(#ob-nav)" />
+      <circle cx="16" cy="34" r="2" fill="white" />
+      <circle cx="24" cy="34" r="2" fill="white" />
+      <circle cx="32" cy="34" r="2" fill="white" />
+      <rect x="14" y="12" width="20" height="14" rx="3" fill="url(#ob-nav)" opacity="0.4" />
+    </svg>
+  );
+}
+
+function PlusCircleIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-plus" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#34d399" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-plus)" opacity="0.15" />
+      <circle cx="24" cy="24" r="14" fill="url(#ob-plus)" />
+      <path d="M24 17v14M17 24h14" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-sun" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#fbbf24" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-sun)" opacity="0.15" />
+      <circle cx="24" cy="24" r="8" fill="url(#ob-sun)" />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+        <line
+          key={a}
+          x1={24 + 12 * Math.cos((a * Math.PI) / 180)}
+          y1={24 + 12 * Math.sin((a * Math.PI) / 180)}
+          x2={24 + 15 * Math.cos((a * Math.PI) / 180)}
+          y2={24 + 15 * Math.sin((a * Math.PI) / 180)}
+          stroke="url(#ob-sun)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
+function CalIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-cal" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#ec4899" />
+          <stop offset="100%" stopColor="#f472b6" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-cal)" opacity="0.15" />
+      <rect x="12" y="14" width="24" height="22" rx="4" fill="url(#ob-cal)" />
+      <rect x="12" y="14" width="24" height="8" rx="4" fill="url(#ob-cal)" />
+      <path d="M18 11v6M30 11v6" stroke="url(#ob-cal)" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="19" cy="28" r="1.5" fill="white" />
+      <circle cx="24" cy="28" r="1.5" fill="white" />
+      <circle cx="29" cy="28" r="1.5" fill="white" />
+      <circle cx="19" cy="33" r="1.5" fill="white" />
+      <circle cx="24" cy="33" r="1.5" fill="white" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-user" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#6366f1" />
+          <stop offset="100%" stopColor="#818cf8" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-user)" opacity="0.15" />
+      <circle cx="24" cy="19" r="6" fill="url(#ob-user)" />
+      <path d="M14 36c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="url(#ob-user)" />
+    </svg>
+  );
 }
 
 const STEPS: TourStep[] = [
   {
     target: null,
-    title: "Добро пожаловать в Task Blo!",
-    titleEn: "Welcome to Task Blo!",
-    text: "Твой удобный планировщик задач прямо в Telegram. Давай быстро покажем, как всё устроено.",
-    textEn: "Your handy task planner right inside Telegram. Let us show you around.",
-    emoji: "👋",
+    titleKey: "onboarding.welcome_title",
+    textKey: "onboarding.welcome_text",
+    icon: <RocketIcon />,
     position: "center",
   },
   {
     target: ".tabbar",
-    title: "Навигация",
-    titleEn: "Navigation",
-    text: "Внизу — основные разделы: все задачи, сегодняшние, календарь и профиль. Переключайся между ними одним нажатием.",
-    textEn: "The main sections are at the bottom: all tasks, today, calendar, and profile. Switch between them with one tap.",
-    emoji: "📱",
+    titleKey: "onboarding.nav_title",
+    textKey: "onboarding.nav_text",
+    icon: <NavIcon />,
     position: "top",
   },
   {
     target: ".fab",
-    title: "Создание задачи",
-    titleEn: "Create a task",
-    text: "Нажми «+» чтобы создать задачу. Можно указать дату, время, приоритет, категорию и напоминание.",
-    textEn: "Tap «+» to create a task. You can set a date, time, priority, category, and reminder.",
-    emoji: "➕",
+    titleKey: "onboarding.create_title",
+    textKey: "onboarding.create_text",
+    icon: <PlusCircleIcon />,
     position: "top",
   },
   {
     target: '.tab[href="/today"]',
-    title: "Сегодня",
-    titleEn: "Today",
-    text: "Все задачи на сегодня в одном месте: просроченные, текущие и уже выполненные.",
-    textEn: "All tasks for today in one place: overdue, current, and completed.",
-    emoji: "⭐",
+    titleKey: "onboarding.today_title",
+    textKey: "onboarding.today_text",
+    icon: <SunIcon />,
     position: "top",
   },
   {
     target: '.tab[href="/calendar"]',
-    title: "Календарь",
-    titleEn: "Calendar",
-    text: "Планируй по дням — выбери дату и увидишь задачи по часам.",
-    textEn: "Plan by day — pick a date and see tasks by the hour.",
-    emoji: "📅",
+    titleKey: "onboarding.calendar_title",
+    textKey: "onboarding.calendar_text",
+    icon: <CalIcon />,
     position: "top",
   },
   {
     target: '.tab[href="/profile"]',
-    title: "Профиль",
-    titleEn: "Profile",
-    text: "Настройки, подписка Premium, темы оформления и поддержка.",
-    textEn: "Settings, Premium subscription, themes, and support.",
-    emoji: "👤",
+    titleKey: "onboarding.profile_title",
+    textKey: "onboarding.profile_text",
+    icon: <UserIcon />,
     position: "top",
   },
 ];
@@ -88,24 +193,10 @@ function getElementRect(selector: string): Rect | null {
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 }
 
-function buildMaskImage(rect: Rect, pad: number): string {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const svg =
-    `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>` +
-    `<rect width='100%' height='100%' fill='white'/>` +
-    `<rect x='${rect.left - pad}' y='${rect.top - pad}' ` +
-    `width='${rect.width + pad * 2}' height='${rect.height + pad * 2}' ` +
-    `rx='14' ry='14' fill='black'/>` +
-    `</svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-}
-
 export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
-  const lang = getUserLanguage();
-  const isRu = lang === "ru";
+  const { t } = useI18n();
 
   const current = STEPS[step];
 
@@ -141,15 +232,6 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   const pad = 10;
 
-  const overlayMask: React.CSSProperties = rect
-    ? {
-        maskImage: buildMaskImage(rect, pad),
-        WebkitMaskImage: buildMaskImage(rect, pad),
-        maskSize: "100% 100%",
-        WebkitMaskSize: "100% 100%",
-      }
-    : {};
-
   const spotStyle: React.CSSProperties | undefined = rect
     ? {
         top: rect.top - pad,
@@ -172,11 +254,18 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   return (
     <div className="onboarding-wrap">
-      <div
-        className="onboarding-overlay"
-        style={overlayMask}
-        onClick={(e) => { if (e.target === e.currentTarget) next(); }}
-      />
+      {rect ? (
+        <div
+          className="onboarding-spotlight"
+          style={spotStyle}
+          onClick={(e) => { if (e.target === e.currentTarget) next(); }}
+        />
+      ) : (
+        <div
+          className="onboarding-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) next(); }}
+        />
+      )}
       {rect && <div className="onboarding-spot" style={spotStyle} />}
       <div className="onboarding-tooltip" style={tooltipStyle}>
         <div className="onboarding-tooltip__progress">
@@ -185,15 +274,15 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="onboarding-tooltip__emoji">{current.emoji}</div>
+        <div className="onboarding-tooltip__icon">{current.icon}</div>
         <div className="onboarding-tooltip__step">
           {step + 1} / {STEPS.length}
         </div>
         <div className="onboarding-tooltip__title">
-          {isRu ? current.title : current.titleEn}
+          {t(current.titleKey)}
         </div>
         <div className="onboarding-tooltip__text">
-          {isRu ? current.text : current.textEn}
+          {t(current.textKey)}
         </div>
         <div className="onboarding-tooltip__actions">
           <button
@@ -201,16 +290,14 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             className="onboarding-tooltip__skip"
             onClick={finish}
           >
-            {isRu ? "Пропустить" : "Skip"}
+            {t("onboarding.skip")}
           </button>
           <button
             type="button"
             className="onboarding-tooltip__next"
             onClick={next}
           >
-            {step < STEPS.length - 1
-              ? (isRu ? "Далее →" : "Next →")
-              : (isRu ? "Начать!" : "Start!")}
+            {step < STEPS.length - 1 ? t("onboarding.next") : t("onboarding.start")}
           </button>
         </div>
       </div>

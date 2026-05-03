@@ -333,6 +333,23 @@ const ru: Record<string, string> = {
   "task.mark_done": "Отметить выполненной",
   "task.mark_undone": "Отметить невыполненной",
 
+  // Onboarding tour
+  "onboarding.welcome_title": "Добро пожаловать в Task Blo!",
+  "onboarding.welcome_text": "Твой удобный планировщик задач прямо в Telegram. Давай быстро покажем, как всё устроено.",
+  "onboarding.nav_title": "Навигация",
+  "onboarding.nav_text": "Внизу — основные разделы: все задачи, сегодняшние, календарь и профиль. Переключайся между ними одним нажатием.",
+  "onboarding.create_title": "Создание задачи",
+  "onboarding.create_text": "Нажми «+» чтобы создать задачу. Можно указать дату, время, приоритет, категорию и напоминание.",
+  "onboarding.today_title": "Сегодня",
+  "onboarding.today_text": "Все задачи на сегодня в одном месте: просроченные, текущие и уже выполненные.",
+  "onboarding.calendar_title": "Календарь",
+  "onboarding.calendar_text": "Планируй по дням — выбери дату и увидишь задачи по часам.",
+  "onboarding.profile_title": "Профиль",
+  "onboarding.profile_text": "Настройки, подписка Premium, темы оформления и поддержка.",
+  "onboarding.skip": "Пропустить",
+  "onboarding.next": "Далее →",
+  "onboarding.start": "Начать!",
+
   // Months / weekdays
   "month.0": "Январь", "month.1": "Февраль", "month.2": "Март",
   "month.3": "Апрель", "month.4": "Май", "month.5": "Июнь",
@@ -606,6 +623,23 @@ const en: Record<string, string> = {
   "task.delete": "Delete",
   "task.mark_done": "Mark as done",
   "task.mark_undone": "Mark as not done",
+
+  // Onboarding tour
+  "onboarding.welcome_title": "Welcome to Task Blo!",
+  "onboarding.welcome_text": "Your handy task planner right inside Telegram. Let us show you around.",
+  "onboarding.nav_title": "Navigation",
+  "onboarding.nav_text": "The main sections are at the bottom: all tasks, today, calendar, and profile. Switch between them with one tap.",
+  "onboarding.create_title": "Create a task",
+  "onboarding.create_text": "Tap \u00ab+\u00bb to create a task. You can set a date, time, priority, category, and reminder.",
+  "onboarding.today_title": "Today",
+  "onboarding.today_text": "All tasks for today in one place: overdue, current, and completed.",
+  "onboarding.calendar_title": "Calendar",
+  "onboarding.calendar_text": "Plan by day \u2014 pick a date and see tasks by the hour.",
+  "onboarding.profile_title": "Profile",
+  "onboarding.profile_text": "Settings, Premium subscription, themes, and support.",
+  "onboarding.skip": "Skip",
+  "onboarding.next": "Next \u2192",
+  "onboarding.start": "Start!",
 
   // Months / weekdays
   "month.0": "January", "month.1": "February", "month.2": "March",
