@@ -27,7 +27,7 @@ const REMIND_QUICK_PRESETS: { label: string; minutes: number }[] = [
   { label: "1 день", minutes: 60 * 24 },
 ];
 
-type WhenMode = "none" | "date" | "datetime";
+type WhenMode = "none" | "date";
 type RemindMode = "off" | "on_time" | "before";
 
 function toRemindMode(value: number | null): RemindMode {
@@ -60,6 +60,7 @@ export function TaskFormPage() {
 
   const [whenMode, setWhenMode] = useState<WhenMode>(presetDay ? "date" : "none");
   const [dueDate, setDueDate] = useState<string>(presetDay ?? todayISO());
+  const [includeTime, setIncludeTime] = useState(false);
   const [timeHours, setTimeHours] = useState<number>(12);
   const [timeMinutes, setTimeMinutes] = useState<number>(0);
   const [remind, setRemind] = useState<number | null>(15);
@@ -96,13 +97,15 @@ export function TaskFormPage() {
           setCategoryId(found.category_id);
           setParentId(found.parent_task_id);
           if (found.has_time && found.due_at) {
-            setWhenMode("datetime");
+            setWhenMode("date");
+            setIncludeTime(true);
             const dtObj = new Date(found.due_at);
             setTimeHours(dtObj.getHours());
             setTimeMinutes(dtObj.getMinutes());
             if (found.due_date) setDueDate(found.due_date);
           } else if (found.due_date) {
             setWhenMode("date");
+            setIncludeTime(false);
             setDueDate(found.due_date);
           } else {
             setWhenMode("none");
@@ -136,7 +139,7 @@ export function TaskFormPage() {
   );
 
   function buildPayload(): TaskInput {
-    if (whenMode === "datetime" && dueDate) {
+    if (whenMode === "date" && includeTime && dueDate) {
       const dateObj = fromISODate(dueDate);
       dateObj.setHours(timeHours, timeMinutes, 0, 0);
       return {
@@ -348,7 +351,7 @@ export function TaskFormPage() {
               <button
                 type="button"
                 className={`segmented__item ${whenMode === "none" ? "segmented__item--active" : ""}`}
-                onClick={() => setWhenMode("none")}
+                onClick={() => { setWhenMode("none"); setIncludeTime(false); }}
               >
                 <LayersIcon /> Без даты
               </button>
@@ -359,52 +362,50 @@ export function TaskFormPage() {
               >
                 <CalendarIcon /> Дата
               </button>
-              <button
-                type="button"
-                className={`segmented__item ${whenMode === "datetime" ? "segmented__item--active" : ""}`}
-                onClick={() => setWhenMode("datetime")}
-              >
-                <ClockIcon /> Дата и время
-              </button>
             </div>
 
             {whenMode === "date" && (
-              <DatePicker value={dueDate} onChange={setDueDate} />
-            )}
-            {whenMode === "date" && dueDate && (
-              <div className="hint">
-                {fromISODate(dueDate).toLocaleDateString("ru-RU", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </div>
-            )}
-            {whenMode === "datetime" && (
               <>
-                <WheelTimePicker
-                  hours={timeHours}
-                  minutes={timeMinutes}
-                  onChange={(h, m) => {
-                    setTimeHours(h);
-                    setTimeMinutes(m);
-                  }}
-                />
+                <DatePicker value={dueDate} onChange={setDueDate} />
                 {dueDate && (
                   <div className="hint">
                     {fromISODate(dueDate).toLocaleDateString("ru-RU", {
                       weekday: "long",
                       day: "numeric",
                       month: "long",
-                    })}{" "}
-                    в {String(timeHours).padStart(2, "0")}:{String(timeMinutes).padStart(2, "0")}
+                    })}
+                    {includeTime && (
+                      <> в {String(timeHours).padStart(2, "0")}:{String(timeMinutes).padStart(2, "0")}</>
+                    )}
+                  </div>
+                )}
+
+                <label className="time-toggle" onClick={() => { haptic("light"); setIncludeTime((v) => !v); }}>
+                  <span className={`time-toggle__track ${includeTime ? "time-toggle__track--on" : ""}`}>
+                    <span className="time-toggle__thumb" />
+                  </span>
+                  <span className="time-toggle__label">
+                    <ClockIcon /> Добавить время
+                  </span>
+                </label>
+
+                {includeTime && (
+                  <div className="time-section-enter">
+                    <WheelTimePicker
+                      hours={timeHours}
+                      minutes={timeMinutes}
+                      onChange={(h, m) => {
+                        setTimeHours(h);
+                        setTimeMinutes(m);
+                      }}
+                    />
                   </div>
                 )}
               </>
             )}
           </div>
 
-          {whenMode === "datetime" && (
+          {whenMode === "date" && includeTime && (
             <div className="field">
               <span className="field__label">Напомнить</span>
               <div className="remind-modes" role="tablist">
