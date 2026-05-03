@@ -3,41 +3,54 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 
 interface TourStep {
-  target: string;
+  target: string | null;
   title: string;
   text: string;
-  position: "top" | "bottom";
+  emoji: string;
+  position: "top" | "bottom" | "center";
 }
 
 const STEPS: TourStep[] = [
   {
+    target: null,
+    title: "Добро пожаловать в Task Blo!",
+    text: "Твой удобный планировщик задач прямо в Telegram. Давай быстро покажем, как всё устроено.",
+    emoji: "👋",
+    position: "center",
+  },
+  {
+    target: ".tabbar",
+    title: "Навигация",
+    text: "Внизу — основные разделы: все задачи, сегодняшние, календарь и профиль. Переключайся между ними одним нажатием.",
+    emoji: "📱",
+    position: "top",
+  },
+  {
     target: ".fab",
-    title: "Новая задача",
-    text: "Нажми сюда, чтобы создать новую задачу. Укажи дату, время, приоритет и напоминание.",
+    title: "Создание задачи",
+    text: "Нажми «+» чтобы создать задачу. Можно указать дату, время, приоритет, категорию и напоминание.",
+    emoji: "➕",
     position: "top",
   },
   {
     target: '.tab[href="/today"]',
     title: "Сегодня",
-    text: "Здесь собраны задачи на сегодня: просроченные, текущие и выполненные.",
+    text: "Все задачи на сегодня в одном месте: просроченные, текущие и уже выполненные.",
+    emoji: "⭐",
     position: "top",
   },
   {
     target: '.tab[href="/calendar"]',
     title: "Календарь",
-    text: "Планируй по дням — выбери дату и посмотри задачи по часам.",
-    position: "top",
-  },
-  {
-    target: '.tab[href="/categories"]',
-    title: "Категории",
-    text: "Группируй задачи по проектам и темам с помощью категорий.",
+    text: "Планируй по дням — выбери дату и увидишь задачи по часам.",
+    emoji: "📅",
     position: "top",
   },
   {
     target: '.tab[href="/profile"]',
     title: "Профиль",
-    text: "Настройки, подписка Premium и темы оформления — всё здесь.",
+    text: "Настройки, подписка Premium, темы оформления и поддержка.",
+    emoji: "👤",
     position: "top",
   },
 ];
@@ -50,12 +63,18 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
+  const current = STEPS[step];
+
   const updateRect = useCallback(() => {
-    const el = document.querySelector(STEPS[step].target);
+    if (!current.target) {
+      setRect(null);
+      return;
+    }
+    const el = document.querySelector(current.target);
     if (el) {
       setRect(el.getBoundingClientRect());
     }
-  }, [step]);
+  }, [current.target]);
 
   useEffect(() => {
     updateRect();
@@ -76,8 +95,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
     onComplete();
   }
 
-  const current = STEPS[step];
-  const pad = 8;
+  const pad = 10;
 
   const spotStyle = rect
     ? {
@@ -88,16 +106,28 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
       }
     : undefined;
 
-  const tooltipStyle = rect
-    ? current.position === "top"
-      ? { bottom: window.innerHeight - rect.top + pad + 12, left: 16, right: 16 }
-      : { top: rect.bottom + pad + 12, left: 16, right: 16 }
-    : undefined;
+  const tooltipStyle: React.CSSProperties =
+    current.position === "center"
+      ? { top: "50%", left: 24, right: 24, transform: "translateY(-50%)" }
+      : rect
+        ? current.position === "top"
+          ? { bottom: window.innerHeight - rect.top + pad + 16, left: 16, right: 16 }
+          : { top: rect.bottom + pad + 16, left: 16, right: 16 }
+        : {};
+
+  const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
-    <div className="onboarding-overlay">
+    <div className="onboarding-overlay" onClick={(e) => { if (e.target === e.currentTarget) next(); }}>
       {rect && <div className="onboarding-spot" style={spotStyle} />}
       <div className="onboarding-tooltip" style={tooltipStyle}>
+        <div className="onboarding-tooltip__progress">
+          <div
+            className="onboarding-tooltip__progress-bar"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="onboarding-tooltip__emoji">{current.emoji}</div>
         <div className="onboarding-tooltip__step">
           {step + 1} / {STEPS.length}
         </div>
@@ -116,7 +146,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             className="onboarding-tooltip__next"
             onClick={next}
           >
-            {step < STEPS.length - 1 ? "Далее" : "Готово"}
+            {step < STEPS.length - 1 ? "Далее →" : "Начать!"}
           </button>
         </div>
       </div>

@@ -636,6 +636,10 @@ button {
   grid-template-columns: repeat(5, 1fr);
 }
 
+.tabbar--four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .tab {
   appearance: none;
   background: transparent;
@@ -757,6 +761,13 @@ button {
   backdrop-filter: var(--tb-blur-light);
 }
 
+.btn--outline {
+  background: transparent;
+  color: var(--tb-accent-strong);
+  border: 1.5px solid color-mix(in srgb, var(--tb-accent-strong) 40%, transparent);
+  box-shadow: none;
+}
+
 .btn--ghost:hover {
   box-shadow: var(--tb-shadow-soft);
 }
@@ -808,6 +819,57 @@ button {
   background: var(--tb-accent-soft);
   color: var(--tb-accent-strong);
   border-color: color-mix(in srgb, var(--tb-accent-strong) 30%, transparent);
+}
+
+.chip--add {
+  border-style: dashed;
+  color: var(--tb-hint);
+  gap: 4px;
+}
+
+.chip--dot {
+  width: 30px;
+  min-width: 30px;
+  padding: 4px;
+  justify-content: center;
+}
+
+.chips--mini {
+  gap: 4px;
+}
+
+.inline-cat-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: 14px;
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  backdrop-filter: var(--tb-blur-light);
+  animation: tb-fade-in 0.2s ease both;
+}
+
+.input--sm {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.input--emoji {
+  width: 48px;
+  min-width: 48px;
+  text-align: center;
+}
+
+.btn--sm {
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  min-height: auto;
 }
 
 .category-card {
@@ -2002,6 +2064,8 @@ button {
   padding: 0;
   transition: filter 150ms ease, transform 150ms ease, opacity 150ms ease;
   opacity: 0.96;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
 }
 
 .task-swipe__action svg {
@@ -2015,15 +2079,15 @@ button {
 }
 
 .task-swipe__action--postpone {
-  background: linear-gradient(180deg, #fbbf24, #f59e0b);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.82), rgba(245, 158, 11, 0.82));
 }
 
 .task-swipe__action--done {
-  background: linear-gradient(180deg, #34d399, #10b981);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.82), rgba(16, 185, 129, 0.82));
 }
 
 .task-swipe__action--delete {
-  background: linear-gradient(180deg, #f87171, #ef4444);
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.82), rgba(239, 68, 68, 0.82));
 }
 
 .task-swipe--open .task-swipe__action {
@@ -2065,11 +2129,28 @@ button {
 }
 
 .task-swipe__action--archive {
-  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.82), rgba(59, 130, 246, 0.82));
 }
 
 .task-swipe__action--restore {
-  background: linear-gradient(180deg, #818cf8, #6366f1);
+  background: linear-gradient(180deg, rgba(129, 140, 248, 0.82), rgba(99, 102, 241, 0.82));
+}
+
+.task-swipe__actions {
+  gap: 2px;
+  padding: 4px 4px 4px 0;
+}
+
+.task-swipe__action:first-child {
+  border-radius: 14px 0 0 14px;
+}
+
+.task-swipe__action:last-child {
+  border-radius: 0 14px 14px 0;
+}
+
+.task-swipe__action:only-child {
+  border-radius: 14px;
 }
 
 /* ---------- Overdue & archive visuals on cards ---------- */
@@ -3152,6 +3233,27 @@ button {
   -webkit-backdrop-filter: var(--tb-blur-heavy);
   backdrop-filter: var(--tb-blur-heavy);
   animation: tb-rise 0.35s ease both;
+}
+
+.onboarding-tooltip__progress {
+  height: 3px;
+  background: var(--tb-glass-border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.onboarding-tooltip__progress-bar {
+  height: 100%;
+  background: var(--tb-accent-grad);
+  border-radius: 3px;
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.onboarding-tooltip__emoji {
+  font-size: 36px;
+  margin-bottom: 8px;
+  line-height: 1;
 }
 
 .onboarding-tooltip__step {

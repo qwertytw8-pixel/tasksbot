@@ -8,7 +8,6 @@ import {
   ListIcon,
   PlusIcon,
   SparkIcon,
-  TagIcon,
   UserIcon,
 } from "./icons";
 import { getUserTimezone } from "./telegram";
@@ -92,12 +91,11 @@ function TabBar() {
     { to: "/all", label: "Все", icon: ListIcon },
     { to: "/today", label: "Сегодня", icon: SparkIcon },
     { to: "/calendar", label: "Календарь", icon: CalendarIcon },
-    { to: "/categories", label: "Категории", icon: TagIcon },
     { to: "/profile", label: "Профиль", icon: UserIcon },
   ];
 
   return (
-    <nav className="tabbar tabbar--five">
+    <nav className="tabbar tabbar--four">
       {tabs.map((t) => {
         const Icon = t.icon;
         return (
