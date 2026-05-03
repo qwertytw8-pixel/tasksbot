@@ -34,6 +34,11 @@ class User(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)  # telegram user id
     tz: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    premium_interest_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    notif_interest_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False
     )
@@ -90,6 +95,9 @@ class Task(Base):
     recurrence: Mapped[str | None] = mapped_column(
         String(16), nullable=True
     )  # "daily", "weekly", "monthly" or null
+    priority: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )  # 0=none, 1=low, 2=medium, 3=high
     is_done: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     done_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -132,6 +140,7 @@ class Subscription(Base):
     notif_3d_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notif_0d_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notif_discount_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notif_post_expiry_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     user: Mapped[User] = relationship(back_populates="subscriptions")
 
@@ -260,7 +269,20 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
             "has_time = CASE WHEN due_at IS NOT NULL THEN TRUE ELSE has_time END"
         ),
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(16)",
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE",
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " premium_interest_at TIMESTAMPTZ"
+        ),
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " notif_interest_sent BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
         # Premium subscription tables
         (
             "CREATE TABLE IF NOT EXISTS subscriptions ("
@@ -309,6 +331,10 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
         (
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS"
             " notif_discount_sent BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
+        (
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS"
+            " notif_post_expiry_sent BOOLEAN NOT NULL DEFAULT FALSE"
         ),
     ]
     for stmt in statements:

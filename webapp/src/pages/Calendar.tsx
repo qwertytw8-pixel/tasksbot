@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { api, type Category, type Task } from "../api";
+import { HourlyTimeline } from "../components/HourlyTimeline";
 import { TaskRow } from "../components/TaskRow";
 import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClockIcon,
   InboxIcon,
+  ListIcon,
   PlusIcon,
   SparkIcon,
 } from "../icons";
@@ -37,6 +40,7 @@ export function CalendarPage() {
 
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
 
   useEffect(() => {
     void (async () => {
@@ -92,6 +96,7 @@ export function CalendarPage() {
       due_at: task.due_at,
       remind_minutes_before: task.remind_minutes_before,
       recurrence: task.recurrence,
+      priority: task.priority,
       is_done: !task.is_done,
     });
     setTasks((prev) => {
@@ -121,6 +126,7 @@ export function CalendarPage() {
       has_time: task.has_time,
       due_at,
       remind_minutes_before: task.remind_minutes_before,
+      priority: task.priority,
       is_done: task.is_done,
     });
     setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
@@ -246,12 +252,35 @@ export function CalendarPage() {
             month: "long",
           })}
         </div>
-        <button className="day-strip__add" onClick={addForSelected}>
-          <PlusIcon /> Новая задача
-        </button>
+        <div className="day-strip__actions">
+          <button
+            className={`day-strip__view-btn ${viewMode === "list" ? "day-strip__view-btn--active" : ""}`}
+            onClick={() => { haptic("light"); setViewMode("list"); }}
+            aria-label="Список"
+          >
+            <ListIcon />
+          </button>
+          <button
+            className={`day-strip__view-btn ${viewMode === "timeline" ? "day-strip__view-btn--active" : ""}`}
+            onClick={() => { haptic("light"); setViewMode("timeline"); }}
+            aria-label="По часам"
+          >
+            <ClockIcon />
+          </button>
+          <button className="day-strip__add" onClick={addForSelected}>
+            <PlusIcon /> Новая
+          </button>
+        </div>
       </div>
 
-      {selectedTasks.length === 0 && selectedSubtasks.length === 0 && (
+      {viewMode === "timeline" && (
+        <HourlyTimeline
+          tasks={[...selectedTasks, ...selectedSubtasks]}
+          categories={catById}
+        />
+      )}
+
+      {viewMode === "list" && selectedTasks.length === 0 && selectedSubtasks.length === 0 && (
         <div className="empty">
           <div className="empty__icon">
             <CalendarIcon />
@@ -261,7 +290,7 @@ export function CalendarPage() {
         </div>
       )}
 
-      {selectedTasks.map((t) => (
+      {viewMode === "list" && selectedTasks.map((t) => (
         <TaskRow
           key={t.id}
           task={t}
@@ -275,7 +304,7 @@ export function CalendarPage() {
         />
       ))}
 
-      {selectedSubtasks.length > 0 && (
+      {viewMode === "list" && selectedSubtasks.length > 0 && (
         <div className="section-block">
           <div className="section-block__header">
             <div className="section-block__title">

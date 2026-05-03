@@ -27,6 +27,7 @@ class TaskIn(BaseModel):
     due_at: datetime | None = None
     remind_minutes_before: int | None = Field(default=None, ge=0, le=10_080)
     recurrence: str | None = Field(default=None, pattern="^(daily|weekly|monthly)$")
+    priority: int = Field(default=0, ge=0, le=3)
     is_done: bool = False
 
 
@@ -42,6 +43,7 @@ class TaskOut(BaseModel):
     due_at: datetime | None
     remind_minutes_before: int | None
     recurrence: str | None
+    priority: int
     is_done: bool
     done_at: datetime | None
     archived_at: datetime | None
@@ -53,10 +55,12 @@ class UserOut(BaseModel):
     id: int
     tz: str
     is_admin: bool = False
+    onboarding_completed: bool = False
 
 
 class UserUpdate(BaseModel):
     tz: str | None = Field(default=None, max_length=64)
+    onboarding_completed: bool | None = None
 
 
 class PrivacyInfo(BaseModel):

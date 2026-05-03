@@ -11,6 +11,7 @@ import {
   CheckIcon,
   ClockIcon,
   CornerDownRightIcon,
+  FlagIcon,
   LayersIcon,
   PlusIcon,
   TagIcon,
@@ -25,6 +26,13 @@ const REMIND_QUICK_PRESETS: { label: string; minutes: number }[] = [
   { label: "1 ч", minutes: 60 },
   { label: "3 ч", minutes: 180 },
   { label: "1 день", minutes: 60 * 24 },
+];
+
+const PRIORITY_OPTIONS: { value: number; label: string; color: string }[] = [
+  { value: 0, label: "Без", color: "var(--tb-hint)" },
+  { value: 1, label: "Низкий", color: "#4caf50" },
+  { value: 2, label: "Средний", color: "#ff9800" },
+  { value: 3, label: "Высокий", color: "#f44336" },
 ];
 
 type WhenMode = "none" | "date";
@@ -66,6 +74,7 @@ export function TaskFormPage() {
   const [remind, setRemind] = useState<number | null>(15);
   const [remindCustom, setRemindCustom] = useState<string>("15");
   const [recurrence, setRecurrence] = useState<string | null>(null);
+  const [priority, setPriority] = useState<number>(0);
 
   const [busy, setBusy] = useState(false);
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
@@ -117,6 +126,7 @@ export function TaskFormPage() {
             setRemind(loadedRemind);
           }
           setRecurrence(found.recurrence ?? null);
+          setPriority(found.priority ?? 0);
           if (
             loadedRemind !== null &&
             loadedRemind > 0
@@ -152,6 +162,7 @@ export function TaskFormPage() {
         due_date: null,
         remind_minutes_before: remind,
         recurrence,
+        priority,
         is_done: task?.is_done ?? false,
       };
     }
@@ -166,6 +177,7 @@ export function TaskFormPage() {
         due_at: null,
         remind_minutes_before: null,
         recurrence,
+        priority,
         is_done: task?.is_done ?? false,
       };
     }
@@ -179,6 +191,7 @@ export function TaskFormPage() {
       due_at: null,
       remind_minutes_before: null,
       recurrence: null,
+      priority,
       is_done: task?.is_done ?? false,
     };
   }
@@ -340,6 +353,24 @@ export function TaskFormPage() {
                 >
                   {c.emoji ? `${c.emoji} ` : ""}
                   {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <span className="field__label">Важность</span>
+            <div className="segmented">
+              {PRIORITY_OPTIONS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={`segmented__item ${priority === p.value ? "segmented__item--active" : ""}`}
+                  style={priority === p.value ? { color: p.color, borderColor: p.color } : undefined}
+                  onClick={() => setPriority(p.value)}
+                >
+                  {p.value > 0 && <FlagIcon style={{ color: p.color }} />}
+                  {p.label}
                 </button>
               ))}
             </div>

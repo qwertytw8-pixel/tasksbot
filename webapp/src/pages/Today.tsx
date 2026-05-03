@@ -6,7 +6,6 @@ import { TaskRow, isTaskOverdue } from "../components/TaskRow";
 import {
   AlertTriangleIcon,
   BellIcon,
-  CalendarIcon,
   CheckIcon,
   ClockIcon,
   InboxIcon,
@@ -95,6 +94,7 @@ export function TodayPage() {
       due_at: task.due_at,
       remind_minutes_before: task.remind_minutes_before,
       recurrence: task.recurrence,
+      priority: task.priority,
       is_done: !task.is_done,
     });
     setTasks((prev) => {
@@ -126,6 +126,7 @@ export function TodayPage() {
       has_time,
       due_at,
       remind_minutes_before: task.remind_minutes_before,
+      priority: task.priority,
       is_done: task.is_done,
     });
     setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
@@ -199,20 +200,7 @@ export function TodayPage() {
         </div>
       </div>
 
-      <div className="hero-card">
-        <h2>Минимализм, который не мешает работать</h2>
-        <div className="page-header__subtitle" style={{ marginTop: 8 }}>
-          Всё важное на одном экране: задачи, время, напоминания и проекты — без визуального шума.
-        </div>
-        <div className="hero-card__meta">
-          <span className="hero-chip">
-            <CalendarIcon /> календарь <span className="hero-chip__value">по дням</span>
-          </span>
-          <span className="hero-chip">
-            <BellIcon /> напоминания <span className="hero-chip__value">вовремя</span>
-          </span>
-        </div>
-      </div>
+
 
       {!isEmpty && (
         <FocusWidget tasks={[...(overdue ?? []), ...(todayTasks ?? [])]} />

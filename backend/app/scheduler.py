@@ -166,6 +166,118 @@ def _pluralize_tasks(n: int) -> str:
     return "незавершённых задач"
 
 
+async def run_personal_offers(bot: Bot) -> int:
+    """Send personal 69-star offers. Two triggers, each fires once."""
+    from app.subscription import RENEWAL_DISCOUNT_PLAN, get_active_subscription
+
+    sm = get_sessionmaker()
+    now = datetime.now(UTC)
+    sent = 0
+
+    async with sm() as session:
+        # Trigger 1: user showed interest in premium but never subscribed
+        users = (
+            await session.execute(
+                select(User).where(
+                    User.premium_interest_at.isnot(None),
+                    User.notif_interest_sent.is_(False),
+                )
+            )
+        ).scalars().all()
+
+        for user in users:
+            hours_since = (now - user.premium_interest_at).total_seconds() / 3600
+            if hours_since < 24:
+                continue
+            sub = await get_active_subscription(session, user.id)
+            if sub is not None:
+                user.notif_interest_sent = True
+                await session.commit()
+                continue
+            discount = RENEWAL_DISCOUNT_PLAN
+            try:
+                await bot.send_message(
+                    chat_id=user.id,
+                    text=(
+                        "🎁 <b>Персональное предложение!</b>\n\n"
+                        "Мы заметили, что тебе интересен Premium.\n"
+                        "Специально для тебя — скидка:\n\n"
+                        f"💎 Premium на {discount['label']} — "
+                        f"<b>{discount['stars']} ⭐</b> "
+                        f"<s>99 ⭐</s>\n\n"
+                        "Предложение действует один раз — не упусти!"
+                    ),
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text=f"🎁 Подключить за {discount['stars']} ⭐",
+                                callback_data="renew_discount",
+                            )
+                        ]]
+                    ),
+                )
+                sent += 1
+            except Exception:
+                log.exception("failed personal offer (interest) for user %s", user.id)
+                continue
+            user.notif_interest_sent = True
+            await session.commit()
+
+        # Trigger 2: subscription expired and user did not renew
+        expired_subs = (
+            await session.execute(
+                select(Subscription).where(
+                    Subscription.is_active.is_(True),
+                    Subscription.expires_at.isnot(None),
+                    Subscription.notif_post_expiry_sent.is_(False),
+                )
+            )
+        ).scalars().all()
+
+        for sub in expired_subs:
+            days_left = (sub.expires_at - now).total_seconds() / 86400
+            if days_left > -1:
+                continue
+            active = await get_active_subscription(session, sub.user_id)
+            if active is not None and active.id != sub.id:
+                sub.notif_post_expiry_sent = True
+                await session.commit()
+                continue
+            hours_expired = (now - sub.expires_at).total_seconds() / 3600
+            if hours_expired < 24:
+                continue
+            discount = RENEWAL_DISCOUNT_PLAN
+            try:
+                await bot.send_message(
+                    chat_id=sub.user_id,
+                    text=(
+                        "🎁 <b>Персональное предложение!</b>\n\n"
+                        "Твоя подписка закончилась. "
+                        "Держи последний шанс продлить со скидкой:\n\n"
+                        f"💎 Premium на {discount['label']} — "
+                        f"<b>{discount['stars']} ⭐</b> "
+                        f"<s>99 ⭐</s>\n\n"
+                        "Это предложение действует один раз!"
+                    ),
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text=f"🎁 Продлить за {discount['stars']} ⭐",
+                                callback_data="renew_discount",
+                            )
+                        ]]
+                    ),
+                )
+                sent += 1
+            except Exception:
+                log.exception("failed personal offer (expiry) for user %s", sub.user_id)
+                continue
+            sub.notif_post_expiry_sent = True
+            await session.commit()
+
+    return sent
+
+
 async def run_subscription_notifications(bot: Bot) -> int:
     """Send subscription expiry notifications. Returns the number sent."""
     from app.subscription import RENEWAL_DISCOUNT_PLAN

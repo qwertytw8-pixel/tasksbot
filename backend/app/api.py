@@ -186,6 +186,8 @@ async def update_me(
     user = await _ensure_user(session, tg)
     if payload.tz is not None:
         user.tz = payload.tz
+    if payload.onboarding_completed is not None:
+        user.onboarding_completed = payload.onboarding_completed
     await session.commit()
     await session.refresh(user)
     return user
@@ -410,6 +412,7 @@ async def create_task(
         due_at=due_at,
         remind_minutes_before=remind,
         recurrence=payload.recurrence,
+        priority=payload.priority,
         is_done=payload.is_done,
         done_at=datetime.now(UTC) if payload.is_done else None,
     )
@@ -487,6 +490,7 @@ async def update_task(
     task.due_at = due_at
     task.remind_minutes_before = remind
     task.recurrence = payload.recurrence
+    task.priority = payload.priority
     if payload.is_done and not task.is_done:
         task.done_at = datetime.now(UTC)
         # Create next occurrence for recurring tasks
