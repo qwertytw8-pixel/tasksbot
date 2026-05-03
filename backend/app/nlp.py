@@ -49,6 +49,14 @@ _GREETING_PATTERNS: list[re.Pattern[str]] = [
         r"^\s*(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?\b[,.:!\s]*",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"^\s*(?:поставить|поставь|записать|добавить|создать)\s+(?:\d+\s+)?(?:задач\w*|дел\w*|напоминан\w*)\s*[:.!,\s]*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:нужно|надо|необходимо)\s+(?:поставить|записать|добавить|создать)\s+(?:\d+\s+)?(?:задач\w*|дел\w*)?\s*[:.!,\s]*",
+        re.IGNORECASE,
+    ),
 ]
 
 _FILLER_ONLY = re.compile(
@@ -58,7 +66,9 @@ _FILLER_ONLY = re.compile(
     r"у\s+меня|мне\s+нужно|мне\s+надо|"
     r"(?:вот\s+)?(?:мои|такие|следующие)\s+(?:задач\w*|план\w*|дел\w*)|"
     r"(?:на\s+)?сегодня\s+(?:(?:вот\s+)?такие\s+)?(?:задач\w*|план\w*|дел\w*)|"
-    r"(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?)"
+    r"(?:запиши|записать|добавь|создай|поставь)\s*(?:мне\s+)?(?:задач\w*|пожалуйста)?|"
+    r"(?:поставить|записать|добавить|создать)\s+(?:\d+\s+)?(?:задач\w*|дел\w*)?|"
+    r"(?:нужно|надо)\s+(?:поставить|записать|добавить|создать)\s+(?:\d+\s+)?(?:задач\w*|дел\w*)?)"
     r"[\s,.:;!?\-—]*$",
     re.IGNORECASE,
 )
@@ -154,6 +164,15 @@ def split_into_tasks(text: str) -> list[str]:
         comma_parts = [p.strip() for p in result[0].split(",") if p.strip()]
         if len(comma_parts) >= 2 and all(len(p) < 60 for p in comma_parts):
             result = [p for p in comma_parts if not _is_filler_only(p)]
+
+    # Secondary split on " и " — only when both sides are substantial
+    # (>= 15 chars each) to avoid breaking "купить хлеб и молоко".
+    if len(result) == 1:
+        parts = re.split(r"\s+и\s+", result[0])
+        if len(parts) >= 2 and all(len(p.strip()) >= 15 for p in parts):
+            candidate = [p.strip() for p in parts if p.strip() and not _is_filler_only(p.strip())]
+            if len(candidate) >= 2:
+                result = candidate
 
     return result
 
