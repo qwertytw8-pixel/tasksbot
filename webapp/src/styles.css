@@ -3197,12 +3197,19 @@ button {
 
 /* ---------- Onboarding Tour ---------- */
 
-.onboarding-overlay {
+.onboarding-wrap {
   position: fixed;
   inset: 0;
   z-index: 9999;
+  pointer-events: none;
+}
+
+.onboarding-overlay {
+  position: absolute;
+  inset: 0;
   background: rgba(0, 0, 0, 0.65);
   animation: onboarding-fade-in 0.3s ease;
+  pointer-events: auto;
 }
 
 @keyframes onboarding-fade-in {
@@ -3233,6 +3240,7 @@ button {
   -webkit-backdrop-filter: var(--tb-blur-heavy);
   backdrop-filter: var(--tb-blur-heavy);
   animation: tb-rise 0.35s ease both;
+  pointer-events: auto;
 }
 
 .onboarding-tooltip__progress {
