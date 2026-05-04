@@ -6,16 +6,23 @@ import { OnboardingTour } from "./components/OnboardingTour";
 import {
   CalendarIcon,
   ListIcon,
+  PawIcon,
   PlusIcon,
   SparkIcon,
   UserIcon,
 } from "./icons";
 import { getUserTimezone } from "./telegram";
+import { t } from "./useLocale";
 import { TodayPage } from "./pages/Today";
 import { AllPage } from "./pages/All";
 import { CategoriesPage } from "./pages/Categories";
 import { TaskFormPage } from "./pages/TaskForm";
 import { CalendarPage } from "./pages/Calendar";
+import { PetPage } from "./pages/Pet";
+import { PetHatchPage } from "./pages/PetHatch";
+import { PetAchievementsPage } from "./pages/PetAchievements";
+import { PetShopPage } from "./pages/PetShop";
+import { PetCollectionPage } from "./pages/PetCollection";
 import { ProfileRoutes } from "./pages/Profile";
 
 const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about"];
@@ -59,6 +66,11 @@ export function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/all" element={<AllPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/pet" element={<PetPage />} />
+        <Route path="/pet/hatch" element={<PetHatchPage />} />
+        <Route path="/pet/achievements" element={<PetAchievementsPage />} />
+        <Route path="/pet/shop" element={<PetShopPage />} />
+        <Route path="/pet/collection" element={<PetCollectionPage />} />
         <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} />} />
         <Route path="/about" element={<Navigate to="/profile" replace />} />
         <Route path="/new" element={<TaskFormPage />} />
@@ -86,24 +98,25 @@ function Fab() {
 
 function TabBar() {
   const tabs = [
-    { to: "/all", label: "Все", icon: ListIcon },
-    { to: "/today", label: "Сегодня", icon: SparkIcon },
-    { to: "/calendar", label: "Календарь", icon: CalendarIcon },
-    { to: "/profile", label: "Профиль", icon: UserIcon },
+    { to: "/all", label: t("Все", "All"), icon: ListIcon },
+    { to: "/pet", label: t("Питомец", "Pet"), icon: PawIcon },
+    { to: "/today", label: t("Сегодня", "Today"), icon: SparkIcon },
+    { to: "/calendar", label: t("Календарь", "Calendar"), icon: CalendarIcon },
+    { to: "/profile", label: t("Профиль", "Profile"), icon: UserIcon },
   ];
 
   return (
-    <nav className="tabbar tabbar--four">
-      {tabs.map((t) => {
-        const Icon = t.icon;
+    <nav className="tabbar tabbar--five">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
         return (
           <NavLink
-            key={t.to}
-            to={t.to}
+            key={tab.to}
+            to={tab.to}
             className={({ isActive }) => `tab ${isActive ? "tab--active" : ""}`}
           >
             <Icon className="tab__icon" />
-            <span>{t.label}</span>
+            <span>{tab.label}</span>
           </NavLink>
         );
       })}
