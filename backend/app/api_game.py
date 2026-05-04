@@ -117,7 +117,8 @@ async def get_profile(
     from app.api import _ensure_user
     user = await _ensure_user(session, tg)
     profile = await _ensure_profile(session, tg.id)
-    is_premium = False  # TODO: integrate with subscription check
+    from app.subscription import is_premium as check_premium
+    is_premium = await check_premium(session, tg.id)
     today = _user_today(user.tz)
 
     # Active pet
@@ -360,7 +361,8 @@ async def buy_item(
     from app.api import _ensure_user
     await _ensure_user(session, tg)
     profile = await _ensure_profile(session, tg.id)
-    is_premium = False  # TODO: integrate with subscription
+    from app.subscription import is_premium as check_premium
+    is_premium = await check_premium(session, tg.id)
 
     item = await session.get(GameItem, payload.item_id)
     if item is None:

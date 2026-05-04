@@ -166,6 +166,75 @@ def _pluralize_tasks(n: int) -> str:
     return "незавершённых задач"
 
 
+async def run_streak_at_risk(bot: Bot) -> int:
+    """Warn users at ~21:00 local time who have an active streak but no tasks done today."""
+    from app.game_models import GameProfile
+
+    sm = get_sessionmaker()
+    now = datetime.now(UTC)
+    sent = 0
+
+    async with sm() as session:
+        users = (await session.execute(select(User))).scalars().all()
+
+        for user in users:
+            try:
+                tz = ZoneInfo(user.tz) if user.tz and user.tz != "UTC" else ZoneInfo("UTC")
+            except (KeyError, ValueError):
+                tz = ZoneInfo("UTC")
+
+            local_now = now.astimezone(tz)
+            if local_now.hour != 21:
+                continue
+
+            profile = await session.get(GameProfile, user.id)
+            if not profile or profile.streak_days < 2:
+                continue
+
+            today = local_now.date()
+            if profile.last_streak_date == today:
+                continue
+
+            today_done = (
+                await session.execute(
+                    select(func.count())
+                    .select_from(Task)
+                    .where(
+                        Task.user_id == user.id,
+                        Task.is_done.is_(True),
+                        Task.done_at >= datetime.combine(
+                            today, datetime.min.time(), tzinfo=tz
+                        ).astimezone(UTC),
+                        Task.done_at < (
+                            datetime.combine(today, datetime.min.time(), tzinfo=tz)
+                            + timedelta(days=1)
+                        ).astimezone(UTC),
+                    )
+                )
+            ).scalar_one()
+
+            if today_done > 0:
+                continue
+
+            try:
+                await bot.send_message(
+                    chat_id=user.id,
+                    text=(
+                        f"🔥 <b>Стрик в опасности!</b>\n\n"
+                        f"У тебя {profile.streak_days} дней подряд. "
+                        f"Заверши хотя бы одну задачу сегодня, чтобы не потерять стрик!\n\n"
+                        f"🔥 <b>Streak at risk!</b>\n\n"
+                        f"You have a {profile.streak_days}-day streak. "
+                        f"Complete at least one task today to keep it!"
+                    ),
+                )
+                sent += 1
+            except Exception:
+                log.exception("failed streak warning for user %s", user.id)
+
+    return sent
+
+
 async def run_personal_offers(bot: Bot) -> int:
     """Send personal 69-star offers. Two triggers, each fires once."""
     from app.subscription import RENEWAL_DISCOUNT_PLAN, get_active_subscription

@@ -1,3 +1,4 @@
+import logging
 from calendar import monthrange
 from datetime import UTC, date, datetime, timedelta
 
@@ -9,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.auth import TelegramUser, get_telegram_user_factory
 from app.config import get_settings
 from app.db import Category, Reminder, Task, User, get_session
-from app.game import award_task_completion
+from app.game import GameEvent, award_task_completion
 from app.schemas import (
     CategoryIn,
     CategoryOut,
@@ -463,10 +464,65 @@ async def create_task(
     return task
 
 
+async def _send_game_notifications(bot, user_id: int, event: GameEvent) -> None:
+    """Send Telegram notifications for game events (achievements, evolution, streak)."""
+    log = logging.getLogger(__name__)
+
+    # Achievement unlocked
+    for ach in event.achievements_unlocked:
+        text_ru = (
+            f"🏆 <b>Достижение разблокировано!</b>\n\n"
+            f"{ach['icon']} <b>{ach['name_ru']}</b>\n"
+            f"💰 +{ach['reward_coins']} монет"
+        )
+        text_en = (
+            f"🏆 <b>Achievement unlocked!</b>\n\n"
+            f"{ach['icon']} <b>{ach['name_en']}</b>\n"
+            f"💰 +{ach['reward_coins']} coins"
+        )
+        try:
+            await bot.send_message(chat_id=user_id, text=f"{text_ru}\n\n{text_en}")
+        except Exception:
+            log.debug("achievement notification failed for user %s", user_id)
+
+    # Pet evolved
+    if event.new_stage is not None:
+        stage_ru = event.stage_name_ru or ""
+        stage_en = event.stage_name_en or ""
+        try:
+            await bot.send_message(
+                chat_id=user_id,
+                text=(
+                    f"✨ <b>Твой питомец эволюционировал!</b>\n"
+                    f"Новая стадия: <b>{stage_ru}</b> (ур. {event.new_stage})\n\n"
+                    f"✨ <b>Your pet evolved!</b>\n"
+                    f"New stage: <b>{stage_en}</b> (lvl {event.new_stage})"
+                ),
+            )
+        except Exception:
+            log.debug("evolution notification failed for user %s", user_id)
+
+    # Streak lost
+    if event.streak_lost and event.streak_lost_previous >= 3:
+        try:
+            await bot.send_message(
+                chat_id=user_id,
+                text=(
+                    f"💔 <b>Стрик потерян!</b>\n"
+                    f"Был {event.streak_lost_previous} дней подряд. Начинаем заново!\n\n"
+                    f"💔 <b>Streak lost!</b>\n"
+                    f"Was {event.streak_lost_previous} days. Starting over!"
+                ),
+            )
+        except Exception:
+            log.debug("streak lost notification failed for user %s", user_id)
+
+
 @router.patch("/tasks/{task_id}", response_model=TaskOut)
 async def update_task(
     task_id: int,
     payload: TaskIn,
+    request: Request,
     tg: TelegramUser = Depends(_get_dep()),
     session: AsyncSession = Depends(get_session),
 ):
@@ -507,16 +563,26 @@ async def update_task(
     await _sync_reminders(session, task)
 
     # Award coins/XP if task just completed
+    game_event: GameEvent | None = None
     if payload.is_done and not was_done:
         user = await session.get(User, tg.id)
         user_tz = user.tz if user else "UTC"
         user_is_premium = await is_premium(session, tg.id)
-        await award_task_completion(
+        game_event = await award_task_completion(
             session, tg.id, task, is_premium=user_is_premium, user_tz=user_tz
         )
 
     await session.commit()
     await session.refresh(task)
+
+    # Send bot notifications for game events (fire-and-forget)
+    if game_event:
+        try:
+            bot = request.app.state.bot
+            await _send_game_notifications(bot, tg.id, game_event)
+        except Exception:
+            logging.getLogger(__name__).exception("game notification failed")
+
     return task
 
 
