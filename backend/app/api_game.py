@@ -139,7 +139,10 @@ async def get_profile(
     today_done = (
         await session.execute(
             select(func.count(Task.id)).where(
-                Task.user_id == tg.id, Task.due_date == today, Task.is_done.is_(True)
+                Task.user_id == tg.id,
+                Task.due_date == today,
+                Task.is_done.is_(True),
+                Task.archived_at.is_(None),
             )
         )
     ).scalar_one()
@@ -359,29 +362,29 @@ async def buy_item(
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "item not found")
 
+    if item.type == "egg":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "use /hatch to purchase eggs")
+
     if item.is_premium and not is_premium:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "premium required")
 
-    # Check already owned (non-egg items)
-    if item.type != "egg":
-        already = (
-            await session.execute(
-                select(GameInventory.id).where(
-                    GameInventory.user_id == tg.id, GameInventory.item_id == item.id
-                )
+    # Check already owned
+    already = (
+        await session.execute(
+            select(GameInventory.id).where(
+                GameInventory.user_id == tg.id, GameInventory.item_id == item.id
             )
-        ).scalar_one_or_none()
-        if already is not None:
-            raise HTTPException(status.HTTP_409_CONFLICT, "already owned")
+        )
+    ).scalar_one_or_none()
+    if already is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "already owned")
 
     if profile.coins < item.price:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "not enough coins")
 
     profile.coins -= item.price
-
-    if item.type != "egg":
-        session.add(GameInventory(user_id=tg.id, item_id=item.id))
-        profile.items_purchased_total += 1
+    session.add(GameInventory(user_id=tg.id, item_id=item.id))
+    profile.items_purchased_total += 1
 
     await session.commit()
 

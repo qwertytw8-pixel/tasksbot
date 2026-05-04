@@ -271,9 +271,10 @@ async def award_task_completion(
         )
     ).scalar_one()
 
-    if undone_today == 0 and done_today > 0:
+    if undone_today == 0 and done_today > 0 and profile.last_perfect_day_date != today:
         event.perfect_day = True
         profile.perfect_days_count += 1
+        profile.last_perfect_day_date = today
         # Perfect day bonus (not subject to daily cap)
         perfect_coins = math.floor(
             PERFECT_DAY_BONUS * streak_coin_m * premium_bonus * rarity_coin

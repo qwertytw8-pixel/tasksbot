@@ -271,6 +271,7 @@ async def ensure_game_schema(conn: AsyncConnection) -> None:
             streak_days INTEGER NOT NULL DEFAULT 0,
             last_streak_date DATE,
             perfect_days_count INTEGER NOT NULL DEFAULT 0,
+            last_perfect_day_date DATE,
             tasks_completed_total INTEGER NOT NULL DEFAULT 0,
             tasks_ontime_total INTEGER NOT NULL DEFAULT 0,
             tasks_high_priority_total INTEGER NOT NULL DEFAULT 0,

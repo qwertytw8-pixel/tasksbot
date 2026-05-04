@@ -28,6 +28,7 @@ class GameProfile(Base):
     streak_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_streak_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     perfect_days_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_perfect_day_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     tasks_completed_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     tasks_ontime_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     tasks_high_priority_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
