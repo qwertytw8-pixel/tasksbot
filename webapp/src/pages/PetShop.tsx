@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { api, type GameItem, type GameProfile } from "../api";
+import { CoinIcon } from "../icons";
 import { t } from "../useLocale";
 import { haptic } from "../telegram";
 
@@ -42,8 +43,11 @@ export function PetShopPage() {
           navigate(`/pet/hatch?egg=${item.slug}`);
           return;
         }
-        await api.gameBuy(item.id);
+        const boughtItem = await api.gameBuy(item.id);
         haptic("medium");
+        if (boughtItem.type === "background") {
+          await api.gameSetBackground(boughtItem.id);
+        }
         await load();
       } catch {
         // ignore
@@ -66,7 +70,7 @@ export function PetShopPage() {
       <div className="page-header">
         <div className="page-header__stack">
           <h1>{t("Магазин", "Shop")}</h1>
-          <p className="page-header__date">🪙 {profile.coins}</p>
+          <p className="page-header__date"><CoinIcon style={{ width: 14, height: 14, color: "#facc15", verticalAlign: "middle", marginRight: 4 }} />{profile.coins}</p>
         </div>
         <button className="pet-back-btn" onClick={() => navigate("/pet")}>
           {t("Назад", "Back")}
@@ -148,7 +152,7 @@ function ShopCard({
       </div>
       <div className="shop-card__name">{t(item.name_ru, item.name_en)}</div>
       <div className="shop-card__price">
-        {isOwned ? t("Куплено", "Owned") : `${item.price} 🪙`}
+        {isOwned ? t("Куплено", "Owned") : <>{item.price} <CoinIcon style={{ width: 12, height: 12, color: "#facc15", verticalAlign: "middle" }} /></>}
       </div>
       {item.is_premium && <div className="shop-card__premium">⭐</div>}
     </button>

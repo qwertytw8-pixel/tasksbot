@@ -27,7 +27,7 @@ const PetAchievementsPage = lazy(() => import("./pages/PetAchievements").then((m
 const PetShopPage = lazy(() => import("./pages/PetShop").then((m) => ({ default: m.PetShopPage })));
 const PetCollectionPage = lazy(() => import("./pages/PetCollection").then((m) => ({ default: m.PetCollectionPage })));
 
-const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin"];
+const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin", "/pet"];
 
 function PageFallback() {
   const { t } = useI18n();

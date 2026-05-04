@@ -278,6 +278,8 @@ export const api = {
   gamePets: () => request<GamePet[]>("/api/game/pets"),
   gameActivatePet: (petId: number) =>
     request<GamePet>(`/api/game/pets/${petId}/activate`, { method: "POST" }),
+  gameDeletePet: (petId: number) =>
+    request<{ deleted: boolean; message: string }>(`/api/game/pets/${petId}`, { method: "DELETE" }),
   gameRenamePet: (petId: number, name: string) =>
     request<GamePet>(`/api/game/pets/${petId}/rename`, {
       method: "POST",

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { api, type GamePet, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
+import { TrashXIcon } from "../icons";
 import { t } from "../useLocale";
 import { haptic } from "../telegram";
 
@@ -10,6 +11,7 @@ export function PetCollectionPage() {
   const [pets, setPets] = useState<GamePet[]>([]);
   const [profile, setProfile] = useState<GameProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -44,6 +46,29 @@ export function PetCollectionPage() {
     [load]
   );
 
+  const handleDelete = useCallback(
+    async (petId: number) => {
+      const confirmed = window.confirm(
+        t(
+          "Удалить этого питомца? Это действие нельзя отменить.",
+          "Delete this pet? This action cannot be undone."
+        )
+      );
+      if (!confirmed) return;
+      setDeleting(petId);
+      try {
+        await api.gameDeletePet(petId);
+        haptic("heavy");
+        await load();
+      } catch {
+        // ignore
+      } finally {
+        setDeleting(null);
+      }
+    },
+    [load]
+  );
+
   if (loading) return <div className="spinner">{t("Загрузка…", "Loading…")}</div>;
 
   const activePetId = profile?.active_pet?.id;
@@ -71,6 +96,7 @@ export function PetCollectionPage() {
       <div className="pet-collection__grid">
         {pets.map((pet) => {
           const isActive = pet.id === activePetId;
+          const isDeleting = deleting === pet.id;
           return (
             <div key={pet.id} className={`pet-collection__card ${isActive ? "pet-collection__card--active" : ""}`}>
               <PetView
@@ -85,18 +111,28 @@ export function PetCollectionPage() {
                 </span>
                 <span className="pet-collection__xp">{pet.xp} XP</span>
               </div>
-              {isActive ? (
-                <div className="pet-collection__active-badge">
-                  {t("Активный", "Active")}
-                </div>
-              ) : (
+              <div className="pet-collection__actions">
+                {isActive ? (
+                  <div className="pet-collection__active-badge">
+                    {t("Активный", "Active")}
+                  </div>
+                ) : (
+                  <button
+                    className="pet-collection__activate-btn"
+                    onClick={() => handleActivate(pet.id)}
+                  >
+                    {t("Выбрать", "Select")}
+                  </button>
+                )}
                 <button
-                  className="pet-collection__activate-btn"
-                  onClick={() => handleActivate(pet.id)}
+                  className="pet-collection__delete-btn"
+                  onClick={() => handleDelete(pet.id)}
+                  disabled={isDeleting}
+                  title={t("Удалить", "Delete")}
                 >
-                  {t("Выбрать", "Select")}
+                  <TrashXIcon style={{ width: 16, height: 16 }} />
                 </button>
-              )}
+              </div>
             </div>
           );
         })}

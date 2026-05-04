@@ -248,15 +248,27 @@ ACHIEVEMENTS: list[dict] = [
 ]
 
 EGG_DROPS: list[dict] = [
-    # Common egg: 70% common, 25% rare, 5% epic
-    {"egg_slug": "egg_common", "character_type": "cat", "rarity": "common", "weight": 70},
-    {"egg_slug": "egg_common", "character_type": "fox", "rarity": "rare", "weight": 25},
-    {"egg_slug": "egg_common", "character_type": "dragon", "rarity": "epic", "weight": 5},
-    # Rare egg: 75% rare, 25% epic
-    {"egg_slug": "egg_rare", "character_type": "fox", "rarity": "rare", "weight": 75},
-    {"egg_slug": "egg_rare", "character_type": "dragon", "rarity": "epic", "weight": 25},
-    # Epic egg: 100% epic
-    {"egg_slug": "egg_epic", "character_type": "dragon", "rarity": "epic", "weight": 100},
+    # Common egg: ~70% common, ~25% rare, ~5% epic — any character
+    {"egg_slug": "egg_common", "character_type": "cat", "rarity": "common", "weight": 24},
+    {"egg_slug": "egg_common", "character_type": "fox", "rarity": "common", "weight": 23},
+    {"egg_slug": "egg_common", "character_type": "dragon", "rarity": "common", "weight": 23},
+    {"egg_slug": "egg_common", "character_type": "cat", "rarity": "rare", "weight": 9},
+    {"egg_slug": "egg_common", "character_type": "fox", "rarity": "rare", "weight": 8},
+    {"egg_slug": "egg_common", "character_type": "dragon", "rarity": "rare", "weight": 8},
+    {"egg_slug": "egg_common", "character_type": "cat", "rarity": "epic", "weight": 2},
+    {"egg_slug": "egg_common", "character_type": "fox", "rarity": "epic", "weight": 2},
+    {"egg_slug": "egg_common", "character_type": "dragon", "rarity": "epic", "weight": 1},
+    # Rare egg: ~75% rare, ~25% epic — any character
+    {"egg_slug": "egg_rare", "character_type": "cat", "rarity": "rare", "weight": 25},
+    {"egg_slug": "egg_rare", "character_type": "fox", "rarity": "rare", "weight": 25},
+    {"egg_slug": "egg_rare", "character_type": "dragon", "rarity": "rare", "weight": 25},
+    {"egg_slug": "egg_rare", "character_type": "cat", "rarity": "epic", "weight": 9},
+    {"egg_slug": "egg_rare", "character_type": "fox", "rarity": "epic", "weight": 8},
+    {"egg_slug": "egg_rare", "character_type": "dragon", "rarity": "epic", "weight": 8},
+    # Epic egg: 100% epic — any character
+    {"egg_slug": "egg_epic", "character_type": "cat", "rarity": "epic", "weight": 34},
+    {"egg_slug": "egg_epic", "character_type": "fox", "rarity": "epic", "weight": 33},
+    {"egg_slug": "egg_epic", "character_type": "dragon", "rarity": "epic", "weight": 33},
 ]
 
 
@@ -362,13 +374,21 @@ async def ensure_game_schema(conn: AsyncConnection) -> None:
 
 async def seed_game_data(session: AsyncSession) -> None:
     """Insert seed data for items, achievements, and egg drops if missing."""
-    # Items
+    # Items — insert new and update image_path for existing
     existing_items = set(
         (await session.execute(select(GameItem.slug))).scalars().all()
     )
+    items_by_slug = {i["slug"]: i for i in ITEMS}
     for item_data in ITEMS:
         if item_data["slug"] not in existing_items:
             session.add(GameItem(**item_data))
+
+    # Migrate image_path from .svg to .png for existing items
+    all_items = (await session.execute(select(GameItem))).scalars().all()
+    for db_item in all_items:
+        expected = items_by_slug.get(db_item.slug)
+        if expected and db_item.image_path != expected["image_path"]:
+            db_item.image_path = expected["image_path"]
 
     # Achievements
     existing_achievements = set(
@@ -378,9 +398,17 @@ async def seed_game_data(session: AsyncSession) -> None:
         if ach_data["slug"] not in existing_achievements:
             session.add(GameAchievement(**ach_data))
 
-    # Egg drops
+    # Egg drops — recreate if count changed (schema update)
     existing_drops = (await session.execute(select(GameEggDrop.id))).scalars().all()
-    if not existing_drops:
+    if len(existing_drops) != len(EGG_DROPS):
+        for drop_id in existing_drops:
+            drop = await session.get(GameEggDrop, drop_id)
+            if drop:
+                await session.delete(drop)
+        await session.flush()
+        for drop_data in EGG_DROPS:
+            session.add(GameEggDrop(**drop_data))
+    elif not existing_drops:
         for drop_data in EGG_DROPS:
             session.add(GameEggDrop(**drop_data))
 

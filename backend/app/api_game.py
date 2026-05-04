@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -33,6 +33,7 @@ from app.game_models import (
 )
 from app.game_schemas import (
     BuyRequest,
+    DeletePetResponse,
     EquipRequest,
     GameAchievementOut,
     GameItemOut,
@@ -43,6 +44,8 @@ from app.game_schemas import (
     RenameRequest,
     SetBackgroundRequest,
 )
+
+FREE_EGG_WEEKLY_LIMIT = 3
 
 router = APIRouter(prefix="/api/game", tags=["game"])
 
@@ -211,6 +214,22 @@ async def hatch(
     if pets_count == 0:
         if payload.egg_slug != "egg_common":
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "first egg must be common")
+    elif egg_item.price == 0:
+        # Free egg weekly limit
+        week_ago = datetime.now(UTC) - timedelta(days=7)
+        free_hatches_this_week = (
+            await session.execute(
+                select(func.count(GamePet.id)).where(
+                    GamePet.user_id == tg.id,
+                    GamePet.hatched_at >= week_ago,
+                )
+            )
+        ).scalar_one()
+        if free_hatches_this_week >= FREE_EGG_WEEKLY_LIMIT:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"free egg limit reached ({FREE_EGG_WEEKLY_LIMIT}/week)",
+            )
     else:
         if profile.coins < egg_item.price:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "not enough coins")
@@ -289,6 +308,29 @@ async def rename_pet(
     await session.commit()
     slug_map = await _get_item_slug_map(session)
     return _pet_to_out(pet, slug_map)
+
+
+# -------------------- DELETE /pets/{id} --------------------
+
+@router.delete("/pets/{pet_id}", response_model=DeletePetResponse)
+async def delete_pet(
+    pet_id: int,
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.api import _ensure_user
+    await _ensure_user(session, tg)
+    pet = await session.get(GamePet, pet_id)
+    if pet is None or pet.user_id != tg.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "pet not found")
+
+    profile = await _ensure_profile(session, tg.id)
+    if profile.active_pet_id == pet.id:
+        profile.active_pet_id = None
+
+    await session.delete(pet)
+    await session.commit()
+    return DeletePetResponse()
 
 
 # -------------------- GET /shop --------------------
