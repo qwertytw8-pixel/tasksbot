@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { api, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
+import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon } from "../icons";
 import { t } from "../useLocale";
 
 export function PetPage() {
@@ -58,11 +59,11 @@ export function PetPage() {
       {/* Header with coins and streak */}
       <div className="pet-header">
         <div className="pet-header__coins">
-          <span className="pet-header__coin-icon">🪙</span>
+          <CoinIcon className="pet-header__coin-icon" style={{ width: 18, height: 18, color: "#facc15" }} />
           <span className="pet-header__coin-value">{profile.coins}</span>
         </div>
         <div className="pet-header__streak">
-          <span className="pet-header__streak-icon">🔥</span>
+          <FireIcon className="pet-header__streak-icon" style={{ width: 18, height: 18, color: "#f97316" }} />
           <span className="pet-header__streak-value">
             {profile.streak_days} {t("дн.", "d")}
           </span>
@@ -104,7 +105,7 @@ export function PetPage() {
       <div className="pet-stats">
         <div className="pet-stats__row">
           <span>
-            {t("Сегодня", "Today")}: +{profile.daily_coins_earned} 🪙
+            {t("Сегодня", "Today")}: +{profile.daily_coins_earned} <CoinIcon style={{ width: 14, height: 14, color: "#facc15", verticalAlign: "middle" }} />
           </span>
           <span className="pet-stats__cap">
             ({profile.daily_coins_earned}/{profile.daily_cap})
@@ -134,13 +135,16 @@ export function PetPage() {
       {/* Navigation buttons */}
       <div className="pet-nav">
         <button className="pet-nav__btn" onClick={() => navigate("/pet/shop")}>
-          🛍️ {t("Магазин", "Shop")}
+          <ShopBagIcon style={{ width: 18, height: 18 }} />
+          {t("Магазин", "Shop")}
         </button>
         <button className="pet-nav__btn" onClick={() => navigate("/pet/achievements")}>
-          🏆 {t("Ачивки", "Achievements")}
+          <TrophyIcon style={{ width: 18, height: 18 }} />
+          {t("Достижения", "Achievements")}
         </button>
         <button className="pet-nav__btn" onClick={() => navigate("/pet/collection")}>
-          📦 {t("Коллекция", "Collection")}
+          <GridIcon style={{ width: 18, height: 18 }} />
+          {t("Коллекция", "Collection")}
         </button>
       </div>
     </div>

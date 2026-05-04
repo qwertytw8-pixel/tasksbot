@@ -98,6 +98,11 @@ class GameAchievementOut(BaseModel):
     progress: int = 0
 
 
+class DeletePetResponse(BaseModel):
+    deleted: bool = True
+    message: str = "pet deleted"
+
+
 class GameEventOut(BaseModel):
     coins_earned: int = 0
     xp_earned: int = 0

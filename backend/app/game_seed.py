@@ -374,13 +374,21 @@ async def ensure_game_schema(conn: AsyncConnection) -> None:
 
 async def seed_game_data(session: AsyncSession) -> None:
     """Insert seed data for items, achievements, and egg drops if missing."""
-    # Items
+    # Items — insert new and update image_path for existing
     existing_items = set(
         (await session.execute(select(GameItem.slug))).scalars().all()
     )
+    items_by_slug = {i["slug"]: i for i in ITEMS}
     for item_data in ITEMS:
         if item_data["slug"] not in existing_items:
             session.add(GameItem(**item_data))
+
+    # Migrate image_path from .svg to .png for existing items
+    all_items = (await session.execute(select(GameItem))).scalars().all()
+    for db_item in all_items:
+        expected = items_by_slug.get(db_item.slug)
+        if expected and db_item.image_path != expected["image_path"]:
+            db_item.image_path = expected["image_path"]
 
     # Achievements
     existing_achievements = set(
@@ -390,9 +398,17 @@ async def seed_game_data(session: AsyncSession) -> None:
         if ach_data["slug"] not in existing_achievements:
             session.add(GameAchievement(**ach_data))
 
-    # Egg drops
+    # Egg drops — recreate if count changed (schema update)
     existing_drops = (await session.execute(select(GameEggDrop.id))).scalars().all()
-    if not existing_drops:
+    if len(existing_drops) != len(EGG_DROPS):
+        for drop_id in existing_drops:
+            drop = await session.get(GameEggDrop, drop_id)
+            if drop:
+                await session.delete(drop)
+        await session.flush()
+        for drop_data in EGG_DROPS:
+            session.add(GameEggDrop(**drop_data))
+    elif not existing_drops:
         for drop_data in EGG_DROPS:
             session.add(GameEggDrop(**drop_data))
 
