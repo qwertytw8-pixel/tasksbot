@@ -248,15 +248,27 @@ ACHIEVEMENTS: list[dict] = [
 ]
 
 EGG_DROPS: list[dict] = [
-    # Common egg: 70% common, 25% rare, 5% epic
-    {"egg_slug": "egg_common", "character_type": "cat", "rarity": "common", "weight": 70},
-    {"egg_slug": "egg_common", "character_type": "fox", "rarity": "rare", "weight": 25},
-    {"egg_slug": "egg_common", "character_type": "dragon", "rarity": "epic", "weight": 5},
-    # Rare egg: 75% rare, 25% epic
-    {"egg_slug": "egg_rare", "character_type": "fox", "rarity": "rare", "weight": 75},
-    {"egg_slug": "egg_rare", "character_type": "dragon", "rarity": "epic", "weight": 25},
-    # Epic egg: 100% epic
-    {"egg_slug": "egg_epic", "character_type": "dragon", "rarity": "epic", "weight": 100},
+    # Common egg: ~70% common, ~25% rare, ~5% epic — any character
+    {"egg_slug": "egg_common", "character_type": "cat", "rarity": "common", "weight": 24},
+    {"egg_slug": "egg_common", "character_type": "fox", "rarity": "common", "weight": 23},
+    {"egg_slug": "egg_common", "character_type": "dragon", "rarity": "common", "weight": 23},
+    {"egg_slug": "egg_common", "character_type": "cat", "rarity": "rare", "weight": 9},
+    {"egg_slug": "egg_common", "character_type": "fox", "rarity": "rare", "weight": 8},
+    {"egg_slug": "egg_common", "character_type": "dragon", "rarity": "rare", "weight": 8},
+    {"egg_slug": "egg_common", "character_type": "cat", "rarity": "epic", "weight": 2},
+    {"egg_slug": "egg_common", "character_type": "fox", "rarity": "epic", "weight": 2},
+    {"egg_slug": "egg_common", "character_type": "dragon", "rarity": "epic", "weight": 1},
+    # Rare egg: ~75% rare, ~25% epic — any character
+    {"egg_slug": "egg_rare", "character_type": "cat", "rarity": "rare", "weight": 25},
+    {"egg_slug": "egg_rare", "character_type": "fox", "rarity": "rare", "weight": 25},
+    {"egg_slug": "egg_rare", "character_type": "dragon", "rarity": "rare", "weight": 25},
+    {"egg_slug": "egg_rare", "character_type": "cat", "rarity": "epic", "weight": 9},
+    {"egg_slug": "egg_rare", "character_type": "fox", "rarity": "epic", "weight": 8},
+    {"egg_slug": "egg_rare", "character_type": "dragon", "rarity": "epic", "weight": 8},
+    # Epic egg: 100% epic — any character
+    {"egg_slug": "egg_epic", "character_type": "cat", "rarity": "epic", "weight": 34},
+    {"egg_slug": "egg_epic", "character_type": "fox", "rarity": "epic", "weight": 33},
+    {"egg_slug": "egg_epic", "character_type": "dragon", "rarity": "epic", "weight": 33},
 ]
 
 
