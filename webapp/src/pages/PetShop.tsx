@@ -131,9 +131,20 @@ function ShopCard({
       disabled={isBuying || (isOwned && item.type !== "egg")}
     >
       <div className="shop-card__image">
-        {item.type === "egg" && "🥚"}
-        {item.type === "accessory" && "🎩"}
-        {item.type === "background" && "🖼️"}
+        {item.image_path ? (
+          <img
+            src={item.image_path}
+            alt={t(item.name_ru, item.name_en)}
+            className="shop-card__img"
+            draggable={false}
+          />
+        ) : (
+          <>
+            {item.type === "egg" && "🥚"}
+            {item.type === "accessory" && "🎩"}
+            {item.type === "background" && "🖼️"}
+          </>
+        )}
       </div>
       <div className="shop-card__name">{t(item.name_ru, item.name_en)}</div>
       <div className="shop-card__price">
