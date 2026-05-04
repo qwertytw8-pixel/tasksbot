@@ -41,7 +41,11 @@ class GameProfile(Base):
         DateTime(timezone=True), server_default="now()", nullable=False
     )
 
-    pets: Mapped[list["GamePet"]] = relationship(back_populates="profile")
+    pets: Mapped[list["GamePet"]] = relationship(
+        back_populates="profile",
+        primaryjoin="GameProfile.user_id == GamePet.user_id",
+        foreign_keys="[GamePet.user_id]",
+    )
 
 
 class GamePet(Base):
