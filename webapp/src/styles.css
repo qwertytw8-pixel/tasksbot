@@ -2422,3 +2422,437 @@ button {
 .onboarding-tour__btn--next:active {
   filter: brightness(0.9);
 }
+
+/* ==================== GAME / PET ==================== */
+
+.pet-page {
+  animation: tb-fade-in 0.32s ease both;
+}
+
+/* Header: coins + streak */
+.pet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0 16px;
+}
+
+.pet-header__coins,
+.pet-header__streak {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.pet-header__coin-icon,
+.pet-header__streak-icon {
+  font-size: 22px;
+}
+
+/* Pet display area */
+.pet-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 20px;
+}
+
+/* XP progress */
+.pet-xp {
+  width: 100%;
+  max-width: 280px;
+  margin-top: 16px;
+}
+
+.pet-xp__bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--tb-cell-bg);
+  overflow: hidden;
+  border: 1px solid var(--tb-glass-border);
+}
+
+.pet-xp__fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--tb-accent-grad);
+  transition: width 0.5s ease;
+}
+
+.pet-xp__text {
+  font-size: 13px;
+  color: var(--tb-hint);
+  margin-top: 4px;
+  text-align: center;
+}
+
+.pet-xp__stage {
+  color: var(--tb-accent-strong);
+  font-weight: 600;
+}
+
+/* Stats block */
+.pet-stats {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  backdrop-filter: var(--tb-blur-light);
+}
+
+.pet-stats__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.pet-stats__cap {
+  color: var(--tb-hint);
+}
+
+.pet-stats__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--tb-cell-bg);
+  overflow: hidden;
+}
+
+.pet-stats__fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--tb-accent-grad);
+  transition: width 0.5s ease;
+}
+
+.pet-stats__fill--tasks {
+  background: linear-gradient(135deg, #10B981, #059669);
+}
+
+/* Navigation buttons */
+.pet-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pet-nav__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: var(--tb-blur-light);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pet-nav__btn:active {
+  transform: scale(0.96);
+  box-shadow: var(--tb-shadow-press);
+}
+
+/* Back button */
+.pet-back-btn {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-xs);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: var(--tb-blur-light);
+}
+
+/* First egg screen */
+.pet-first-egg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.pet-first-egg__content {
+  text-align: center;
+}
+
+.pet-first-egg__emoji {
+  font-size: 80px;
+  animation: tb-pop-in 0.5s ease both;
+}
+
+.pet-first-egg__btn {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 14px 32px;
+  background: var(--tb-accent-grad);
+  color: #fff;
+  border: none;
+  border-radius: var(--tb-radius-sm);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.pet-first-egg__btn:active {
+  filter: brightness(0.9);
+}
+
+/* Hatch screen */
+.pet-hatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.pet-hatch__content {
+  text-align: center;
+}
+
+.pet-hatch__egg {
+  display: inline-block;
+}
+
+.pet-hatch__egg--shaking {
+  animation: egg-shake 0.4s ease infinite;
+}
+
+@keyframes egg-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+.pet-hatch-reveal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.pet-hatch-reveal__content {
+  text-align: center;
+  animation: tb-pop-in 0.5s ease both;
+}
+
+/* Achievements */
+.pet-achievements__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pet-achievements__section--locked {
+  opacity: 0.7;
+}
+
+.achievement-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  backdrop-filter: var(--tb-blur-light);
+}
+
+.achievement-card--unlocked {
+  border-color: var(--tb-accent-strong);
+  background: var(--tb-accent-soft);
+}
+
+.achievement-card__icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.achievement-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.achievement-card__name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.achievement-card__desc {
+  font-size: 12px;
+  color: var(--tb-hint);
+  margin-top: 2px;
+}
+
+.achievement-card__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.achievement-card__progress-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--tb-cell-bg);
+  overflow: hidden;
+}
+
+.achievement-card__progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--tb-accent-grad);
+  transition: width 0.5s ease;
+}
+
+.achievement-card__progress-text {
+  font-size: 11px;
+  color: var(--tb-hint);
+  white-space: nowrap;
+}
+
+.achievement-card__reward {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Shop */
+.shop-section {
+  margin-bottom: 20px;
+}
+
+.shop-section__title {
+  margin-bottom: 10px;
+}
+
+.shop-section__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  cursor: pointer;
+  position: relative;
+  backdrop-filter: var(--tb-blur-light);
+  transition: transform 0.15s ease;
+}
+
+.shop-card:active {
+  transform: scale(0.96);
+}
+
+.shop-card--owned {
+  opacity: 0.65;
+}
+
+.shop-card--cant-afford {
+  opacity: 0.5;
+}
+
+.shop-card__image {
+  font-size: 28px;
+}
+
+.shop-card__name {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.shop-card__price {
+  font-size: 12px;
+  color: var(--tb-hint);
+}
+
+.shop-card__premium {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 12px;
+}
+
+/* Collection */
+.pet-collection__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.pet-collection__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  backdrop-filter: var(--tb-blur-light);
+}
+
+.pet-collection__card--active {
+  border-color: var(--tb-accent-strong);
+}
+
+.pet-collection__info {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--tb-hint);
+}
+
+.pet-collection__stage {
+  font-weight: 600;
+  color: var(--tb-text);
+}
+
+.pet-collection__active-badge {
+  padding: 4px 12px;
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-strong);
+  border-radius: var(--tb-radius-xs);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pet-collection__activate-btn {
+  padding: 4px 12px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pet-empty {
+  text-align: center;
+  color: var(--tb-hint);
+  padding: 32px 0;
+}

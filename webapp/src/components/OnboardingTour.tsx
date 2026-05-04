@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { api } from "../api";
+import { t } from "../useLocale";
 
 interface Step {
   emoji: string;
@@ -12,38 +13,65 @@ interface Step {
 const STEPS: Step[] = [
   {
     emoji: "👋",
-    title: "Добро пожаловать!",
-    description: "Task Blo поможет тебе управлять задачами прямо в Telegram. Давай быстро покажем, что тут есть.",
+    title: t("Добро пожаловать!", "Welcome!"),
+    description: t(
+      "Task Blo поможет тебе управлять задачами прямо в Telegram. Давай быстро покажем, что тут есть.",
+      "Task Blo helps you manage tasks right in Telegram. Let us show you around.",
+    ),
     selector: null,
   },
   {
     emoji: "📋",
-    title: "Навигация",
-    description: "Внизу — основные вкладки. Переключайся между задачами, календарём и профилем.",
+    title: t("Навигация", "Navigation"),
+    description: t(
+      "Внизу — основные вкладки. Переключайся между задачами, календарём и профилем.",
+      "The main tabs are at the bottom. Switch between tasks, calendar and profile.",
+    ),
     selector: ".tabbar",
   },
   {
     emoji: "➕",
-    title: "Создай задачу",
-    description: "Нажми плюс, чтобы добавить новую задачу. Укажи дату, время и приоритет.",
+    title: t("Создай задачу", "Create a task"),
+    description: t(
+      "Нажми плюс, чтобы добавить новую задачу. Укажи дату, время и приоритет.",
+      "Tap plus to add a new task. Set the date, time and priority.",
+    ),
     selector: ".fab",
   },
   {
+    emoji: "🐾",
+    title: t("Питомец", "Pet"),
+    description: t(
+      "Выполняй задачи — получай монеты и опыт. Выращивай питомца, открывай достижения и покупай аксессуары!",
+      "Complete tasks to earn coins and XP. Raise your pet, unlock achievements and buy accessories!",
+    ),
+    selector: ".tab[href='/pet']",
+  },
+  {
     emoji: "☀️",
-    title: "Сегодня",
-    description: "Здесь собраны задачи на текущий день. Фокусируйся на главном.",
+    title: t("Сегодня", "Today"),
+    description: t(
+      "Здесь собраны задачи на текущий день. Фокусируйся на главном.",
+      "Today's tasks are gathered here. Focus on what matters.",
+    ),
     selector: ".tab[href='/today']",
   },
   {
     emoji: "📅",
-    title: "Календарь",
-    description: "Просматривай задачи по дням. Есть режим списка и таймлайна по часам.",
+    title: t("Календарь", "Calendar"),
+    description: t(
+      "Просматривай задачи по дням. Есть режим списка и таймлайна по часам.",
+      "Browse tasks by day. List view and hourly timeline are available.",
+    ),
     selector: ".tab[href='/calendar']",
   },
   {
     emoji: "⚙️",
-    title: "Профиль",
-    description: "Настрой тему, посмотри архив, управляй подпиской.",
+    title: t("Профиль", "Profile"),
+    description: t(
+      "Настрой тему, посмотри архив, управляй подпиской.",
+      "Set your theme, view archive, manage subscription.",
+    ),
     selector: ".tab[href='/profile']",
   },
 ];
@@ -188,10 +216,10 @@ export function OnboardingTour({ onComplete }: { onComplete: () => void }) {
 
         <div className="onboarding-tour__buttons">
           <button type="button" className="onboarding-tour__btn onboarding-tour__btn--skip" onClick={skip}>
-            Пропустить
+            {t("Пропустить", "Skip")}
           </button>
           <button type="button" className="onboarding-tour__btn onboarding-tour__btn--next" onClick={next}>
-            {isLast ? "Начать!" : "Далее →"}
+            {isLast ? t("Начать!", "Start!") : t("Далее →", "Next →")}
           </button>
         </div>
       </div>
