@@ -9,99 +9,99 @@ ITEMS: list[dict] = [
     # --- Eggs ---
     {
         "slug": "egg_common", "name_ru": "Обычное яйцо", "name_en": "Common Egg",
-        "type": "egg", "image_path": "/game/eggs/common.svg",
+        "type": "egg", "image_path": "/game/eggs/common.png",
         "price": 0, "is_premium": False, "sort_order": 1,
     },
     {
         "slug": "egg_rare", "name_ru": "Редкое яйцо", "name_en": "Rare Egg",
-        "type": "egg", "image_path": "/game/eggs/rare.svg",
+        "type": "egg", "image_path": "/game/eggs/rare.png",
         "price": 500, "is_premium": False, "sort_order": 2,
     },
     {
         "slug": "egg_epic", "name_ru": "Эпическое яйцо", "name_en": "Epic Egg",
-        "type": "egg", "image_path": "/game/eggs/epic.svg",
+        "type": "egg", "image_path": "/game/eggs/epic.png",
         "price": 1500, "is_premium": False, "sort_order": 3,
     },
     # --- Accessories ---
     {
         "slug": "acc_cap", "name_ru": "Бейсболка", "name_en": "Baseball Cap",
-        "type": "accessory", "image_path": "/game/acc/cap.svg",
+        "type": "accessory", "image_path": "/game/accessories/cap.png",
         "price": 30, "is_premium": False, "sort_order": 10,
     },
     {
         "slug": "acc_glasses", "name_ru": "Очки", "name_en": "Glasses",
-        "type": "accessory", "image_path": "/game/acc/glasses.svg",
+        "type": "accessory", "image_path": "/game/accessories/glasses.png",
         "price": 40, "is_premium": False, "sort_order": 11,
     },
     {
         "slug": "acc_bowtie", "name_ru": "Бантик", "name_en": "Bow Tie",
-        "type": "accessory", "image_path": "/game/acc/bowtie.svg",
+        "type": "accessory", "image_path": "/game/accessories/bowtie.png",
         "price": 35, "is_premium": False, "sort_order": 12,
     },
     {
         "slug": "acc_scarf", "name_ru": "Шарфик", "name_en": "Scarf",
-        "type": "accessory", "image_path": "/game/acc/scarf.svg",
+        "type": "accessory", "image_path": "/game/accessories/scarf.png",
         "price": 50, "is_premium": False, "sort_order": 13,
     },
     {
         "slug": "acc_headphones", "name_ru": "Наушники", "name_en": "Headphones",
-        "type": "accessory", "image_path": "/game/acc/headphones.svg",
+        "type": "accessory", "image_path": "/game/accessories/headphones.png",
         "price": 60, "is_premium": False, "sort_order": 14,
     },
     {
         "slug": "acc_crown", "name_ru": "Корона", "name_en": "Crown",
-        "type": "accessory", "image_path": "/game/acc/crown.svg",
+        "type": "accessory", "image_path": "/game/accessories/crown.png",
         "price": 100, "is_premium": False, "sort_order": 15,
     },
     {
         "slug": "acc_halo", "name_ru": "Нимб", "name_en": "Halo",
-        "type": "accessory", "image_path": "/game/acc/halo.svg",
+        "type": "accessory", "image_path": "/game/accessories/halo.png",
         "price": 120, "is_premium": True, "sort_order": 16,
     },
     {
         "slug": "acc_wings", "name_ru": "Крылья", "name_en": "Wings",
-        "type": "accessory", "image_path": "/game/acc/wings.svg",
+        "type": "accessory", "image_path": "/game/accessories/wings.png",
         "price": 150, "is_premium": True, "sort_order": 17,
     },
     {
         "slug": "acc_fire_aura", "name_ru": "Огненная аура", "name_en": "Fire Aura",
-        "type": "accessory", "image_path": "/game/acc/fire_aura.svg",
+        "type": "accessory", "image_path": "/game/accessories/fire_aura.png",
         "price": 150, "is_premium": True, "sort_order": 18,
     },
     {
         "slug": "acc_rainbow", "name_ru": "Радужный шлейф", "name_en": "Rainbow Trail",
-        "type": "accessory", "image_path": "/game/acc/rainbow.svg",
+        "type": "accessory", "image_path": "/game/accessories/rainbow.png",
         "price": 120, "is_premium": True, "sort_order": 19,
     },
     # --- Backgrounds ---
     {
         "slug": "bg_meadow", "name_ru": "Поляна", "name_en": "Meadow",
-        "type": "background", "image_path": "/game/bg/meadow.svg",
+        "type": "background", "image_path": "/game/bg/meadow.png",
         "price": 0, "is_premium": False, "sort_order": 30,
     },
     {
         "slug": "bg_night", "name_ru": "Ночное небо", "name_en": "Night Sky",
-        "type": "background", "image_path": "/game/bg/night.svg",
+        "type": "background", "image_path": "/game/bg/night.png",
         "price": 50, "is_premium": False, "sort_order": 31,
     },
     {
         "slug": "bg_city", "name_ru": "Город", "name_en": "City",
-        "type": "background", "image_path": "/game/bg/city.svg",
+        "type": "background", "image_path": "/game/bg/city.png",
         "price": 80, "is_premium": False, "sort_order": 32,
     },
     {
         "slug": "bg_space", "name_ru": "Космос", "name_en": "Space",
-        "type": "background", "image_path": "/game/bg/space.svg",
+        "type": "background", "image_path": "/game/bg/space.png",
         "price": 120, "is_premium": True, "sort_order": 33,
     },
     {
         "slug": "bg_volcano", "name_ru": "Вулкан", "name_en": "Volcano",
-        "type": "background", "image_path": "/game/bg/volcano.svg",
+        "type": "background", "image_path": "/game/bg/volcano.png",
         "price": 150, "is_premium": True, "sort_order": 34,
     },
     {
         "slug": "bg_rainbow", "name_ru": "Радуга", "name_en": "Rainbow",
-        "type": "background", "image_path": "/game/bg/rainbow.svg",
+        "type": "background", "image_path": "/game/bg/rainbow.png",
         "price": 100, "is_premium": False, "sort_order": 35,
     },
 ]

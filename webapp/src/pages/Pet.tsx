@@ -153,7 +153,9 @@ function PetFirstEgg() {
   return (
     <div className="page pet-page pet-first-egg">
       <div className="pet-first-egg__content">
-        <div className="pet-first-egg__emoji">🥚</div>
+        <div className="pet-first-egg__egg-img">
+          <img src="/game/eggs/common.png" alt="egg" width={120} height={120} draggable={false} />
+        </div>
         <h2>{t("Твоё первое яйцо!", "Your first egg!")}</h2>
         <p>{t("Нажми, чтобы узнать, кто внутри!", "Tap to find out who's inside!")}</p>
         <button

@@ -6,13 +6,19 @@ import { PetView } from "../components/PetView";
 import { t } from "../useLocale";
 import { haptic } from "../telegram";
 
+const EGG_IMAGES: Record<string, string> = {
+  egg_common: "/game/eggs/common.png",
+  egg_rare: "/game/eggs/rare.png",
+  egg_epic: "/game/eggs/epic.png",
+};
+
 export function PetHatchPage() {
   const [searchParams] = useSearchParams();
   const eggSlug = searchParams.get("egg") ?? "egg_common";
   const isFirst = searchParams.get("first") === "1";
   const navigate = useNavigate();
 
-  const [phase, setPhase] = useState<"egg" | "hatching" | "reveal">("egg");
+  const [phase, setPhase] = useState<"egg" | "hatching" | "cracking" | "reveal">("egg");
   const [result, setResult] = useState<HatchResponse | null>(null);
   const [error, setError] = useState("");
 
@@ -23,9 +29,13 @@ export function PetHatchPage() {
       const res = await api.gameHatch(eggSlug);
       setResult(res);
       setTimeout(() => {
+        setPhase("cracking");
+        haptic("heavy");
+      }, 1800);
+      setTimeout(() => {
         setPhase("reveal");
         haptic("heavy");
-      }, 1500);
+      }, 2800);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error");
       setPhase("egg");
@@ -54,6 +64,14 @@ export function PetHatchPage() {
     return (
       <div className="page pet-page pet-hatch-reveal">
         <div className="pet-hatch-reveal__content">
+          <div className="pet-hatch-reveal__sparkles">
+            <div className="sparkle sparkle--1" />
+            <div className="sparkle sparkle--2" />
+            <div className="sparkle sparkle--3" />
+            <div className="sparkle sparkle--4" />
+            <div className="sparkle sparkle--5" />
+            <div className="sparkle sparkle--6" />
+          </div>
           <PetView
             characterType={result.pet.character_type}
             rarity={result.pet.rarity}
@@ -81,27 +99,31 @@ export function PetHatchPage() {
     );
   }
 
+  const eggSrc = EGG_IMAGES[eggSlug] ?? EGG_IMAGES.egg_common;
+
   return (
     <div className="page pet-page pet-hatch">
       <div className="pet-hatch__content">
-        <div className={`pet-hatch__egg ${phase === "hatching" ? "pet-hatch__egg--shaking" : ""}`}>
-          <svg width="120" height="150" viewBox="0 0 120 150">
-            <ellipse cx="60" cy="85" rx="45" ry="55" fill="#F3E8D0" stroke="#D4C5A9" strokeWidth="3" />
-            <ellipse cx="60" cy="85" rx="45" ry="55" fill="url(#eggGrad)" />
-            {eggSlug === "egg_rare" && (
-              <ellipse cx="60" cy="85" rx="45" ry="55" fill="none" stroke="#818CF8" strokeWidth="3" />
-            )}
-            {eggSlug === "egg_epic" && (
-              <ellipse cx="60" cy="85" rx="45" ry="55" fill="none" stroke="#F59E0B" strokeWidth="3" />
-            )}
-            <ellipse cx="50" cy="65" rx="8" ry="12" fill="rgba(255,255,255,0.3)" />
-            <defs>
-              <radialGradient id="eggGrad" cx="40%" cy="30%">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.25)" />
-                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-              </radialGradient>
-            </defs>
-          </svg>
+        <div
+          className={`pet-hatch__egg ${
+            phase === "hatching" ? "pet-hatch__egg--shaking" : ""
+          } ${phase === "cracking" ? "pet-hatch__egg--cracking" : ""}`}
+        >
+          <img
+            src={eggSrc}
+            alt={eggSlug}
+            width={140}
+            height={140}
+            className="pet-hatch__egg-img"
+            draggable={false}
+          />
+          {phase === "hatching" && (
+            <div className="pet-hatch__particles">
+              <span className="hatch-particle hatch-particle--1" />
+              <span className="hatch-particle hatch-particle--2" />
+              <span className="hatch-particle hatch-particle--3" />
+            </div>
+          )}
         </div>
 
         {phase === "egg" && (
@@ -121,6 +143,12 @@ export function PetHatchPage() {
         {phase === "hatching" && (
           <p style={{ marginTop: 20, fontWeight: 600 }}>
             {t("Вылупляется…", "Hatching…")}
+          </p>
+        )}
+
+        {phase === "cracking" && (
+          <p style={{ marginTop: 20, fontWeight: 600 }}>
+            {t("Вот-вот…", "Almost…")}
           </p>
         )}
       </div>
