@@ -206,7 +206,10 @@ async def hatch(
         )
     ).scalar_one()
 
-    if pets_count > 0:
+    if pets_count == 0:
+        if payload.egg_slug != "egg_common":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "first egg must be common")
+    else:
         if profile.coins < egg_item.price:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "not enough coins")
         profile.coins -= egg_item.price

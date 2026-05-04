@@ -149,7 +149,14 @@ async def award_task_completion(
         if lifetime < MIN_LIFETIME_SECONDS:
             return event
 
-    # Deduplication: same title same day
+    # Deduplication: same title same day (timezone-aware range)
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(user_tz)
+    except Exception:
+        tz = UTC
+    day_start_utc = datetime.combine(today, datetime.min.time(), tzinfo=tz).astimezone(UTC)
+    day_end_utc = day_start_utc + timedelta(days=1)
     dup_count = (
         await session.execute(
             select(func.count(Task.id)).where(
@@ -157,7 +164,8 @@ async def award_task_completion(
                 Task.title == task.title,
                 Task.is_done.is_(True),
                 Task.id != task.id,
-                func.date(Task.done_at) == today,
+                Task.done_at >= day_start_utc,
+                Task.done_at < day_end_utc,
             )
         )
     ).scalar_one()
