@@ -22,6 +22,7 @@ from app.game_seed import ensure_game_schema, seed_game_data
 from app.scheduler import (
     run_daily_summary,
     run_personal_offers,
+    run_streak_at_risk,
     run_subscription_notifications,
     run_tick,
 )
@@ -172,10 +173,12 @@ async def cron_tick(
     summaries = await run_daily_summary(request.app.state.bot)
     sub_notifs = await run_subscription_notifications(request.app.state.bot)
     personal = await run_personal_offers(request.app.state.bot)
+    streak_warns = await run_streak_at_risk(request.app.state.bot)
     return {
         "status": "ok",
         "sent": sent,
         "summaries": summaries,
         "sub_notifs": sub_notifs,
         "personal_offers": personal,
+        "streak_warnings": streak_warns,
     }
