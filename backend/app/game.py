@@ -275,6 +275,7 @@ async def award_task_completion(
                 Task.user_id == user_id,
                 Task.due_date == today,
                 Task.is_done.is_(True),
+                Task.archived_at.is_(None),
             )
         )
     ).scalar_one()

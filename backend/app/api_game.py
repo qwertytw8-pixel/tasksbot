@@ -157,6 +157,7 @@ async def get_profile(
     ).scalar_one()
 
     daily_cap = PREMIUM_DAILY_CAP if is_premium else FREE_DAILY_CAP
+    daily_earned = profile.daily_coins_earned if profile.daily_coins_date == today else 0
 
     await session.commit()
 
@@ -167,7 +168,7 @@ async def get_profile(
         last_streak_date=str(profile.last_streak_date) if profile.last_streak_date else None,
         perfect_days_count=profile.perfect_days_count,
         tasks_completed_total=profile.tasks_completed_total,
-        daily_coins_earned=profile.daily_coins_earned,
+        daily_coins_earned=daily_earned,
         daily_cap=daily_cap,
         active_pet=active_pet_out,
         active_background_slug=bg_slug,
