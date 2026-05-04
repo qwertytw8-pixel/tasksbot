@@ -7,6 +7,7 @@ import { useI18n } from "./i18n";
 import {
   CalendarIcon,
   ListIcon,
+  PawIcon,
   PlusIcon,
   SparkIcon,
   UserIcon,
@@ -20,6 +21,11 @@ const TaskFormPage = lazy(() => import("./pages/TaskForm").then((m) => ({ defaul
 const CalendarPage = lazy(() => import("./pages/Calendar").then((m) => ({ default: m.CalendarPage })));
 const ProfileRoutes = lazy(() => import("./pages/Profile").then((m) => ({ default: m.ProfileRoutes })));
 const AdminPage = lazy(() => import("./pages/Admin").then((m) => ({ default: m.AdminPage })));
+const PetPage = lazy(() => import("./pages/Pet").then((m) => ({ default: m.PetPage })));
+const PetHatchPage = lazy(() => import("./pages/PetHatch").then((m) => ({ default: m.PetHatchPage })));
+const PetAchievementsPage = lazy(() => import("./pages/PetAchievements").then((m) => ({ default: m.PetAchievementsPage })));
+const PetShopPage = lazy(() => import("./pages/PetShop").then((m) => ({ default: m.PetShopPage })));
+const PetCollectionPage = lazy(() => import("./pages/PetCollection").then((m) => ({ default: m.PetCollectionPage })));
 
 const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin"];
 
@@ -54,9 +60,6 @@ export function App() {
 
   return (
     <div className="app">
-      {showOnboarding && (
-        <OnboardingTour onComplete={() => setShowOnboarding(false)} />
-      )}
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<Navigate to="/all" replace />} />
@@ -64,6 +67,11 @@ export function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/all" element={<AllPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/pet" element={<PetPage />} />
+          <Route path="/pet/hatch" element={<PetHatchPage />} />
+          <Route path="/pet/achievements" element={<PetAchievementsPage />} />
+          <Route path="/pet/shop" element={<PetShopPage />} />
+          <Route path="/pet/collection" element={<PetCollectionPage />} />
           <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/about" element={<Navigate to="/profile" replace />} />
           <Route path="/admin" element={<AdminPage />} />
@@ -73,6 +81,9 @@ export function App() {
       </Suspense>
       <Fab />
       <TabBar />
+      {showOnboarding && (
+        <OnboardingTour onComplete={() => setShowOnboarding(false)} />
+      )}
     </div>
   );
 }
@@ -93,13 +104,14 @@ function TabBar() {
   const { t } = useI18n();
   const tabs = [
     { to: "/all", label: t("tab.all"), icon: ListIcon },
+    { to: "/pet", label: t("tab.pet"), icon: PawIcon },
     { to: "/today", label: t("tab.today"), icon: SparkIcon },
     { to: "/calendar", label: t("tab.calendar"), icon: CalendarIcon },
     { to: "/profile", label: t("tab.profile"), icon: UserIcon },
   ];
 
   return (
-    <nav className="tabbar tabbar--four">
+    <nav className="tabbar tabbar--five">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         return (

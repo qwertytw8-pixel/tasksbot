@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.auth import TelegramUser, get_telegram_user_factory
 from app.config import get_settings
 from app.db import Category, Reminder, Task, User, get_session
+from app.game import award_task_completion
 from app.schemas import (
     CategoryIn,
     CategoryOut,
@@ -491,6 +492,7 @@ async def update_task(
     task.remind_minutes_before = remind
     task.recurrence = payload.recurrence
     task.priority = payload.priority
+    was_done = task.is_done
     if payload.is_done and not task.is_done:
         task.done_at = datetime.now(UTC)
         # Create next occurrence for recurring tasks
@@ -503,6 +505,16 @@ async def update_task(
     task.is_done = payload.is_done
     await session.flush()
     await _sync_reminders(session, task)
+
+    # Award coins/XP if task just completed
+    if payload.is_done and not was_done:
+        user = await session.get(User, tg.id)
+        user_tz = user.tz if user else "UTC"
+        user_is_premium = await is_premium(session, tg.id)
+        await award_task_completion(
+            session, tg.id, task, is_premium=user_is_premium, user_tz=user_tz
+        )
+
     await session.commit()
     await session.refresh(task)
     return task

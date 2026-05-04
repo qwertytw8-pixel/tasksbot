@@ -13,10 +13,12 @@ from fastapi.responses import JSONResponse
 
 from app.api import router as api_router
 from app.api_admin import router as admin_router
+from app.api_game import router as game_router
 from app.api_subscription import router as subscription_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
+from app.game_seed import ensure_game_schema, seed_game_data
 from app.scheduler import (
     run_daily_summary,
     run_personal_offers,
@@ -43,7 +45,14 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await ensure_runtime_schema(conn)
+        await ensure_game_schema(conn)
     log.info("db ready")
+
+    # Seed game data (items, achievements, egg drops)
+    from app.db import get_sessionmaker
+    async with get_sessionmaker()() as seed_session:
+        await seed_game_data(seed_session)
+    log.info("game seed data ready")
 
     # Bot
     bot = Bot(
@@ -97,6 +106,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(game_router)
 app.include_router(subscription_router)
 app.include_router(admin_router)
 

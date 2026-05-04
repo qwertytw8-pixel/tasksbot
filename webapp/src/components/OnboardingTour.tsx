@@ -92,6 +92,25 @@ function SunIcon() {
   );
 }
 
+function PetIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-pet" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#fbbf24" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-pet)" opacity="0.15" />
+      <circle cx="16" cy="16" r="4" fill="url(#ob-pet)" />
+      <circle cx="32" cy="16" r="4" fill="url(#ob-pet)" />
+      <circle cx="12" cy="28" r="3.5" fill="url(#ob-pet)" />
+      <circle cx="36" cy="28" r="3.5" fill="url(#ob-pet)" />
+      <ellipse cx="24" cy="30" rx="8" ry="7" fill="url(#ob-pet)" />
+    </svg>
+  );
+}
+
 function CalIcon() {
   return (
     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
@@ -150,6 +169,13 @@ const STEPS: TourStep[] = [
     titleKey: "onboarding.create_title",
     textKey: "onboarding.create_text",
     icon: <PlusCircleIcon />,
+    position: "top",
+  },
+  {
+    target: '.tab[href="/pet"]',
+    titleKey: "onboarding.pet_title",
+    textKey: "onboarding.pet_text",
+    icon: <PetIcon />,
     position: "top",
   },
   {

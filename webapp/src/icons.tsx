@@ -247,6 +247,18 @@ export function SunriseIcon(props: IconProps) {
   );
 }
 
+export function PawIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <ellipse cx="12" cy="17" rx="5" ry="4" />
+      <circle cx="7" cy="10" r="2" />
+      <circle cx="17" cy="10" r="2" />
+      <circle cx="9.5" cy="7" r="1.5" />
+      <circle cx="14.5" cy="7" r="1.5" />
+    </svg>
+  );
+}
+
 export function HelpIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>

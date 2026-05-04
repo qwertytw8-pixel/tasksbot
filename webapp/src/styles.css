@@ -2332,6 +2332,735 @@ button {
   color: var(--tb-hint);
 }
 
+
+/* ---------- Priority color accents on task cards ---------- */
+
+:root,
+[data-theme="light"] {
+  --tb-priority-low: #22c55e;
+  --tb-priority-low-bg: rgba(34, 197, 94, 0.07);
+  --tb-priority-low-border: rgba(34, 197, 94, 0.28);
+  --tb-priority-med: #f59e0b;
+  --tb-priority-med-bg: rgba(245, 158, 11, 0.07);
+  --tb-priority-med-border: rgba(245, 158, 11, 0.28);
+  --tb-priority-high: #ef4444;
+  --tb-priority-high-bg: rgba(239, 68, 68, 0.07);
+  --tb-priority-high-border: rgba(239, 68, 68, 0.28);
+}
+
+[data-theme="dark"] {
+  --tb-priority-low: #4ade80;
+  --tb-priority-low-bg: rgba(74, 222, 128, 0.08);
+  --tb-priority-low-border: rgba(74, 222, 128, 0.22);
+  --tb-priority-med: #fbbf24;
+  --tb-priority-med-bg: rgba(251, 191, 36, 0.08);
+  --tb-priority-med-border: rgba(251, 191, 36, 0.22);
+  --tb-priority-high: #f87171;
+  --tb-priority-high-bg: rgba(248, 113, 113, 0.08);
+  --tb-priority-high-border: rgba(248, 113, 113, 0.22);
+}
+
+.task-card--priority-1 .task-swipe {
+  box-shadow:
+    inset 3px 0 0 var(--tb-priority-low),
+    var(--tb-shadow-soft);
+  background: var(--tb-priority-low-bg);
+}
+
+.task-card--priority-1 .task {
+  border-color: var(--tb-priority-low-border);
+}
+
+.task-card--priority-2 .task-swipe {
+  box-shadow:
+    inset 3px 0 0 var(--tb-priority-med),
+    var(--tb-shadow-soft);
+  background: var(--tb-priority-med-bg);
+}
+
+.task-card--priority-2 .task {
+  border-color: var(--tb-priority-med-border);
+}
+
+.task-card--priority-3 .task-swipe {
+  box-shadow:
+    inset 3px 0 0 var(--tb-priority-high),
+    var(--tb-shadow-soft);
+  background: var(--tb-priority-high-bg);
+}
+
+.task-card--priority-3 .task {
+  border-color: var(--tb-priority-high-border);
+}
+
+/* ---------- Priority selector in TaskForm ---------- */
+
+.priority-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.priority-selector__btn {
+  padding: 8px 4px;
+  border-radius: var(--tb-radius-xs);
+  background: var(--tb-glass);
+  border: 1.5px solid var(--tb-glass-border);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 180ms ease;
+  color: var(--tb-hint);
+}
+
+.priority-selector__btn--active {
+  color: var(--tb-text);
+  border-color: var(--tb-accent-strong);
+  background: var(--tb-accent-soft);
+}
+
+.priority-selector__btn--low.priority-selector__btn--active {
+  color: var(--tb-priority-low);
+  border-color: var(--tb-priority-low);
+  background: var(--tb-priority-low-bg);
+}
+
+.priority-selector__btn--med.priority-selector__btn--active {
+  color: var(--tb-priority-med);
+  border-color: var(--tb-priority-med);
+  background: var(--tb-priority-med-bg);
+}
+
+.priority-selector__btn--high.priority-selector__btn--active {
+  color: var(--tb-priority-high);
+  border-color: var(--tb-priority-high);
+  background: var(--tb-priority-high-bg);
+}
+
+/* ---------- Onboarding reset button ---------- */
+
+.onboarding-reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-radius: var(--tb-radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tb-link);
+  transition: background 150ms ease;
+}
+
+.onboarding-reset-btn:active {
+  background: var(--tb-accent-soft);
+}
+
+.onboarding-reset-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ---------- Onboarding Tour ---------- */
+
+.onboarding-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.onboarding-tour__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  pointer-events: auto;
+  animation: tb-fade-overlay 300ms ease both;
+}
+
+@keyframes tb-fade-overlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.onboarding-tour__spotlight {
+  pointer-events: none;
+  z-index: 10000;
+  animation: tb-spotlight-pulse 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes tb-spotlight-pulse {
+  from {
+    box-shadow: 0 0 0 4px rgba(109, 93, 252, 0.5), 0 0 24px 8px rgba(109, 93, 252, 0.3);
+  }
+  to {
+    box-shadow: 0 0 0 4px rgba(109, 93, 252, 0.7), 0 0 32px 12px rgba(109, 93, 252, 0.45);
+  }
+}
+
+.onboarding-tour__tooltip {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  max-width: 380px;
+  margin: 0 auto;
+  background: var(--tb-glass-strong);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius);
+  padding: 20px;
+  pointer-events: auto;
+  box-shadow: var(--tb-shadow);
+  animation: tb-tooltip-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  z-index: 10001;
+}
+
+.onboarding-tour__tooltip--center {
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%);
+}
+
+.onboarding-tour__tooltip--above {
+  animation: tb-tooltip-in-above 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes tb-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tb-tooltip-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.onboarding-tour__progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--tb-separator);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.onboarding-tour__progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--tb-accent-grad);
+  transition: width 350ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.onboarding-tour__emoji {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.onboarding-tour__title {
+  font-family: "Manrope", "Inter", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--tb-text);
+  margin-bottom: 6px;
+}
+
+.onboarding-tour__desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tb-hint);
+  margin-bottom: 18px;
+}
+
+.onboarding-tour__buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.onboarding-tour__btn {
+  padding: 10px 20px;
+  border-radius: var(--tb-radius-xs);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 150ms ease;
+}
+
+.onboarding-tour__btn--skip {
+  background: transparent;
+  color: var(--tb-hint);
+}
+
+.onboarding-tour__btn--skip:active {
+  background: var(--tb-accent-soft);
+}
+
+.onboarding-tour__btn--next {
+  background: var(--tb-accent-grad);
+  color: #ffffff;
+  flex: 1;
+  max-width: 160px;
+}
+
+.onboarding-tour__btn--next:active {
+  filter: brightness(0.9);
+}
+
+/* ==================== GAME / PET ==================== */
+
+.pet-page {
+  animation: tb-fade-in 0.32s ease both;
+}
+
+/* Header: coins + streak */
+.pet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0 16px;
+}
+
+.pet-header__coins,
+.pet-header__streak {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.pet-header__coin-icon,
+.pet-header__streak-icon {
+  font-size: 22px;
+}
+
+/* Pet display area */
+.pet-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 20px;
+}
+
+/* XP progress */
+.pet-xp {
+  width: 100%;
+  max-width: 280px;
+  margin-top: 16px;
+}
+
+.pet-xp__bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--tb-cell-bg);
+  overflow: hidden;
+  border: 1px solid var(--tb-glass-border);
+}
+
+.pet-xp__fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--tb-accent-grad);
+  transition: width 0.5s ease;
+}
+
+.pet-xp__text {
+  font-size: 13px;
+  color: var(--tb-hint);
+  margin-top: 4px;
+  text-align: center;
+}
+
+.pet-xp__stage {
+  color: var(--tb-accent-strong);
+  font-weight: 600;
+}
+
+/* Stats block */
+.pet-stats {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  backdrop-filter: var(--tb-blur-light);
+}
+
+.pet-stats__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.pet-stats__cap {
+  color: var(--tb-hint);
+}
+
+.pet-stats__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--tb-cell-bg);
+  overflow: hidden;
+}
+
+.pet-stats__fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--tb-accent-grad);
+  transition: width 0.5s ease;
+}
+
+.pet-stats__fill--tasks {
+  background: linear-gradient(135deg, #10B981, #059669);
+}
+
+/* Navigation buttons */
+.pet-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pet-nav__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: var(--tb-blur-light);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pet-nav__btn:active {
+  transform: scale(0.96);
+  box-shadow: var(--tb-shadow-press);
+}
+
+/* Back button */
+.pet-back-btn {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-xs);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: var(--tb-blur-light);
+}
+
+/* First egg screen */
+.pet-first-egg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.pet-first-egg__content {
+  text-align: center;
+}
+
+.pet-first-egg__emoji {
+  font-size: 80px;
+  animation: tb-pop-in 0.5s ease both;
+}
+
+.pet-first-egg__btn {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 14px 32px;
+  background: var(--tb-accent-grad);
+  color: #fff;
+  border: none;
+  border-radius: var(--tb-radius-sm);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.pet-first-egg__btn:active {
+  filter: brightness(0.9);
+}
+
+/* Hatch screen */
+.pet-hatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.pet-hatch__content {
+  text-align: center;
+}
+
+.pet-hatch__egg {
+  display: inline-block;
+}
+
+.pet-hatch__egg--shaking {
+  animation: egg-shake 0.4s ease infinite;
+}
+
+@keyframes egg-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+.pet-hatch-reveal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.pet-hatch-reveal__content {
+  text-align: center;
+  animation: tb-pop-in 0.5s ease both;
+}
+
+/* Achievements */
+.pet-achievements__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pet-achievements__section--locked {
+  opacity: 0.7;
+}
+
+.achievement-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  backdrop-filter: var(--tb-blur-light);
+}
+
+.achievement-card--unlocked {
+  border-color: var(--tb-accent-strong);
+  background: var(--tb-accent-soft);
+}
+
+.achievement-card__icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.achievement-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.achievement-card__name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.achievement-card__desc {
+  font-size: 12px;
+  color: var(--tb-hint);
+  margin-top: 2px;
+}
+
+.achievement-card__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.achievement-card__progress-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--tb-cell-bg);
+  overflow: hidden;
+}
+
+.achievement-card__progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--tb-accent-grad);
+  transition: width 0.5s ease;
+}
+
+.achievement-card__progress-text {
+  font-size: 11px;
+  color: var(--tb-hint);
+  white-space: nowrap;
+}
+
+.achievement-card__reward {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Shop */
+.shop-section {
+  margin-bottom: 20px;
+}
+
+.shop-section__title {
+  margin-bottom: 10px;
+}
+
+.shop-section__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  cursor: pointer;
+  position: relative;
+  backdrop-filter: var(--tb-blur-light);
+  transition: transform 0.15s ease;
+}
+
+.shop-card:active {
+  transform: scale(0.96);
+}
+
+.shop-card--owned {
+  opacity: 0.65;
+}
+
+.shop-card--cant-afford {
+  opacity: 0.5;
+}
+
+.shop-card__image {
+  font-size: 28px;
+}
+
+.shop-card__name {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.shop-card__price {
+  font-size: 12px;
+  color: var(--tb-hint);
+}
+
+.shop-card__premium {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 12px;
+}
+
+/* Collection */
+.pet-collection__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.pet-collection__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  backdrop-filter: var(--tb-blur-light);
+}
+
+.pet-collection__card--active {
+  border-color: var(--tb-accent-strong);
+}
+
+.pet-collection__info {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--tb-hint);
+}
+
+.pet-collection__stage {
+  font-weight: 600;
+  color: var(--tb-text);
+}
+
+.pet-collection__active-badge {
+  padding: 4px 12px;
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-strong);
+  border-radius: var(--tb-radius-xs);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pet-collection__activate-btn {
+  padding: 4px 12px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pet-empty {
+  text-align: center;
+  color: var(--tb-hint);
+  padding: 32px 0;
+}
+
+
 /* ========== Custom DatePicker ========== */
 
 .dp {
@@ -3365,3 +4094,4 @@ button {
 .onboarding-tooltip__next:active {
   transform: scale(0.96);
 }
+

@@ -524,6 +524,7 @@ async def cb_buy_premium(cq: CallbackQuery) -> None:
     await cq.answer()
 
 
+
 @dp.callback_query(F.data == "renew_discount")
 async def cb_renew_discount(cq: CallbackQuery) -> None:
     if not cq.message or not cq.from_user:
@@ -1027,6 +1028,7 @@ async def configure_bot_commands(bot: Bot) -> None:
             BotCommand(command="new", description="Добавить задачу из чата"),
             BotCommand(command="premium", description="Купить Premium"),
             BotCommand(command="app", description="Открыть Mini App"),
+            BotCommand(command="new", description="Создать задачу из текста"),
             BotCommand(command="privacy", description="Приватность"),
             BotCommand(command="support", description="Поддержка"),
             BotCommand(command="help", description="Помощь"),

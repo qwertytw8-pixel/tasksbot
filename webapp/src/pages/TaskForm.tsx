@@ -77,7 +77,6 @@ export function TaskFormPage() {
   const [remindCustom, setRemindCustom] = useState<string>("15");
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [priority, setPriority] = useState<number>(0);
-
   const [busy, setBusy] = useState(false);
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -503,6 +502,31 @@ export function TaskFormPage() {
                 )}
               </>
             )}
+          </div>
+
+          <div className="field">
+            <span className="field__label">{t("form.priority")}</span>
+            <div className="priority-selector">
+              {([
+                { value: 0, label: t("form.priority_none"), cls: "" },
+                { value: 1, label: t("form.priority_low"), cls: "priority-selector__btn--low" },
+                { value: 2, label: t("form.priority_med"), cls: "priority-selector__btn--med" },
+                { value: 3, label: t("form.priority_high"), cls: "priority-selector__btn--high" },
+              ] as const).map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={[
+                    "priority-selector__btn",
+                    p.cls,
+                    priority === p.value ? "priority-selector__btn--active" : "",
+                  ].filter(Boolean).join(" ")}
+                  onClick={() => setPriority(p.value)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {whenMode === "date" && includeTime && (

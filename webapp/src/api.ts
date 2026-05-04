@@ -162,10 +162,82 @@ function buildTaskQuery(params?: ListTasksParams): string {
   return s ? `?${s}` : "";
 }
 
+// -------------------- Game types --------------------
+
+export interface GamePet {
+  id: number;
+  character_type: string;
+  rarity: string;
+  name: string | null;
+  xp: number;
+  stage: number;
+  stage_name_ru: string;
+  stage_name_en: string;
+  xp_for_next: number;
+  xp_current_stage: number;
+  accessory_slug: string | null;
+  hatched_at: string;
+}
+
+export interface GameProfile {
+  coins: number;
+  total_coins_earned: number;
+  streak_days: number;
+  last_streak_date: string | null;
+  perfect_days_count: number;
+  tasks_completed_total: number;
+  daily_coins_earned: number;
+  daily_cap: number;
+  active_pet: GamePet | null;
+  active_background_slug: string | null;
+  today_tasks_done: number;
+  today_tasks_total: number;
+  has_pet: boolean;
+}
+
+export interface HatchResponse {
+  pet: GamePet;
+  character_name_ru: string;
+  character_name_en: string;
+  rarity_name_ru: string;
+  rarity_name_en: string;
+}
+
+export interface GameItem {
+  id: number;
+  slug: string;
+  name_ru: string;
+  name_en: string;
+  type: string;
+  image_path: string;
+  price: number;
+  is_premium: boolean;
+  owned: boolean;
+  equipped: boolean;
+}
+
+export interface GameAchievement {
+  id: number;
+  slug: string;
+  name_ru: string;
+  name_en: string;
+  description_ru: string;
+  description_en: string;
+  icon: string;
+  condition_type: string;
+  condition_value: number;
+  reward_coins: number;
+  unlocked: boolean;
+  unlocked_at: string | null;
+  progress: number;
+}
+
 export const api = {
   me: () => request<User>("/api/me"),
   updateMe: (tz: string) =>
     request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ tz }) }),
+  updateMeFields: (fields: { tz?: string; onboarding_completed?: boolean }) =>
+    request<User>("/api/me", { method: "PATCH", body: JSON.stringify(fields) }),
   completeOnboarding: () =>
     request<User>("/api/me", { method: "PATCH", body: JSON.stringify({ onboarding_completed: true }) }),
   resetOnboarding: () =>
@@ -196,6 +268,40 @@ export const api = {
   unarchiveTask: (id: number) =>
     request<Task>(`/api/tasks/${id}/unarchive`, { method: "POST" }),
 
+  // -------------------- Game --------------------
+  gameProfile: () => request<GameProfile>("/api/game/profile"),
+  gameHatch: (egg_slug: string) =>
+    request<HatchResponse>("/api/game/hatch", {
+      method: "POST",
+      body: JSON.stringify({ egg_slug }),
+    }),
+  gamePets: () => request<GamePet[]>("/api/game/pets"),
+  gameActivatePet: (petId: number) =>
+    request<GamePet>(`/api/game/pets/${petId}/activate`, { method: "POST" }),
+  gameRenamePet: (petId: number, name: string) =>
+    request<GamePet>(`/api/game/pets/${petId}/rename`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  gameShop: () => request<GameItem[]>("/api/game/shop"),
+  gameBuy: (item_id: number) =>
+    request<GameItem>("/api/game/buy", {
+      method: "POST",
+      body: JSON.stringify({ item_id }),
+    }),
+  gameEquip: (pet_id: number, item_id: number | null) =>
+    request<GamePet>("/api/game/equip", {
+      method: "POST",
+      body: JSON.stringify({ pet_id, item_id }),
+    }),
+  gameSetBackground: (item_id: number | null) =>
+    request<GameProfile>("/api/game/set-background", {
+      method: "POST",
+      body: JSON.stringify({ item_id }),
+    }),
+  gameAchievements: () => request<GameAchievement[]>("/api/game/achievements"),
+
+  // -------------------- Subscription & Admin --------------------
   subscriptionStatus: () =>
     request<SubscriptionStatus>("/api/subscription/status"),
   subscriptionPlans: () => request<PlansOut>("/api/subscription/plans"),
