@@ -1,80 +1,209 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { api } from "../api";
-import { t } from "../useLocale";
+import { useI18n } from "../i18n";
 
-interface Step {
-  emoji: string;
-  title: string;
-  description: string;
-  selector: string | null;
+interface TourStep {
+  target: string | null;
+  titleKey: string;
+  textKey: string;
+  icon: React.ReactNode;
+  position: "top" | "bottom" | "center";
 }
 
-const STEPS: Step[] = [
+function RocketIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-rocket" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#7c5cfc" />
+          <stop offset="100%" stopColor="#c084fc" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-rocket)" opacity="0.15" />
+      <path d="M24 12c-3 4-5 9-5 14h10c0-5-2-10-5-14Z" fill="url(#ob-rocket)" />
+      <path d="M21 26c-2 1-4 3-5 5l4 1 1-6Z" fill="#c084fc" opacity="0.7" />
+      <path d="M27 26c2 1 4 3 5 5l-4 1-1-6Z" fill="#c084fc" opacity="0.7" />
+      <circle cx="24" cy="21" r="2.5" fill="white" />
+      <path d="M22 32c0 2 1 4 2 5 1-1 2-3 2-5h-4Z" fill="#f97316" />
+    </svg>
+  );
+}
+
+function NavIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-nav" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#3b82f6" />
+          <stop offset="100%" stopColor="#60a5fa" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-nav)" opacity="0.15" />
+      <rect x="10" y="30" width="28" height="8" rx="4" fill="url(#ob-nav)" />
+      <circle cx="16" cy="34" r="2" fill="white" />
+      <circle cx="24" cy="34" r="2" fill="white" />
+      <circle cx="32" cy="34" r="2" fill="white" />
+      <rect x="14" y="12" width="20" height="14" rx="3" fill="url(#ob-nav)" opacity="0.4" />
+    </svg>
+  );
+}
+
+function PlusCircleIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-plus" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#34d399" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-plus)" opacity="0.15" />
+      <circle cx="24" cy="24" r="14" fill="url(#ob-plus)" />
+      <path d="M24 17v14M17 24h14" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-sun" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#fbbf24" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-sun)" opacity="0.15" />
+      <circle cx="24" cy="24" r="8" fill="url(#ob-sun)" />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+        <line
+          key={a}
+          x1={24 + 12 * Math.cos((a * Math.PI) / 180)}
+          y1={24 + 12 * Math.sin((a * Math.PI) / 180)}
+          x2={24 + 15 * Math.cos((a * Math.PI) / 180)}
+          y2={24 + 15 * Math.sin((a * Math.PI) / 180)}
+          stroke="url(#ob-sun)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
+function PetIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-pet" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#fbbf24" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-pet)" opacity="0.15" />
+      <circle cx="16" cy="16" r="4" fill="url(#ob-pet)" />
+      <circle cx="32" cy="16" r="4" fill="url(#ob-pet)" />
+      <circle cx="12" cy="28" r="3.5" fill="url(#ob-pet)" />
+      <circle cx="36" cy="28" r="3.5" fill="url(#ob-pet)" />
+      <ellipse cx="24" cy="30" rx="8" ry="7" fill="url(#ob-pet)" />
+    </svg>
+  );
+}
+
+function CalIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-cal" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#ec4899" />
+          <stop offset="100%" stopColor="#f472b6" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-cal)" opacity="0.15" />
+      <rect x="12" y="14" width="24" height="22" rx="4" fill="url(#ob-cal)" />
+      <rect x="12" y="14" width="24" height="8" rx="4" fill="url(#ob-cal)" />
+      <path d="M18 11v6M30 11v6" stroke="url(#ob-cal)" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="19" cy="28" r="1.5" fill="white" />
+      <circle cx="24" cy="28" r="1.5" fill="white" />
+      <circle cx="29" cy="28" r="1.5" fill="white" />
+      <circle cx="19" cy="33" r="1.5" fill="white" />
+      <circle cx="24" cy="33" r="1.5" fill="white" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <defs>
+        <linearGradient id="ob-user" x1="0" y1="0" x2="48" y2="48">
+          <stop offset="0%" stopColor="#6366f1" />
+          <stop offset="100%" stopColor="#818cf8" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="24" fill="url(#ob-user)" opacity="0.15" />
+      <circle cx="24" cy="19" r="6" fill="url(#ob-user)" />
+      <path d="M14 36c0-5.5 4.5-10 10-10s10 4.5 10 10" fill="url(#ob-user)" />
+    </svg>
+  );
+}
+
+const STEPS: TourStep[] = [
   {
-    emoji: "👋",
-    title: t("Добро пожаловать!", "Welcome!"),
-    description: t(
-      "Task Blo поможет тебе управлять задачами прямо в Telegram. Давай быстро покажем, что тут есть.",
-      "Task Blo helps you manage tasks right in Telegram. Let us show you around.",
-    ),
-    selector: null,
+    target: null,
+    titleKey: "onboarding.welcome_title",
+    textKey: "onboarding.welcome_text",
+    icon: <RocketIcon />,
+    position: "center",
   },
   {
-    emoji: "📋",
-    title: t("Навигация", "Navigation"),
-    description: t(
-      "Внизу — основные вкладки. Переключайся между задачами, календарём и профилем.",
-      "The main tabs are at the bottom. Switch between tasks, calendar and profile.",
-    ),
-    selector: ".tabbar",
+    target: ".tabbar",
+    titleKey: "onboarding.nav_title",
+    textKey: "onboarding.nav_text",
+    icon: <NavIcon />,
+    position: "top",
   },
   {
-    emoji: "➕",
-    title: t("Создай задачу", "Create a task"),
-    description: t(
-      "Нажми плюс, чтобы добавить новую задачу. Укажи дату, время и приоритет.",
-      "Tap plus to add a new task. Set the date, time and priority.",
-    ),
-    selector: ".fab",
+    target: ".fab",
+    titleKey: "onboarding.create_title",
+    textKey: "onboarding.create_text",
+    icon: <PlusCircleIcon />,
+    position: "top",
   },
   {
-    emoji: "🐾",
-    title: t("Питомец", "Pet"),
-    description: t(
-      "Выполняй задачи — получай монеты и опыт. Выращивай питомца, открывай достижения и покупай аксессуары!",
-      "Complete tasks to earn coins and XP. Raise your pet, unlock achievements and buy accessories!",
-    ),
-    selector: ".tab[href='/pet']",
+    target: '.tab[href="/pet"]',
+    titleKey: "onboarding.pet_title",
+    textKey: "onboarding.pet_text",
+    icon: <PetIcon />,
+    position: "top",
   },
   {
-    emoji: "☀️",
-    title: t("Сегодня", "Today"),
-    description: t(
-      "Здесь собраны задачи на текущий день. Фокусируйся на главном.",
-      "Today's tasks are gathered here. Focus on what matters.",
-    ),
-    selector: ".tab[href='/today']",
+    target: '.tab[href="/today"]',
+    titleKey: "onboarding.today_title",
+    textKey: "onboarding.today_text",
+    icon: <SunIcon />,
+    position: "top",
   },
   {
-    emoji: "📅",
-    title: t("Календарь", "Calendar"),
-    description: t(
-      "Просматривай задачи по дням. Есть режим списка и таймлайна по часам.",
-      "Browse tasks by day. List view and hourly timeline are available.",
-    ),
-    selector: ".tab[href='/calendar']",
+    target: '.tab[href="/calendar"]',
+    titleKey: "onboarding.calendar_title",
+    textKey: "onboarding.calendar_text",
+    icon: <CalIcon />,
+    position: "top",
   },
   {
-    emoji: "⚙️",
-    title: t("Профиль", "Profile"),
-    description: t(
-      "Настрой тему, посмотри архив, управляй подпиской.",
-      "Set your theme, view archive, manage subscription.",
-    ),
-    selector: ".tab[href='/profile']",
+    target: '.tab[href="/profile"]',
+    titleKey: "onboarding.profile_title",
+    textKey: "onboarding.profile_text",
+    icon: <UserIcon />,
+    position: "top",
   },
 ];
+
+interface OnboardingTourProps {
+  onComplete: () => void;
+}
 
 interface Rect {
   top: number;
@@ -90,22 +219,20 @@ function getElementRect(selector: string): Rect | null {
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 }
 
-export function OnboardingTour({ onComplete }: { onComplete: () => void }) {
+export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const [step, setStep] = useState(0);
-  const [targetRect, setTargetRect] = useState<Rect | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<Rect | null>(null);
+  const { t } = useI18n();
 
   const current = STEPS[step];
-  const isFirst = step === 0;
-  const isLast = step === STEPS.length - 1;
 
   const updateRect = useCallback(() => {
-    if (current.selector) {
-      setTargetRect(getElementRect(current.selector));
-    } else {
-      setTargetRect(null);
+    if (!current.target) {
+      setRect(null);
+      return;
     }
-  }, [current.selector]);
+    setRect(getElementRect(current.target));
+  }, [current.target]);
 
   useLayoutEffect(() => {
     updateRect();
@@ -116,110 +243,87 @@ export function OnboardingTour({ onComplete }: { onComplete: () => void }) {
     return () => window.removeEventListener("resize", updateRect);
   }, [updateRect]);
 
-  async function finish() {
-    try {
-      await api.updateMeFields({ onboarding_completed: true });
-    } catch {
-      // best-effort
+  function next() {
+    if (step < STEPS.length - 1) {
+      setStep(step + 1);
+    } else {
+      finish();
     }
+  }
+
+  function finish() {
+    void api.completeOnboarding();
     onComplete();
   }
 
-  function next() {
-    if (isLast) {
-      void finish();
-    } else {
-      setStep((s) => s + 1);
-    }
-  }
+  const pad = 10;
 
-  function skip() {
-    void finish();
-  }
+  const spotStyle: React.CSSProperties | undefined = rect
+    ? {
+        top: rect.top - pad,
+        left: rect.left - pad,
+        width: rect.width + pad * 2,
+        height: rect.height + pad * 2,
+      }
+    : undefined;
+
+  const tooltipStyle: React.CSSProperties =
+    current.position === "center"
+      ? { top: "50%", left: 24, right: 24, transform: "translateY(-50%)" }
+      : rect
+        ? current.position === "top"
+          ? { bottom: window.innerHeight - rect.top + pad + 16, left: 16, right: 16 }
+          : { top: rect.top + rect.height + pad + 16, left: 16, right: 16 }
+        : {};
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
-  const padding = 8;
-  const borderRadius = 16;
-
-  const maskStyle: React.CSSProperties | undefined =
-    targetRect
-      ? {
-          maskImage: `url("data:image/svg+xml,${encodeURIComponent(
-            `<svg xmlns='http://www.w3.org/2000/svg' width='${window.innerWidth}' height='${window.innerHeight}'>`
-            + `<rect width='100%' height='100%' fill='white'/>`
-            + `<rect x='${targetRect.left - padding}' y='${targetRect.top - padding}' `
-            + `width='${targetRect.width + padding * 2}' height='${targetRect.height + padding * 2}' `
-            + `rx='${borderRadius}' ry='${borderRadius}' fill='black'/>`
-            + `</svg>`,
-          )}")`,
-          WebkitMaskImage: `url("data:image/svg+xml,${encodeURIComponent(
-            `<svg xmlns='http://www.w3.org/2000/svg' width='${window.innerWidth}' height='${window.innerHeight}'>`
-            + `<rect width='100%' height='100%' fill='white'/>`
-            + `<rect x='${targetRect.left - padding}' y='${targetRect.top - padding}' `
-            + `width='${targetRect.width + padding * 2}' height='${targetRect.height + padding * 2}' `
-            + `rx='${borderRadius}' ry='${borderRadius}' fill='black'/>`
-            + `</svg>`,
-          )}")`,
-          maskSize: "100% 100%",
-          WebkitMaskSize: "100% 100%",
-        }
-      : undefined;
-
-  const spotlightStyle: React.CSSProperties | undefined =
-    targetRect
-      ? {
-          position: "absolute",
-          top: targetRect.top - padding,
-          left: targetRect.left - padding,
-          width: targetRect.width + padding * 2,
-          height: targetRect.height + padding * 2,
-          borderRadius,
-          boxShadow: "0 0 0 4px rgba(109, 93, 252, 0.5), 0 0 24px 8px rgba(109, 93, 252, 0.3)",
-          pointerEvents: "none" as const,
-        }
-      : undefined;
-
-  const tooltipTop = targetRect
-    ? targetRect.top > window.innerHeight / 2
-      ? targetRect.top - padding - 16
-      : targetRect.top + targetRect.height + padding + 16
-    : undefined;
-  const tooltipAbove = targetRect
-    ? targetRect.top > window.innerHeight / 2
-    : false;
-
   return (
-    <div className="onboarding-tour">
-      <div className="onboarding-tour__overlay" style={maskStyle} onClick={skip} />
-      {targetRect && <div className="onboarding-tour__spotlight" style={spotlightStyle} />}
-
-      <div
-        ref={tooltipRef}
-        className={`onboarding-tour__tooltip ${isFirst ? "onboarding-tour__tooltip--center" : ""} ${tooltipAbove ? "onboarding-tour__tooltip--above" : ""}`}
-        style={
-          isFirst
-            ? undefined
-            : { top: tooltipAbove ? undefined : tooltipTop, bottom: tooltipAbove ? `${window.innerHeight - (tooltipTop ?? 0)}px` : undefined }
-        }
-      >
-        <div className="onboarding-tour__progress">
+    <div className="onboarding-wrap">
+      {rect ? (
+        <div
+          className="onboarding-spotlight"
+          style={spotStyle}
+          onClick={(e) => { if (e.target === e.currentTarget) next(); }}
+        />
+      ) : (
+        <div
+          className="onboarding-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) next(); }}
+        />
+      )}
+      {rect && <div className="onboarding-spot" style={spotStyle} />}
+      <div className="onboarding-tooltip" style={tooltipStyle}>
+        <div className="onboarding-tooltip__progress">
           <div
-            className="onboarding-tour__progress-bar"
+            className="onboarding-tooltip__progress-bar"
             style={{ width: `${progress}%` }}
           />
         </div>
-
-        <div className="onboarding-tour__emoji">{current.emoji}</div>
-        <div className="onboarding-tour__title">{current.title}</div>
-        <div className="onboarding-tour__desc">{current.description}</div>
-
-        <div className="onboarding-tour__buttons">
-          <button type="button" className="onboarding-tour__btn onboarding-tour__btn--skip" onClick={skip}>
-            {t("Пропустить", "Skip")}
+        <div className="onboarding-tooltip__icon">{current.icon}</div>
+        <div className="onboarding-tooltip__step">
+          {step + 1} / {STEPS.length}
+        </div>
+        <div className="onboarding-tooltip__title">
+          {t(current.titleKey)}
+        </div>
+        <div className="onboarding-tooltip__text">
+          {t(current.textKey)}
+        </div>
+        <div className="onboarding-tooltip__actions">
+          <button
+            type="button"
+            className="onboarding-tooltip__skip"
+            onClick={finish}
+          >
+            {t("onboarding.skip")}
           </button>
-          <button type="button" className="onboarding-tour__btn onboarding-tour__btn--next" onClick={next}>
-            {isLast ? t("Начать!", "Start!") : t("Далее →", "Next →")}
+          <button
+            type="button"
+            className="onboarding-tooltip__next"
+            onClick={next}
+          >
+            {step < STEPS.length - 1 ? t("onboarding.next") : t("onboarding.start")}
           </button>
         </div>
       </div>

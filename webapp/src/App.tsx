@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
 import { OnboardingTour } from "./components/OnboardingTour";
+import { useI18n } from "./i18n";
 import {
   CalendarIcon,
   ListIcon,
@@ -12,23 +13,28 @@ import {
   UserIcon,
 } from "./icons";
 import { getUserTimezone } from "./telegram";
-import { t } from "./useLocale";
-import { TodayPage } from "./pages/Today";
-import { AllPage } from "./pages/All";
-import { CategoriesPage } from "./pages/Categories";
-import { TaskFormPage } from "./pages/TaskForm";
-import { CalendarPage } from "./pages/Calendar";
-import { PetPage } from "./pages/Pet";
-import { PetHatchPage } from "./pages/PetHatch";
-import { PetAchievementsPage } from "./pages/PetAchievements";
-import { PetShopPage } from "./pages/PetShop";
-import { PetCollectionPage } from "./pages/PetCollection";
-import { ProfileRoutes } from "./pages/Profile";
 
-const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about"];
+const TodayPage = lazy(() => import("./pages/Today").then((m) => ({ default: m.TodayPage })));
+const AllPage = lazy(() => import("./pages/All").then((m) => ({ default: m.AllPage })));
+const CategoriesPage = lazy(() => import("./pages/Categories").then((m) => ({ default: m.CategoriesPage })));
+const TaskFormPage = lazy(() => import("./pages/TaskForm").then((m) => ({ default: m.TaskFormPage })));
+const CalendarPage = lazy(() => import("./pages/Calendar").then((m) => ({ default: m.CalendarPage })));
+const ProfileRoutes = lazy(() => import("./pages/Profile").then((m) => ({ default: m.ProfileRoutes })));
+const AdminPage = lazy(() => import("./pages/Admin").then((m) => ({ default: m.AdminPage })));
+const PetPage = lazy(() => import("./pages/Pet").then((m) => ({ default: m.PetPage })));
+const PetHatchPage = lazy(() => import("./pages/PetHatch").then((m) => ({ default: m.PetHatchPage })));
+const PetAchievementsPage = lazy(() => import("./pages/PetAchievements").then((m) => ({ default: m.PetAchievementsPage })));
+const PetShopPage = lazy(() => import("./pages/PetShop").then((m) => ({ default: m.PetShopPage })));
+const PetCollectionPage = lazy(() => import("./pages/PetCollection").then((m) => ({ default: m.PetCollectionPage })));
+
+const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin"];
+
+function PageFallback() {
+  const { t } = useI18n();
+  return <div className="spinner">{t("loading")}</div>;
+}
 
 export function App() {
-  const [ready, setReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
@@ -37,7 +43,7 @@ export function App() {
       try {
         const me = await api.me();
         const tz = getUserTimezone();
-        if (me.tz !== tz && tz && tz !== "UTC") {
+        if (!cancelled && me.tz !== tz && tz && tz !== "UTC") {
           await api.updateMe(tz);
         }
         if (!cancelled && !me.onboarding_completed) {
@@ -45,8 +51,6 @@ export function App() {
         }
       } catch {
         // ignore — user will see error in pages
-      } finally {
-        if (!cancelled) setReady(true);
       }
     })();
     return () => {
@@ -54,28 +58,27 @@ export function App() {
     };
   }, []);
 
-  if (!ready) {
-    return <div className="spinner">Загрузка…</div>;
-  }
-
   return (
     <div className="app">
-      <Routes>
-        <Route path="/" element={<Navigate to="/all" replace />} />
-        <Route path="/today" element={<TodayPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/all" element={<AllPage />} />
-        <Route path="/categories" element={<CategoriesPage />} />
-        <Route path="/pet" element={<PetPage />} />
-        <Route path="/pet/hatch" element={<PetHatchPage />} />
-        <Route path="/pet/achievements" element={<PetAchievementsPage />} />
-        <Route path="/pet/shop" element={<PetShopPage />} />
-        <Route path="/pet/collection" element={<PetCollectionPage />} />
-        <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} />} />
-        <Route path="/about" element={<Navigate to="/profile" replace />} />
-        <Route path="/new" element={<TaskFormPage />} />
-        <Route path="/edit/:id" element={<TaskFormPage />} />
-      </Routes>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/all" replace />} />
+          <Route path="/today" element={<TodayPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/all" element={<AllPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/pet" element={<PetPage />} />
+          <Route path="/pet/hatch" element={<PetHatchPage />} />
+          <Route path="/pet/achievements" element={<PetAchievementsPage />} />
+          <Route path="/pet/shop" element={<PetShopPage />} />
+          <Route path="/pet/collection" element={<PetCollectionPage />} />
+          <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} />} />
+          <Route path="/about" element={<Navigate to="/profile" replace />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/new" element={<TaskFormPage />} />
+          <Route path="/edit/:id" element={<TaskFormPage />} />
+        </Routes>
+      </Suspense>
       <Fab />
       <TabBar />
       {showOnboarding && (
@@ -86,23 +89,25 @@ export function App() {
 }
 
 function Fab() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   if (HIDE_FAB_ON.some((p) => location.pathname.startsWith(p))) return null;
   return (
-    <button className="fab" aria-label="Новая задача" onClick={() => navigate("/new")}>
+    <button className="fab" aria-label={t("fab.label")} onClick={() => navigate("/new")}>
       <PlusIcon />
     </button>
   );
 }
 
 function TabBar() {
+  const { t } = useI18n();
   const tabs = [
-    { to: "/all", label: t("Все", "All"), icon: ListIcon },
-    { to: "/pet", label: t("Питомец", "Pet"), icon: PawIcon },
-    { to: "/today", label: t("Сегодня", "Today"), icon: SparkIcon },
-    { to: "/calendar", label: t("Календарь", "Calendar"), icon: CalendarIcon },
-    { to: "/profile", label: t("Профиль", "Profile"), icon: UserIcon },
+    { to: "/all", label: t("tab.all"), icon: ListIcon },
+    { to: "/pet", label: t("tab.pet"), icon: PawIcon },
+    { to: "/today", label: t("tab.today"), icon: SparkIcon },
+    { to: "/calendar", label: t("tab.calendar"), icon: CalendarIcon },
+    { to: "/profile", label: t("tab.profile"), icon: UserIcon },
   ];
 
   return (

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate } from "react-router-dom";
 
-import { api, type Category, type PrivacyInfo, type Task } from "../api";
+import { api, type Category, type PrivacyInfo, type SubscriptionStatus, type Task } from "../api";
 import { TaskRow } from "../components/TaskRow";
+import { useI18n, getStoredHorizon, setStoredHorizon } from "../i18n";
 import {
   ArchiveIcon,
   ArrowRightIcon,
@@ -15,6 +16,7 @@ import {
   ShieldIcon,
   SparkIcon,
   SunIcon,
+  TagIcon,
   UserIcon,
 } from "../icons";
 import { applyTheme, getStoredMode, setStoredMode, type ThemeMode } from "../theme";
@@ -22,9 +24,30 @@ import { applyTheme, getStoredMode, setStoredMode, type ThemeMode } from "../the
 const SUPPORT_TG = "@ficsyk";
 const SUPPORT_TG_URL = "https://t.me/ficsyk";
 
+const HORIZON_OPTIONS = [7, 14, 30, 90, 0] as const;
+
 function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) {
+  const { t, lang, setLang } = useI18n();
   const navigate = useNavigate();
   const [mode, setMode] = useState<ThemeMode>(() => getStoredMode());
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoMsg, setPromoMsg] = useState<string | null>(null);
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [horizon, setHorizonState] = useState(() => getStoredHorizon());
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [me, sub] = await Promise.all([api.me(), api.subscriptionStatus()]);
+        setSubStatus(sub);
+        setIsAdmin(me.is_admin);
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
   function pick(next: ThemeMode) {
     setMode(next);
@@ -32,95 +55,215 @@ function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) 
     applyTheme(next);
   }
 
+  function pickHorizon(days: number) {
+    setHorizonState(days);
+    setStoredHorizon(days);
+  }
+
+  async function activatePromo() {
+    if (!promoCode.trim()) return;
+    setPromoBusy(true);
+    setPromoMsg(null);
+    try {
+      const res = await api.activatePromo(promoCode.trim());
+      setPromoMsg(res.message);
+      setPromoCode("");
+      setSubStatus(await api.subscriptionStatus());
+    } catch (e) {
+      setPromoMsg(String(e).includes("404") ? t("profile.promo_not_found") :
+                  String(e).includes("400") ? t("profile.promo_used") :
+                  String(e));
+    } finally {
+      setPromoBusy(false);
+    }
+  }
+
+  const locale = lang === "ru" ? "ru-RU" : "en-US";
+
   return (
     <div className="page">
       <div className="page-header">
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            <UserIcon /> profile
-          </span>
           <div className="page-header__title-row">
-            <h1>Профиль</h1>
+            <h1>{t("profile.title")}</h1>
           </div>
           <div className="page-header__subtitle">
-            Тема приложения, поддержка и приватность — всё на одной полке.
+            {t("profile.subtitle")}
           </div>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
+        <NavRow
+          to="/profile/subscription"
+          icon={<SparkIcon />}
+          title={subStatus?.is_premium ? t("profile.premium_active") : t("profile.premium")}
+          subtitle={
+            subStatus?.is_premium
+              ? subStatus.subscription?.expires_at
+                ? `${t("profile.premium_until")} ${new Date(subStatus.subscription.expires_at).toLocaleDateString(locale)}`
+                : t("profile.premium_lifetime")
+              : t("profile.premium_unlock")
+          }
+        />
+      </div>
+
+      <div className="surface" style={{ marginBottom: 14 }}>
+        <div className="surface__heading">
+          <TagIcon /> {t("profile.promo")}
+        </div>
+        <div className="form">
+          <div className="promo-row">
+            <input
+              className="input"
+              placeholder={t("profile.promo_placeholder")}
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            />
+            <button
+              className="btn"
+              disabled={promoBusy || !promoCode.trim()}
+              onClick={() => void activatePromo()}
+            >
+              {t("profile.promo_activate")}
+            </button>
+          </div>
+          {promoMsg && (
+            <div className="page-header__subtitle" style={{ marginTop: 8 }}>
+              {promoMsg}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="surface" style={{ marginBottom: 14 }}>
         <div className="surface__heading">
-          <SparkIcon /> Тема
+          <SparkIcon /> {t("profile.theme")}
         </div>
         <p className="page-header__subtitle" style={{ marginTop: 4, marginBottom: 12 }}>
-          По умолчанию следуем за оформлением Telegram. Можно зафиксировать
-          светлую или тёмную.
+          {t("profile.theme_hint")}
         </p>
         <div className="theme-grid">
           <ThemeOption
             active={mode === "system"}
-            label="Системная"
-            hint="как в Telegram"
+            label={t("profile.theme_system")}
+            hint={t("profile.theme_system_hint")}
             icon={<MonitorIcon />}
             onClick={() => pick("system")}
           />
           <ThemeOption
             active={mode === "light"}
-            label="Светлая"
-            hint="белая, дневная"
+            label={t("profile.theme_light")}
+            hint={t("profile.theme_light_hint")}
             icon={<SunIcon />}
             onClick={() => pick("light")}
           />
           <ThemeOption
             active={mode === "dark"}
-            label="Тёмная"
-            hint="ночной режим"
+            label={t("profile.theme_dark")}
+            hint={t("profile.theme_dark_hint")}
             icon={<MoonIcon />}
             onClick={() => pick("dark")}
           />
         </div>
       </div>
 
+      {/* Settings section */}
       <div className="surface" style={{ marginBottom: 14 }}>
-        <button
-          type="button"
-          className="onboarding-reset-btn"
-          onClick={async () => {
-            try {
-              await api.updateMeFields({ onboarding_completed: false });
-            } catch {
-              // best-effort
-            }
-            if (onResetOnboarding) onResetOnboarding();
-            navigate("/all");
-          }}
-        >
-          <RotateCcwIcon /> Пройти обучение заново
-        </button>
+        <div className="surface__heading">
+          <MonitorIcon /> {t("profile.settings")}
+        </div>
+
+        <div className="settings-row">
+          <span className="settings-row__label">{t("profile.lang_label")}</span>
+          <div className="segmented segmented--compact">
+            <button
+              type="button"
+              className={`segmented__item ${lang === "ru" ? "segmented__item--active" : ""}`}
+              onClick={() => setLang("ru")}
+            >
+              Русский
+            </button>
+            <button
+              type="button"
+              className={`segmented__item ${lang === "en" ? "segmented__item--active" : ""}`}
+              onClick={() => setLang("en")}
+            >
+              English
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-row" style={{ marginTop: 12 }}>
+          <span className="settings-row__label">{t("profile.horizon_label")}</span>
+          <div className="segmented segmented--compact">
+            {HORIZON_OPTIONS.map((days) => (
+              <button
+                key={days}
+                type="button"
+                className={`segmented__item ${horizon === days ? "segmented__item--active" : ""}`}
+                onClick={() => pickHorizon(days)}
+              >
+                {days === 0 ? t("profile.horizon_all") : `${days} ${t("profile.horizon_days")}`}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="page-header__subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
+          {t("profile.horizon_hint")}
+        </p>
       </div>
 
       <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
         <NavRow
           to="/profile/archive"
           icon={<ArchiveIcon />}
-          title="Архив задач"
-          subtitle="Выполненные и убранные вручную"
+          title={t("profile.archive")}
+          subtitle={t("profile.archive_sub")}
         />
         <div className="nav-row__divider" />
         <NavRow
           to="/profile/support"
           icon={<HelpIcon />}
-          title="Поддержка"
-          subtitle={`Связаться с автором — ${SUPPORT_TG}`}
+          title={t("profile.support")}
+          subtitle={`${t("profile.support_sub")} ${SUPPORT_TG}`}
         />
         <div className="nav-row__divider" />
         <NavRow
           to="/profile/privacy"
           icon={<ShieldIcon />}
-          title="Приватность"
-          subtitle="Что хранится и кто это видит"
+          title={t("profile.privacy")}
+          subtitle={t("profile.privacy_sub")}
         />
       </div>
+
+      <div className="surface" style={{ marginBottom: 14 }}>
+        <button
+          type="button"
+          className="btn btn--outline"
+          style={{ width: "100%" }}
+          onClick={() => {
+            void api.resetOnboarding().then(() => {
+              if (onResetOnboarding) onResetOnboarding();
+              navigate("/all");
+            });
+          }}
+        >
+          <RotateCcwIcon style={{ width: 16, height: 16, marginRight: 8, verticalAlign: "-3px" }} />
+          {t("profile.reset_onboarding")}
+        </button>
+      </div>
+
+      {isAdmin && (
+        <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
+          <NavRow
+            to="/admin"
+            icon={<ShieldIcon />}
+            title={t("profile.admin")}
+            subtitle={t("profile.admin_sub")}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -171,6 +314,7 @@ function NavRow(props: {
 }
 
 function BackHeader(props: { eyebrow: string; title: string; subtitle: string }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   return (
     <div className="page-header">
@@ -178,13 +322,12 @@ function BackHeader(props: { eyebrow: string; title: string; subtitle: string })
         type="button"
         className="page-header__back"
         onClick={() => navigate(-1)}
-        aria-label="Назад"
+        aria-label="Back"
       >
         <ChevronLeftIcon />
-        <span>Профиль</span>
+        <span>{t("profile.back")}</span>
       </button>
       <div className="page-header__stack">
-        <span className="page-header__eyebrow">{props.eyebrow}</span>
         <div className="page-header__title-row">
           <h1>{props.title}</h1>
         </div>
@@ -195,21 +338,21 @@ function BackHeader(props: { eyebrow: string; title: string; subtitle: string })
 }
 
 function SupportPage() {
+  const { t } = useI18n();
   return (
     <div className="page">
       <BackHeader
-        eyebrow="поддержка"
-        title="Поддержка"
-        subtitle="Если что-то сломалось или есть идея — напиши автору."
+        eyebrow="support"
+        title={t("support.title")}
+        subtitle={t("support.subtitle")}
       />
 
       <div className="surface" style={{ marginBottom: 14 }}>
         <div className="surface__heading">
-          <UserIcon /> Связь с автором
+          <UserIcon /> {t("support.contact")}
         </div>
         <p className="page-header__subtitle" style={{ marginTop: 4, marginBottom: 12 }}>
-          Telegram — самый быстрый способ. Опиши, что именно произошло, и
-          приложи скриншот, если можно.
+          {t("support.contact_hint")}
         </p>
         <a
           href={SUPPORT_TG_URL}
@@ -222,7 +365,7 @@ function SupportPage() {
           </span>
           <span className="contact-pill__text">
             <span className="contact-pill__handle">{SUPPORT_TG}</span>
-            <span className="contact-pill__hint">тапни, чтобы открыть чат</span>
+            <span className="contact-pill__hint">{t("support.tap_to_open")}</span>
           </span>
           <span className="contact-pill__chevron" aria-hidden>
             <ArrowRightIcon />
@@ -232,17 +375,17 @@ function SupportPage() {
 
       <div className="surface">
         <div className="surface__heading">
-          <HelpIcon /> Команды бота
+          <HelpIcon /> {t("support.commands")}
         </div>
         <ul className="bullet">
           <li>
-            <CheckIcon /> <code>/help</code> — короткая справка по приложению.
+            <CheckIcon /> <code>{t("support.cmd_help")}</code>
           </li>
           <li>
-            <CheckIcon /> <code>/privacy</code> — что хранится и кто это видит.
+            <CheckIcon /> <code>{t("support.cmd_privacy")}</code>
           </li>
           <li>
-            <CheckIcon /> <code>/support</code> — как со мной связаться.
+            <CheckIcon /> <code>{t("support.cmd_support")}</code>
           </li>
         </ul>
       </div>
@@ -251,6 +394,7 @@ function SupportPage() {
 }
 
 function PrivacyPage() {
+  const { t } = useI18n();
   const [info, setInfo] = useState<PrivacyInfo | null>(null);
 
   useEffect(() => {
@@ -259,14 +403,9 @@ function PrivacyPage() {
         setInfo(await api.privacy());
       } catch {
         setInfo({
-          support_label: "Поддержка и приватность",
-          support_text:
-            "Если что-то не работает, напиши владельцу бота. Данные внутри Mini App " +
-            "хранятся отдельно для каждого Telegram-пользователя.",
-          privacy_summary:
-            "У каждого пользователя свои задачи, категории и подзадачи. Доступ к данным " +
-            "проверяется по Telegram initData и user id — чужие записи не смешиваются и не " +
-            "показываются другим.",
+          support_label: t("privacy.fallback_label"),
+          support_text: t("privacy.fallback_text"),
+          privacy_summary: t("privacy.fallback_summary"),
         });
       }
     })();
@@ -275,38 +414,27 @@ function PrivacyPage() {
   return (
     <div className="page">
       <BackHeader
-        eyebrow="приватность"
-        title="Приватность"
-        subtitle="Что хранится, у кого есть доступ и как это устроено."
+        eyebrow="privacy"
+        title={t("privacy.title")}
+        subtitle={t("privacy.subtitle")}
       />
 
       <div className="hero-card">
-        <h2>Каждому — свой task space</h2>
+        <h2>{t("privacy.hero")}</h2>
         <div className="page-header__subtitle" style={{ marginTop: 8 }}>
-          {info?.privacy_summary ?? "Загружаем…"}
+          {info?.privacy_summary ?? t("loading")}
         </div>
       </div>
 
       <div className="surface">
         <div className="surface__heading">
-          <SparkIcon /> Что внутри
+          <SparkIcon /> {t("privacy.inside")}
         </div>
         <ul className="bullet">
-          <li>
-            <CheckIcon /> Задачи, категории и подзадачи разделены по Telegram user id.
-          </li>
-          <li>
-            <CheckIcon /> Данные хранятся в твоей собственной БД, к которой имеет доступ
-            только этот сервис.
-          </li>
-          <li>
-            <CheckIcon /> Mini App авторизуется через Telegram <b>initData</b> — без
-            логинов и паролей.
-          </li>
-          <li>
-            <CheckIcon /> Никакой публичной ленты, никаких чужих задач — всё видишь
-            только ты.
-          </li>
+          <li><CheckIcon /> {t("privacy.p1")}</li>
+          <li><CheckIcon /> {t("privacy.p2")}</li>
+          <li><CheckIcon /> {t("privacy.p3")}</li>
+          <li><CheckIcon /> {t("privacy.p4")}</li>
         </ul>
       </div>
     </div>
@@ -314,6 +442,7 @@ function PrivacyPage() {
 }
 
 function ArchivePage() {
+  const { t } = useI18n();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
 
@@ -330,18 +459,18 @@ function ArchivePage() {
 
   async function unarchive(task: Task) {
     await api.unarchiveTask(task.id);
-    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
+    setTasks((prev) => (prev ?? []).filter((item) => item.id !== task.id));
   }
 
   async function remove(task: Task) {
     if (
       !window.confirm(
-        `Удалить задачу «${task.title}» навсегда? Это действие нельзя отменить.`,
+        t("confirm.delete_archive").replace("{title}", task.title),
       )
     )
       return;
     await api.deleteTask(task.id);
-    setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
+    setTasks((prev) => (prev ?? []).filter((item) => item.id !== task.id));
   }
 
   const catById = new Map(cats.map((c) => [c.id, c] as const));
@@ -349,9 +478,9 @@ function ArchivePage() {
   return (
     <div className="page">
       <BackHeader
-        eyebrow="архив"
-        title="Архив задач"
-        subtitle="Сюда попадают выполненные задачи старше 24 часов и всё, что ты убрал вручную."
+        eyebrow="archive"
+        title={t("archive.title")}
+        subtitle={t("archive.subtitle")}
       />
 
       <div className="archive-hero">
@@ -360,10 +489,10 @@ function ArchivePage() {
         </span>
         <div>
           <div className="archive-hero__title">
-            {tasks ? `${tasks.length} в архиве` : "Загружаем…"}
+            {tasks ? `${tasks.length} ${t("archive.count")}` : t("loading")}
           </div>
           <div className="archive-hero__hint">
-            Свайпни влево → «Вернуть» или «Удалить».
+            {t("archive.hint")}
           </div>
         </div>
       </div>
@@ -373,16 +502,16 @@ function ArchivePage() {
           <div className="empty__icon">
             <ArchiveIcon />
           </div>
-          <div className="empty__title">Архив пуст</div>
-          <div>Сюда уходит всё, что ты пометишь как «В архив».</div>
+          <div className="empty__title">{t("archive.empty_title")}</div>
+          <div>{t("archive.empty_text")}</div>
         </div>
       )}
 
-      {tasks?.map((t) => (
+      {tasks?.map((task) => (
         <TaskRow
-          key={t.id}
-          task={t}
-          category={t.category_id ? catById.get(t.category_id) : null}
+          key={task.id}
+          task={task}
+          category={task.category_id ? catById.get(task.category_id) : null}
           onToggle={() => {
             /* no-op in archive */
           }}
@@ -402,6 +531,17 @@ export function ProfileRoutes({ onResetOnboarding }: { onResetOnboarding?: () =>
       <Route path="archive" element={<ArchivePage />} />
       <Route path="support" element={<SupportPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
+      <Route path="subscription" element={<SubscriptionPageLazy />} />
     </Routes>
   );
+}
+
+function SubscriptionPageLazy() {
+  const { t } = useI18n();
+  const [Comp, setComp] = useState<React.ComponentType | null>(null);
+  useEffect(() => {
+    void import("./Subscription").then((m) => setComp(() => m.SubscriptionPage));
+  }, []);
+  if (!Comp) return <div className="spinner">{t("loading")}</div>;
+  return <Comp />;
 }

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import io
+import json
 import logging
-import subprocess
-import tempfile
-from datetime import UTC
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
-import httpx
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
@@ -18,14 +18,27 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
+    LabeledPrice,
     Message,
+    PreCheckoutQuery,
     ReplyKeyboardMarkup,
+    SuccessfulPayment,
     WebAppInfo,
 )
 
+from app.api import _ensure_user, _sync_reminders
+from app.auth import TelegramUser
 from app.config import get_settings
-from app.db import Task, User, get_sessionmaker
-from app.nlp import ParsedTask, parse_tasks
+from app.db import Subscription, Task, User, get_sessionmaker
+from app.nlp import (
+    ParsedTask,
+    commit_parsed,
+    extract_global_date_context,
+    format_summary,
+    parse_ru,
+    split_into_tasks,
+)
+from app.subscription import PREMIUM_PLANS, RENEWAL_DISCOUNT_PLAN, is_premium
 
 log = logging.getLogger(__name__)
 
@@ -33,46 +46,119 @@ dp = Dispatcher()
 
 WELCOME_TEXT = (
     "<b>Твой личный task space.</b>\n\n"
-    "Планируй день без шума: задачи, категории и напоминания в одном аккуратном Mini App.\n\n"
+    "Планируй день без шума: задачи, категории и напоминания "
+    "в одном аккуратном Mini App.\n\n"
+    "💎 <b>Premium</b> — безлимитные задачи, свои категории, "
+    "ввод задач текстом и голосом от 99 ⭐/мес.\n\n"
     "Жми «Открыть приложение» — и поехали."
+)
+
+WELCOME_TEXT_EN = (
+    "<b>Your personal task space.</b>\n\n"
+    "Plan your day without noise: tasks, categories, and reminders "
+    "in one clean Mini App.\n\n"
+    "💎 <b>Premium</b> — unlimited tasks, custom categories, "
+    "create tasks via text and voice from 99 ⭐/mo.\n\n"
+    "Tap «Open app» to get started."
+)
+
+NEW_TASK_HINT = (
+    "Просто напиши мне задачу как обычное сообщение — например, "
+    "<i>купить молоко завтра в 19:00 #дом</i>. "
+    "Я её разберу и добавлю в приложение."
+)
+
+NEW_TASK_HINT_EN = (
+    "Just send me a task as a regular message — for example, "
+    "<i>buy milk tomorrow at 7pm #home</i>. "
+    "I'll parse and add it to the app."
 )
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 
-def _open_app_kb() -> InlineKeyboardMarkup:
+def _is_ru(message: Message | None = None, cq: CallbackQuery | None = None) -> bool:
+    """Return True if user's Telegram language starts with 'ru'."""
+    user = None
+    if message and message.from_user:
+        user = message.from_user
+    elif cq and cq.from_user:
+        user = cq.from_user
+    if user and user.language_code:
+        return user.language_code.startswith("ru")
+    return True
+
+
+def _open_app_kb(
+    show_premium: bool = True,
+    ru: bool = True,
+) -> InlineKeyboardMarkup:
+    settings = get_settings()
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text="🚀 Открыть приложение" if ru else "🚀 Open app",
+                web_app=WebAppInfo(url=settings.webapp_url),
+            )
+        ],
+    ]
+    if show_premium:
+        rows.append([
+            InlineKeyboardButton(
+                text="💎 Купить Premium" if ru else "💎 Buy Premium",
+                callback_data="show_premium",
+            )
+        ])
+    rows.append([
+        InlineKeyboardButton(
+            text="➕ Новая задача" if ru else "➕ New task",
+            callback_data="new_task",
+        ),
+        InlineKeyboardButton(
+            text="ℹ️ Помощь" if ru else "ℹ️ Help",
+            callback_data="help",
+        ),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _task_actions_kb(task_id: int, ru: bool = True) -> InlineKeyboardMarkup:
     settings = get_settings()
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🚀 Открыть приложение",
+                    text="📋 Открыть в приложении" if ru else "📋 Open in app",
                     web_app=WebAppInfo(url=settings.webapp_url),
-                )
+                ),
             ],
             [
-                InlineKeyboardButton(text="📋 Сегодня", callback_data="today"),
-                InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help"),
+                InlineKeyboardButton(
+                    text="❌ Отменить" if ru else "❌ Cancel",
+                    callback_data=f"del:{task_id}",
+                ),
             ],
         ]
     )
 
 
-def _reply_kb() -> ReplyKeyboardMarkup:
+def _reply_kb(ru: bool = True) -> ReplyKeyboardMarkup:
     settings = get_settings()
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🗂 Открыть задачи", web_app=WebAppInfo(url=settings.webapp_url))]
+            [
+                KeyboardButton(
+                    text="🗂 Открыть задачи" if ru else "🗂 Open tasks",
+                    web_app=WebAppInfo(url=settings.webapp_url),
+                )
+            ]
         ],
         resize_keyboard=True,
     )
 
 
 def _welcome_image() -> BufferedInputFile | None:
-    """Pick the first available welcome image from assets/.
-
-    Looks for: welcome.{png,jpg,jpeg,webp}.
-    """
+    """Pick the first available welcome image from assets/."""
     for ext in ("png", "jpg", "jpeg", "webp"):
         p = ASSETS_DIR / f"welcome.{ext}"
         if p.exists():
@@ -80,32 +166,111 @@ def _welcome_image() -> BufferedInputFile | None:
     return None
 
 
+@dp.message(CommandStart(deep_link=True, deep_link_encoded=True))
+async def cmd_start_deep(message: Message) -> None:
+    args = (message.text or "").split(maxsplit=1)
+    param = args[1].strip().lower() if len(args) > 1 else ""
+    if param == "premium":
+        await cmd_premium(message)
+        return
+    await _do_start(message)
+
+
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
-    img = _welcome_image()
-    if img is not None:
-        await message.answer_photo(photo=img, caption=WELCOME_TEXT, reply_markup=_open_app_kb())
+    await _do_start(message)
+
+
+async def _do_start(message: Message) -> None:
+    ru = _is_ru(message=message)
+    kb = _open_app_kb(ru=ru)
+    if ru:
+        welcome = WELCOME_TEXT
+        img = _welcome_image()
+        if img is not None:
+            await message.answer_photo(photo=img, caption=welcome, reply_markup=kb)
+        else:
+            await message.answer(welcome, reply_markup=kb)
     else:
-        await message.answer(WELCOME_TEXT, reply_markup=_open_app_kb())
+        welcome = WELCOME_TEXT_EN
+        await message.answer(welcome, reply_markup=kb)
+
+    if message.from_user:
+        asyncio.create_task(
+            _premium_nudge(message)
+        )
+
+
+async def _premium_nudge(message: Message) -> None:
+    """Send a delayed premium promo to non-premium users."""
+    if message.from_user is None:
+        return
+    ru = _is_ru(message=message)
+    await asyncio.sleep(3)
+    sm = get_sessionmaker()
+    async with sm() as session:
+        if await is_premium(session, message.from_user.id):
+            return
+    text = (
+        "💎 <b>Попробуй Premium!</b>\n\n"
+        "Безлимитные задачи, свои категории, "
+        "ввод задач текстом и голосом — от 99 ⭐/мес."
+    ) if ru else (
+        "💎 <b>Try Premium!</b>\n\n"
+        "Unlimited tasks, custom categories, "
+        "create tasks via text and voice — from 99 ⭐/mo."
+    )
+    btn_text = "💎 Подробнее о Premium" if ru else "💎 Learn more about Premium"
+    await message.answer(
+        text,
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[
+                InlineKeyboardButton(
+                    text=btn_text,
+                    callback_data="show_premium",
+                )
+            ]]
+        ),
+    )
 
 
 @dp.message(Command("app"))
 async def cmd_app(message: Message) -> None:
-    await message.answer("Открой Mini App:", reply_markup=_open_app_kb())
+    ru = _is_ru(message=message)
+    text = "Открой Mini App:" if ru else "Open Mini App:"
+    await message.answer(text, reply_markup=_open_app_kb(ru=ru))
 
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message) -> None:
-    await message.answer(
-        "<b>Команды</b>\n"
-        "/start — приветствие и кнопка приложения\n"
-        "/app — открыть Mini App\n"
-        "/privacy — как хранятся твои задачи\n"
-        "/support — связь и поддержка\n"
-        "/help — это сообщение\n\n"
-        "Все задачи и напоминания живут внутри Mini App.",
-        reply_markup=_open_app_kb(),
-    )
+    ru = _is_ru(message=message)
+    if ru:
+        text = (
+            "<b>Команды</b>\n"
+            "/start — приветствие и кнопка приложения\n"
+            "/new &lt;текст&gt; — добавить задачу из чата\n"
+            "/premium — купить Premium-подписку\n"
+            "/app — открыть Mini App\n"
+            "/privacy — как хранятся твои задачи\n"
+            "/support — связь и поддержка\n"
+            "/help — это сообщение\n\n"
+            "💡 Можно просто написать задачу текстом — например, "
+            "<i>позвонить маме завтра в 18:00 #семья</i>. Я распознаю дату, время и категорию."
+        )
+    else:
+        text = (
+            "<b>Commands</b>\n"
+            "/start — welcome message and app button\n"
+            "/new &lt;text&gt; — add a task from chat\n"
+            "/premium — buy Premium subscription\n"
+            "/app — open Mini App\n"
+            "/privacy — how your tasks are stored\n"
+            "/support — contact and support\n"
+            "/help — this message\n\n"
+            "💡 You can simply send a task as text — for example, "
+            "<i>call mom tomorrow at 6pm #family</i>. I'll parse the date, time, and category."
+        )
+    await message.answer(text, reply_markup=_open_app_kb(ru=ru))
 
 
 PRIVACY_TEXT = (
@@ -118,6 +283,16 @@ PRIVACY_TEXT = (
     "Данные хранятся в БД сервиса и нужны только для работы планировщика."
 )
 
+PRIVACY_TEXT_EN = (
+    "<b>Privacy</b>\n\n"
+    "Each user has their own tasks, categories, and subtasks. "
+    "Access is verified via Telegram <code>initData</code> and user id — "
+    "records are never mixed or shown to others.\n\n"
+    "The Mini App does not use logins or passwords. Authentication is automatic "
+    "via Telegram.\n\n"
+    "Data is stored in the service database and is only used for the planner."
+)
+
 SUPPORT_TEXT = (
     "<b>Поддержка</b>\n\n"
     "Если что-то не работает, ошибка или есть идея — напиши владельцу бота "
@@ -125,246 +300,749 @@ SUPPORT_TEXT = (
     "Команды: /privacy — приватность, /help — список команд, /app — открыть Mini App."
 )
 
+SUPPORT_TEXT_EN = (
+    "<b>Support</b>\n\n"
+    "If something isn't working, there's an error, or you have an idea — "
+    "send a direct message to the bot owner.\n\n"
+    "Commands: /privacy — privacy, /help — command list, /app — open Mini App."
+)
+
 
 @dp.message(Command("privacy"))
 async def cmd_privacy(message: Message) -> None:
-    await message.answer(PRIVACY_TEXT, reply_markup=_open_app_kb())
+    ru = _is_ru(message=message)
+    text = PRIVACY_TEXT if ru else PRIVACY_TEXT_EN
+    await message.answer(text, reply_markup=_open_app_kb(ru=ru))
 
 
 @dp.message(Command("support"))
 async def cmd_support(message: Message) -> None:
-    await message.answer(SUPPORT_TEXT, reply_markup=_open_app_kb())
+    ru = _is_ru(message=message)
+    text = SUPPORT_TEXT if ru else SUPPORT_TEXT_EN
+    await message.answer(text, reply_markup=_open_app_kb(ru=ru))
 
 
 @dp.callback_query(F.data == "help")
 async def cb_help(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
     if cq.message:
+        if ru:
+            text = (
+                "Жми кнопку «🚀 Открыть приложение», создавай задачу, выбирай категорию "
+                "и время — бот пришлёт напоминание ровно тогда, когда попросишь.\n\n"
+                + NEW_TASK_HINT
+            )
+        else:
+            text = (
+                "Tap «🚀 Open app», create a task, pick a category "
+                "and time — the bot will send a reminder exactly when you ask.\n\n"
+                + NEW_TASK_HINT_EN
+            )
+        await cq.message.answer(text)
+    await cq.answer()
+
+
+@dp.callback_query(F.data == "new_task")
+async def cb_new_task(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
+    if cq.message:
+        await cq.message.answer(NEW_TASK_HINT if ru else NEW_TASK_HINT_EN)
+    await cq.answer()
+
+
+# ---- premium / payment -----------------------------------------------
+
+
+def _premium_image() -> BufferedInputFile | None:
+    p = ASSETS_DIR / "premium.png"
+    if p.exists():
+        return BufferedInputFile(p.read_bytes(), filename=p.name)
+    return None
+
+
+def _premium_success_image() -> BufferedInputFile | None:
+    p = ASSETS_DIR / "premium_success.png"
+    if p.exists():
+        return BufferedInputFile(
+            p.read_bytes(), filename=p.name,
+        )
+    return None
+
+
+def _premium_kb() -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for plan in PREMIUM_PLANS:
+        label = f"\u2b50 {plan['label']} \u2014 {plan['stars']} Stars"
+        if "save" in plan:
+            label += f" (\u2212{plan['save']})"
+        rows.append([InlineKeyboardButton(
+            text=label,
+            callback_data=f"buy:{plan['key']}",
+        )])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+PREMIUM_TEXT = (
+    "<b>⭐ Task Blo Premium</b>\n\n"
+    "Безлимитные задачи и никаких "
+    "ограничений.\n\n"
+    "<b>Что входит:</b>\n"
+    "• ♾️ Безлимитные задачи каждый день\n"
+    "• 🏷 Свои категории\n"
+    "• 📝 Создавай задачи прямо из чата\n"
+    "• 🎤 Создавай задачи голосом\n"
+    "• ⏰ Напоминания заранее\n\n"
+    "<b>Тарифы:</b>\n"
+    "• 1 месяц — 99 ⭐\n"
+    "• 3 месяца — 249 ⭐ "
+    "<i>(выгода 16%)</i>\n"
+    "• 12 месяцев — 799 ⭐ "
+    "<i>(выгода 33%)</i>\n\n"
+    "Выбери тариф ниже:"
+)
+
+PREMIUM_TEXT_EN = (
+    "<b>⭐ Task Blo Premium</b>\n\n"
+    "Unlimited tasks and no "
+    "restrictions.\n\n"
+    "<b>What's included:</b>\n"
+    "• ♾️ Unlimited tasks every day\n"
+    "• 🏷 Custom categories\n"
+    "• 📝 Create tasks from chat messages\n"
+    "• 🎤 Create tasks via voice\n"
+    "• ⏰ Early reminders\n\n"
+    "<b>Plans:</b>\n"
+    "• 1 month — 99 ⭐\n"
+    "• 3 months — 249 ⭐ "
+    "<i>(save 16%)</i>\n"
+    "• 12 months — 799 ⭐ "
+    "<i>(save 33%)</i>\n\n"
+    "Choose a plan below:"
+)
+
+
+@dp.message(Command("premium"))
+async def cmd_premium(message: Message) -> None:
+    ru = _is_ru(message=message)
+    text = PREMIUM_TEXT if ru else PREMIUM_TEXT_EN
+    if ru:
+        img = _premium_image()
+        if img:
+            await message.answer_photo(
+                photo=img,
+                caption=text,
+                reply_markup=_premium_kb(),
+            )
+            return
+    await message.answer(
+        text, reply_markup=_premium_kb(),
+    )
+
+
+@dp.callback_query(F.data == "show_premium")
+async def cb_show_premium(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
+    if cq.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            user = await session.get(User, cq.from_user.id)
+            if user and user.premium_interest_at is None:
+                user.premium_interest_at = datetime.now(UTC)
+                await session.commit()
+    text = PREMIUM_TEXT if ru else PREMIUM_TEXT_EN
+    if cq.message:
+        if ru:
+            img = _premium_image()
+            if img:
+                await cq.message.answer_photo(
+                    photo=img,
+                    caption=text,
+                    reply_markup=_premium_kb(),
+                )
+                await cq.answer()
+                return
         await cq.message.answer(
-            "Жми кнопку «🚀 Открыть приложение», создавай задачу, выбирай категорию и время — "
-            "бот пришлёт напоминание ровно тогда, когда попросишь."
+            text, reply_markup=_premium_kb(),
         )
     await cq.answer()
 
 
-@dp.callback_query(F.data == "today")
-async def cb_today(cq: CallbackQuery) -> None:
-    if cq.message:
-        await cq.message.answer(
-            "Открой Mini App — там увидишь задачи на сегодня:",
-            reply_markup=_open_app_kb(),
+def _plan_by_key(key: str) -> dict | None:
+    for p in PREMIUM_PLANS:
+        if p["key"] == key:
+            return p
+    return None
+
+
+@dp.callback_query(F.data.startswith("buy:"))
+async def cb_buy_premium(cq: CallbackQuery) -> None:
+    if not cq.message or not cq.from_user or not cq.data:
+        await cq.answer()
+        return
+
+    plan_key = cq.data.split(":", 1)[1]
+    plan = _plan_by_key(plan_key)
+    ru = _is_ru(cq=cq)
+    if plan is None:
+        await cq.answer(
+            "Неизвестный тариф" if ru else "Unknown plan",
+            show_alert=True,
         )
+        return
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        if await is_premium(session, cq.from_user.id):
+            await cq.message.answer(
+                "У тебя уже есть активная Premium-подписка! 🎉" if ru
+                else "You already have an active Premium subscription! 🎉"
+            )
+            await cq.answer()
+            return
+
+    desc = (
+        f"Premium {plan['label']}: безлимитные задачи, свои категории и все возможности."
+    ) if ru else (
+        f"Premium {plan['label']}: unlimited tasks, custom categories, and all features."
+    )
+    await cq.message.answer_invoice(
+        title="Task Blo Premium",
+        description=desc,
+        payload=json.dumps({
+            "type": f"premium_{plan_key}",
+            "user_id": cq.from_user.id,
+            "days": plan["days"],
+        }),
+        currency="XTR",
+        prices=[
+            LabeledPrice(
+                label=f"Premium {plan['label']}",
+                amount=plan["stars"],
+            )
+        ],
+    )
     await cq.answer()
 
 
-_PRIORITY_LABELS = {0: "", 1: "🟢 низкий", 2: "🟡 средний", 3: "🔴 высокий"}
+
+@dp.callback_query(F.data == "renew_discount")
+async def cb_renew_discount(cq: CallbackQuery) -> None:
+    if not cq.message or not cq.from_user:
+        await cq.answer()
+        return
+
+    ru = _is_ru(cq=cq)
+    sm = get_sessionmaker()
+    async with sm() as session:
+        if await is_premium(session, cq.from_user.id):
+            await cq.message.answer(
+                "У тебя уже есть активная Premium-подписка! 🎉" if ru
+                else "You already have an active Premium subscription! 🎉"
+            )
+            await cq.answer()
+            return
+
+    plan = RENEWAL_DISCOUNT_PLAN
+    desc = (
+        f"Premium {plan['label']}: безлимитные задачи, свои категории и все возможности."
+    ) if ru else (
+        f"Premium {plan['label']}: unlimited tasks, custom categories, and all features."
+    )
+    await cq.message.answer_invoice(
+        title="Task Blo Premium" if ru else "Task Blo Premium — discount",
+        description=desc,
+        payload=json.dumps({
+            "type": "premium_renewal_1m",
+            "user_id": cq.from_user.id,
+            "days": plan["days"],
+        }),
+        currency="XTR",
+        prices=[
+            LabeledPrice(
+                label=f"Premium {plan['label']}",
+                amount=plan["stars"],
+            )
+        ],
+    )
+    await cq.answer()
 
 
-async def _ensure_bot_user(user_id: int) -> None:
+@dp.pre_checkout_query()
+async def on_pre_checkout(query: PreCheckoutQuery) -> None:
+    await query.answer(ok=True)
+
+
+@dp.message(F.successful_payment)
+async def on_successful_payment(message: Message) -> None:
+    payment: SuccessfulPayment | None = message.successful_payment
+    if payment is None or message.from_user is None:
+        return
+
+    user_id = message.from_user.id
+    now = datetime.now(UTC)
+
+    try:
+        payload = json.loads(payment.invoice_payload)
+        days = int(payload.get("days", 30))
+    except (json.JSONDecodeError, ValueError, TypeError):
+        days = 30
+
+    expires_at = now + timedelta(days=days)
+
     sm = get_sessionmaker()
     async with sm() as session:
         user = await session.get(User, user_id)
         if user is None:
-            session.add(User(id=user_id))
+            user = User(id=user_id)
+            session.add(user)
             await session.commit()
 
-
-async def _save_parsed_tasks(
-    user_id: int, parsed: list[ParsedTask]
-) -> list[Task]:
-    sm = get_sessionmaker()
-    created: list[Task] = []
-    async with sm() as session:
-        for p in parsed:
-            due_at = p.due_at
-            if due_at is not None and due_at.tzinfo is None:
-                due_at = due_at.replace(tzinfo=UTC)
-            task = Task(
-                user_id=user_id,
-                title=p.title,
-                description=p.description,
-                due_date=p.due_date,
-                has_time=p.has_time,
-                due_at=due_at,
-                priority=p.priority,
-            )
-            session.add(task)
-            created.append(task)
+        sub = Subscription(
+            user_id=user_id,
+            plan="premium",
+            started_at=now,
+            expires_at=expires_at,
+            is_active=True,
+            source="stars",
+            stars_payment_id=payment.telegram_payment_charge_id,
+        )
+        session.add(sub)
         await session.commit()
-        for t in created:
-            await session.refresh(t)
-    return created
 
-
-def _task_summary(task: Task) -> str:
-    parts = [f"<b>{task.title}</b>"]
-    if task.due_date:
-        parts.append(f"📅 {task.due_date}")
-    if task.has_time and task.due_at:
-        parts.append(f"⏰ {task.due_at.strftime('%H:%M')}")
-    if task.description:
-        parts.append(f"({task.description})")
-    p_label = _PRIORITY_LABELS.get(task.priority, "")
-    if p_label:
-        parts.append(p_label)
-    return " ".join(parts)
-
-
-async def _transcribe_voice(bot: Bot, file_id: str) -> str | None:
-    file = await bot.get_file(file_id)
-    if not file or not file.file_path:
-        return None
-
-    settings = get_settings()
-    url = f"https://api.telegram.org/file/bot{settings.bot_token}/{file.file_path}"
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
-            return None
-        ogg_data = resp.content
-
-    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as ogg_f:
-        ogg_f.write(ogg_data)
-        ogg_path = ogg_f.name
-
-    wav_path = ogg_path.replace(".ogg", ".wav")
-    try:
-        try:
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", ogg_path, "-ar", "16000", "-ac", "1", wav_path],
-                capture_output=True,
-                timeout=30,
+    ru = _is_ru(message=message)
+    exp_str = expires_at.strftime("%d.%m.%Y")
+    if ru:
+        success_text = (
+            "🎉 <b>Добро пожаловать в Premium!</b>\n\n"
+            "Спасибо, что выбрал Task Blo Premium. "
+            "Теперь тебе доступны все возможности:\n\n"
+            "• Безлимитные задачи каждый день\n"
+            "• Свои категории\n"
+            "• Создавай задачи прямо из чата\n"
+            "• Создавай задачи голосом\n"
+            "• Напоминания заранее\n\n"
+            f"Подписка активна до {exp_str}.\n"
+            "Просто напиши или запиши голосовое — "
+            "я создам задачу за тебя!"
+        )
+    else:
+        success_text = (
+            "🎉 <b>Welcome to Premium!</b>\n\n"
+            "Thanks for choosing Task Blo Premium. "
+            "Now you have access to all features:\n\n"
+            "• Unlimited tasks every day\n"
+            "• Custom categories\n"
+            "• Create tasks from chat messages\n"
+            "• Create tasks via voice\n"
+            "• Early reminders\n\n"
+            f"Subscription active until {exp_str}.\n"
+            "Just send a message or a voice note — "
+            "I'll create the task for you!"
+        )
+    kb = _open_app_kb(show_premium=False, ru=ru)
+    if ru:
+        img = _premium_success_image()
+        if img is not None:
+            await message.answer_photo(
+                photo=img,
+                caption=success_text,
+                reply_markup=kb,
             )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            log.warning("ffmpeg not available for voice transcription")
-            return None
+            return
+    await message.answer(
+        success_text, reply_markup=kb,
+    )
 
-        if not Path(wav_path).exists():
-            return None
 
-        openai_key = getattr(settings, "openai_api_key", None)
-        if openai_key:
-            try:
-                with open(wav_path, "rb") as wav_file:
-                    async with httpx.AsyncClient(timeout=60) as client:
-                        resp = await client.post(
-                            "https://api.openai.com/v1/audio/transcriptions",
-                            headers={"Authorization": f"Bearer {openai_key}"},
-                            files={"file": ("voice.wav", wav_file, "audio/wav")},
-                            data={"model": "whisper-1", "language": "ru"},
-                        )
-                        if resp.status_code == 200:
-                            return resp.json().get("text", "")
-            except Exception:
-                log.exception("Whisper API error")
+# ---- natural-language task creation -----------------------------------
 
-        try:
-            import speech_recognition as sr
 
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(wav_path) as source:
-                audio = recognizer.record(source)
-            return recognizer.recognize_google(audio, language="ru-RU")
-        except Exception:
-            log.exception("Google Speech Recognition error")
-            return None
-    finally:
-        Path(ogg_path).unlink(missing_ok=True)
-        Path(wav_path).unlink(missing_ok=True)
+async def _create_task_from_text(
+    message: Message, text: str
+) -> tuple[ParsedTask, Task, str] | None:
+    """Parse a user message, persist a Task, return (parsed, task, tz_name)."""
+    if message.from_user is None:
+        return None
+    tg = TelegramUser(
+        id=message.from_user.id,
+        first_name=message.from_user.first_name or "",
+        last_name=message.from_user.last_name,
+        username=message.from_user.username,
+        language_code=message.from_user.language_code,
+        is_premium=None,
+    )
+    sm = get_sessionmaker()
+    async with sm() as session:
+        user = await _ensure_user(session, tg)
+        tz_name = user.tz or "UTC"
+        parsed = parse_ru(text, tz_name=tz_name)
+        task = await commit_parsed(session, user, parsed)
+        await _sync_reminders(session, task)
+        await session.commit()
+        await session.refresh(task)
+    return parsed, task, tz_name
+
+
+def _format_task_confirmation(parsed: ParsedTask, task: Task, tz_name: str, ru: bool = True) -> str:
+    header = "✅ <b>Задача добавлена</b>" if ru else "✅ <b>Task added</b>"
+    lines = [header, f"<b>{_escape(task.title)}</b>"]
+    summary = format_summary(parsed, tz_name)
+    if summary:
+        lines.append(f"🕒 {_escape(summary)}")
+    return "\n".join(lines)
+
+
+def _escape(text: str) -> str:
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
 
 
 @dp.message(Command("new"))
 async def cmd_new(message: Message, command: CommandObject) -> None:
-    if not message.from_user:
+    ru = _is_ru(message=message)
+    text = (command.args or "").strip()
+    if not text:
+        await message.answer(
+            NEW_TASK_HINT if ru else NEW_TASK_HINT_EN,
+            reply_markup=_open_app_kb(ru=ru),
+        )
         return
-    raw = (command.args or "").strip()
-    if not raw:
-        await message.answer("Напиши: <code>/new Текст задачи</code>")
+    if message.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            if not await is_premium(session, message.from_user.id):
+                msg = (
+                    "💎 Добавление задач через сообщения доступно с Premium-подпиской." if ru
+                    else "💎 Adding tasks via messages is available with a Premium subscription."
+                )
+                await message.answer(
+                    msg,
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="💎 Купить Premium" if ru else "💎 Buy Premium",
+                                callback_data="show_premium",
+                            )
+                        ]]
+                    ),
+                )
+                return
+    await _handle_task_text(message, text)
+
+
+@dp.message(F.text)
+async def on_plain_text(message: Message) -> None:
+    text = (message.text or "").strip()
+    if not text or text.startswith("/"):
+        return
+    ru = _is_ru(message=message)
+    if message.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            if not await is_premium(session, message.from_user.id):
+                msg = (
+                    "💎 Добавление задач через сообщения доступно с Premium-подпиской." if ru
+                    else "💎 Adding tasks via messages is available with a Premium subscription."
+                )
+                await message.answer(
+                    msg,
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="💎 Купить Premium" if ru else "💎 Buy Premium",
+                                callback_data="show_premium",
+                            )
+                        ]]
+                    ),
+                )
+                return
+    await _handle_task_text(message, text)
+
+
+async def _handle_task_text(message: Message, text: str) -> None:
+    chunks = split_into_tasks(text)
+    if not chunks:
+        chunks = [text]
+
+    # Extract global date context from the full text before splitting.
+    # If a chunk has no date of its own, we inject the global date.
+    global_date: date | None = None
+    if len(chunks) > 1 and message.from_user is not None:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            user = await _ensure_user(
+                session,
+                TelegramUser(
+                    id=message.from_user.id,
+                    first_name=message.from_user.first_name or "",
+                    last_name=message.from_user.last_name,
+                    username=message.from_user.username,
+                    language_code=message.from_user.language_code,
+                    is_premium=None,
+                ),
+            )
+            tz_name = user.tz or "UTC"
+        global_date = extract_global_date_context(text, tz_name=tz_name)
+
+    ru = _is_ru(message=message)
+    if len(chunks) == 1:
+        try:
+            result = await _create_task_from_text(message, chunks[0])
+        except Exception:  # pragma: no cover
+            log.exception("failed to create task from NL text")
+            err = (
+                "Ой, не получилось добавить задачу — "
+                "попробуй ещё раз чуть позже или открой приложение:"
+            ) if ru else (
+                "Oops, couldn't add the task — "
+                "try again later or open the app:"
+            )
+            await message.answer(err, reply_markup=_open_app_kb(ru=ru))
+            return
+        if result is None:
+            return
+        parsed, task, tz = result
+        await message.answer(
+            _format_task_confirmation(parsed, task, tz, ru=ru),
+            reply_markup=_task_actions_kb(task.id, ru=ru),
+        )
         return
 
-    await _ensure_bot_user(message.from_user.id)
-    parsed = parse_tasks(raw)
-    if not parsed:
-        await message.answer("Не удалось разобрать задачу 🤔")
+    results: list[tuple[ParsedTask, Task, str]] = []
+    for chunk in chunks:
+        try:
+            result = await _create_task_from_text(message, chunk)
+            if result is not None:
+                parsed, task, tz = result
+                # Apply global date to chunks that didn't have their own
+                if global_date is not None and parsed.due_date is None:
+                    parsed.due_date = global_date
+                    task.due_date = global_date
+                    sm2 = get_sessionmaker()
+                    async with sm2() as s2:
+                        t2 = await s2.get(Task, task.id)
+                        if t2 is not None:
+                            t2.due_date = global_date
+                            await s2.commit()
+                results.append((parsed, task, tz))
+        except Exception:  # pragma: no cover
+            log.exception("failed to create task from chunk: %s", chunk)
+
+    if not results:
+        err = (
+            "Не удалось разобрать задачи — попробуй ещё раз." if ru
+            else "Couldn't parse the tasks — please try again."
+        )
+        await message.answer(err, reply_markup=_open_app_kb(ru=ru))
         return
 
-    tasks = await _save_parsed_tasks(message.from_user.id, parsed)
-    if len(tasks) == 1:
-        await message.answer(f"✅ Создана: {_task_summary(tasks[0])}", reply_markup=_open_app_kb())
-    else:
-        lines = [f"✅ Создано задач: {len(tasks)}\n"]
-        for i, t in enumerate(tasks, 1):
-            lines.append(f"{i}. {_task_summary(t)}")
-        await message.answer("\n".join(lines), reply_markup=_open_app_kb())
+    header = (
+        f"✅ <b>Создано задач: {len(results)}</b>"
+        if ru else
+        f"✅ <b>Tasks created: {len(results)}</b>"
+    )
+    lines = [header + "\n"]
+    for i, (parsed, task, tz) in enumerate(results, 1):
+        summary = format_summary(parsed, tz)
+        priority_label = ""
+        if task.priority == 1:
+            priority_label = " 🟢"
+        elif task.priority == 2:
+            priority_label = " 🟡"
+        elif task.priority == 3:
+            priority_label = " 🔴"
+        line = f"{i}. <b>{_escape(task.title)}</b>"
+        if summary:
+            line += f" · {_escape(summary)}"
+        line += priority_label
+        lines.append(line)
+
+    await message.answer(
+        "\n".join(lines),
+        reply_markup=_open_app_kb(ru=ru),
+    )
+
+
+@dp.callback_query(F.data.startswith("del:"))
+async def cb_delete_task(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
+    if cq.data is None or cq.from_user is None:
+        await cq.answer()
+        return
+    try:
+        task_id = int(cq.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await cq.answer("неверный id" if ru else "invalid id", show_alert=False)
+        return
+    sm = get_sessionmaker()
+    async with sm() as session:
+        task = await session.get(Task, task_id)
+        if task is None or task.user_id != cq.from_user.id:
+            await cq.answer("задача не найдена" if ru else "task not found", show_alert=False)
+            return
+        await session.delete(task)
+        await session.commit()
+    deleted_text = "❌ Задача отменена." if ru else "❌ Task cancelled."
+    if cq.message:
+        try:
+            await cq.message.edit_text(deleted_text)
+        except Exception:  # noqa: BLE001
+            await cq.message.answer(deleted_text)
+    await cq.answer("удалено" if ru else "deleted")
+
+
+async def _transcribe_google(ogg_bytes: bytes) -> str | None:
+    """Free transcription via Google Speech Recognition (no API key)."""
+    import asyncio
+    import subprocess
+    import tempfile
+
+    import speech_recognition as sr
+
+    def _sync_transcribe() -> str | None:
+        with tempfile.NamedTemporaryFile(suffix=".ogg") as ogg_f:
+            ogg_f.write(ogg_bytes)
+            ogg_f.flush()
+            wav_path = ogg_f.name + ".wav"
+            try:
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", ogg_f.name, "-ar", "16000", "-ac", "1", wav_path],
+                    capture_output=True,
+                )
+                recognizer = sr.Recognizer()
+                with sr.AudioFile(wav_path) as source:
+                    audio = recognizer.record(source)
+                try:
+                    return recognizer.recognize_google(audio, language="ru-RU")
+                except (sr.UnknownValueError, sr.RequestError):
+                    return None
+            finally:
+                import contextlib
+                import os
+
+                with contextlib.suppress(OSError):
+                    os.unlink(wav_path)
+
+    return await asyncio.to_thread(_sync_transcribe)
+
+
+async def _transcribe_openai(ogg_bytes: bytes, api_key: str) -> str | None:
+    """Transcription via OpenAI Whisper API (paid, higher quality)."""
+    from openai import AsyncOpenAI
+
+    buf = io.BytesIO(ogg_bytes)
+    buf.name = "voice.ogg"
+    client = AsyncOpenAI(api_key=api_key)
+    transcript = await client.audio.transcriptions.create(
+        model="whisper-1", file=buf, language="ru",
+    )
+    return transcript.text.strip() or None
 
 
 @dp.message(F.voice)
-async def handle_voice(message: Message) -> None:
-    if not message.from_user or not message.voice:
-        return
-
-    await _ensure_bot_user(message.from_user.id)
+async def on_voice(message: Message) -> None:
+    ru = _is_ru(message=message)
+    settings = get_settings()
     bot = message.bot
-    if not bot:
+    if bot is None or message.voice is None:
         return
 
-    await message.answer("🎤 Обрабатываю голосовое...")
-    text = await _transcribe_voice(bot, message.voice.file_id)
-    if not text:
-        await message.answer("Не удалось распознать голос 😕 Попробуй ещё раз.")
-        return
+    if message.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            if not await is_premium(session, message.from_user.id):
+                msg = (
+                    "💎 Добавление задач через голосовые "
+                    "сообщения доступно с Premium-подпиской."
+                ) if ru else (
+                    "💎 Adding tasks via voice messages is "
+                    "available with a Premium subscription."
+                )
+                await message.answer(
+                    msg,
+                    reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[
+                            InlineKeyboardButton(
+                                text="💎 Купить Premium" if ru else "💎 Buy Premium",
+                                callback_data="show_premium",
+                            )
+                        ]]
+                    ),
+                )
+                return
 
-    parsed = parse_tasks(text)
-    if not parsed:
-        await message.answer(f"Распознано: «{text}»\nНо не удалось разобрать задачу 🤔")
-        return
+    await message.answer(
+        "🎙 Распознаю голосовое сообщение…" if ru
+        else "🎙 Recognizing voice message…"
+    )
 
-    tasks = await _save_parsed_tasks(message.from_user.id, parsed)
-    if len(tasks) == 1:
+    try:
+        file = await bot.get_file(message.voice.file_id)
+        if file.file_path is None:
+            await message.answer(
+                "Не удалось скачать голосовое сообщение." if ru
+                else "Couldn't download the voice message."
+            )
+            return
+
+        buf = io.BytesIO()
+        await bot.download_file(file.file_path, buf)
+        ogg_bytes = buf.getvalue()
+
+        text = None
+        if settings.openai_api_key:
+            text = await _transcribe_openai(ogg_bytes, settings.openai_api_key)
+        else:
+            text = await _transcribe_google(ogg_bytes)
+
+        if not text:
+            await message.answer(
+                (
+                    "Не удалось распознать текст из голосового. "
+                    "Попробуй ещё раз или напиши текстом."
+                ) if ru else (
+                    "Couldn't recognize text from voice. "
+                    "Try again or type it out."
+                ),
+                reply_markup=_open_app_kb(ru=ru),
+            )
+            return
+
+        await _handle_task_text(message, text)
+    except Exception:
+        log.exception("voice transcription failed")
         await message.answer(
-            f"🎤 Распознано: «{text}»\n\n✅ Создана: {_task_summary(tasks[0])}",
-            reply_markup=_open_app_kb(),
+            "Ой, не получилось распознать голосовое — попробуй ещё раз чуть позже." if ru
+            else "Oops, couldn't recognize the voice message — try again later.",
+            reply_markup=_open_app_kb(ru=ru),
         )
-    else:
-        lines = [f"🎤 Распознано: «{text}»\n\n✅ Создано задач: {len(tasks)}\n"]
-        for i, t in enumerate(tasks, 1):
-            lines.append(f"{i}. {_task_summary(t)}")
-        await message.answer("\n".join(lines), reply_markup=_open_app_kb())
-
-
-@dp.message(F.text & ~F.text.startswith("/"))
-async def handle_text_nlp(message: Message) -> None:
-    if not message.from_user or not message.text:
-        return
-
-    await _ensure_bot_user(message.from_user.id)
-    parsed = parse_tasks(message.text)
-    if not parsed:
-        await message.answer(
-            "Не могу разобрать задачу из сообщения 🤔\n"
-            "Используй /new <текст> или просто напиши задачу.",
-            reply_markup=_open_app_kb(),
-        )
-        return
-
-    tasks = await _save_parsed_tasks(message.from_user.id, parsed)
-    if len(tasks) == 1:
-        await message.answer(f"✅ Создана: {_task_summary(tasks[0])}", reply_markup=_open_app_kb())
-    else:
-        lines = [f"✅ Создано задач: {len(tasks)}\n"]
-        for i, t in enumerate(tasks, 1):
-            lines.append(f"{i}. {_task_summary(t)}")
-        await message.answer("\n".join(lines), reply_markup=_open_app_kb())
 
 
 async def configure_bot_commands(bot: Bot) -> None:
     await bot.set_my_commands(
         [
             BotCommand(command="start", description="Приветствие"),
+            BotCommand(command="new", description="Добавить задачу из чата"),
+            BotCommand(command="premium", description="Купить Premium"),
             BotCommand(command="app", description="Открыть Mini App"),
             BotCommand(command="new", description="Создать задачу из текста"),
             BotCommand(command="privacy", description="Приватность"),
             BotCommand(command="support", description="Поддержка"),
             BotCommand(command="help", description="Помощь"),
-        ]
+        ],
+        language_code="ru",
+    )
+    await bot.set_my_commands(
+        [
+            BotCommand(command="start", description="Welcome"),
+            BotCommand(command="new", description="Add a task from chat"),
+            BotCommand(command="premium", description="Buy Premium"),
+            BotCommand(command="app", description="Open Mini App"),
+            BotCommand(command="privacy", description="Privacy"),
+            BotCommand(command="support", description="Support"),
+            BotCommand(command="help", description="Help"),
+        ],
     )

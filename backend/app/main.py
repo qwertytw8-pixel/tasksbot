@@ -6,17 +6,25 @@ from contextlib import asynccontextmanager
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.types import Update
+from aiogram.types import MenuButtonWebApp, Update, WebAppInfo
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api import router as api_router
+from app.api_admin import router as admin_router
 from app.api_game import router as game_router
+from app.api_subscription import router as subscription_router
 from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
 from app.game_seed import ensure_game_schema, seed_game_data
-from app.scheduler import run_tick
+from app.scheduler import (
+    run_daily_summary,
+    run_personal_offers,
+    run_subscription_notifications,
+    run_tick,
+)
 
 
 def _setup_logging(level: str) -> None:
@@ -53,6 +61,10 @@ async def lifespan(app: FastAPI):
     )
     app.state.bot = bot
 
+    # Remember bot username for deep-links
+    bot_me = await bot.get_me()
+    app.state.bot_username = bot_me.username or ""
+
     # Webhook
     await bot.set_webhook(
         url=settings.webhook_url,
@@ -61,6 +73,19 @@ async def lifespan(app: FastAPI):
         allowed_updates=dp.resolve_used_update_types(),
     )
     await configure_bot_commands(bot)
+
+    # Menu button — shows "Открыть" in chat list
+    try:
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="Открыть",
+                web_app=WebAppInfo(url=settings.webapp_url),
+            ),
+        )
+        log.info("menu button set")
+    except Exception as exc:
+        log.warning("menu button failed: %s", exc)
+
     log.info("webhook set: %s", settings.webhook_url)
 
     try:
@@ -82,11 +107,42 @@ app.add_middleware(
 
 app.include_router(api_router)
 app.include_router(game_router)
+app.include_router(subscription_router)
+app.include_router(admin_router)
 
 
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/migrate/neon")
+async def migrate_neon(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> JSONResponse:
+    settings = get_settings()
+    if authorization != f"Bearer {settings.cron_secret}":
+        raise HTTPException(status_code=403, detail="bad secret")
+    payload = await request.json()
+    statements = payload.get("statements", [])
+    if not statements:
+        raise HTTPException(status_code=400, detail="no statements")
+    engine = get_engine()
+    from sqlalchemy import text as sa_text
+    ok = 0
+    errors = []
+    async with engine.begin() as conn:
+        for stmt in statements:
+            try:
+                await conn.execute(sa_text(stmt))
+                ok += 1
+            except Exception as e:
+                errors.append(f"{str(e)[:200]}")
+    return JSONResponse({
+        "status": "migrated", "ok": ok,
+        "errors_count": len(errors), "errors": errors[:10],
+    })
 
 
 @app.post("/tg/webhook")
@@ -113,4 +169,13 @@ async def cron_tick(
     if authorization != expected:
         raise HTTPException(status_code=403, detail="bad cron secret")
     sent = await run_tick(request.app.state.bot)
-    return {"status": "ok", "sent": sent}
+    summaries = await run_daily_summary(request.app.state.bot)
+    sub_notifs = await run_subscription_notifications(request.app.state.bot)
+    personal = await run_personal_offers(request.app.state.bot)
+    return {
+        "status": "ok",
+        "sent": sent,
+        "summaries": summaries,
+        "sub_notifs": sub_notifs,
+        "personal_offers": personal,
+    }

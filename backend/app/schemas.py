@@ -26,6 +26,7 @@ class TaskIn(BaseModel):
     has_time: bool = False
     due_at: datetime | None = None
     remind_minutes_before: int | None = Field(default=None, ge=0, le=10_080)
+    recurrence: str | None = Field(default=None, pattern="^(daily|weekly|monthly)$")
     priority: int = Field(default=0, ge=0, le=3)
     is_done: bool = False
 
@@ -41,6 +42,7 @@ class TaskOut(BaseModel):
     has_time: bool
     due_at: datetime | None
     remind_minutes_before: int | None
+    recurrence: str | None
     priority: int
     is_done: bool
     done_at: datetime | None
@@ -52,7 +54,8 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     tz: str
-    onboarding_completed: bool
+    is_admin: bool = False
+    onboarding_completed: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -64,3 +67,84 @@ class PrivacyInfo(BaseModel):
     support_label: str
     support_text: str
     privacy_summary: str
+
+
+class SubscriptionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    plan: str
+    started_at: datetime
+    expires_at: datetime | None
+    is_active: bool
+    source: str
+
+
+class SubscriptionStatus(BaseModel):
+    is_premium: bool
+    subscription: SubscriptionOut | None = None
+    active_tasks_count: int = 0
+    max_tasks: int = 5
+    daily_tasks_count: int = 0
+    max_daily_tasks: int = 5
+    can_create_categories: bool = False
+
+
+class PlanInfo(BaseModel):
+    name: str
+    price_stars: int
+    features: list[str]
+
+
+class PlansOut(BaseModel):
+    free: PlanInfo
+    premium: PlanInfo
+
+
+class PromoActivateIn(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+
+
+class PromoActivateOut(BaseModel):
+    success: bool
+    message: str
+    expires_at: datetime | None = None
+
+
+class PromoCodeIn(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+    duration_days: int = Field(default=14, ge=1, le=365)
+    max_uses: int = Field(default=1, ge=1, le=100_000)
+
+
+class PromoCodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    code: str
+    duration_days: int
+    max_uses: int
+    current_uses: int
+    is_active: bool
+    created_at: datetime
+
+
+class AdminStatsOut(BaseModel):
+    total_users: int
+    premium_users: int
+    total_tasks: int
+    total_promo_codes: int
+    total_promo_activations: int
+
+
+class AdminUserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    tz: str
+    is_admin: bool
+    created_at: datetime
+    is_premium: bool = False
+    subscription_expires: datetime | None = None
+
+
+class AdminGrantIn(BaseModel):
+    user_id: int
+    duration_days: int | None = None  # None = unlimited

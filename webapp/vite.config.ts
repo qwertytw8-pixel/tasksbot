@@ -10,5 +10,13 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          "telegram-ui": ["@telegram-apps/telegram-ui", "@telegram-apps/sdk-react"],
+        },
+      },
+    },
   },
 });

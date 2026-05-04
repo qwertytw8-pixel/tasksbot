@@ -2,19 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { api, type Category, type Task } from "../api";
+import { HourlyTimeline } from "../components/HourlyTimeline";
 import { TaskRow } from "../components/TaskRow";
+import { useI18n } from "../i18n";
 import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClockIcon,
   InboxIcon,
+  ListIcon,
   PlusIcon,
   SparkIcon,
 } from "../icons";
 import { haptic } from "../telegram";
 import {
-  RU_MONTHS,
-  RU_WEEKDAYS_SHORT,
   addMonths,
   buildMonthGrid,
   fromISODate,
@@ -26,6 +28,7 @@ import {
 } from "../utils/date";
 
 export function CalendarPage() {
+  const { t, lang } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -37,6 +40,7 @@ export function CalendarPage() {
 
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
 
   useEffect(() => {
     void (async () => {
@@ -55,31 +59,32 @@ export function CalendarPage() {
   const tasksByDay = useMemo(() => {
     const map = new Map<string, Task[]>();
     if (!tasks) return map;
-    for (const t of tasks) {
-      if (!t.due_date) continue;
-      if (!map.has(t.due_date)) map.set(t.due_date, []);
-      map.get(t.due_date)!.push(t);
+    for (const task of tasks) {
+      if (!task.due_date) continue;
+      if (!map.has(task.due_date)) map.set(task.due_date, []);
+      map.get(task.due_date)!.push(task);
     }
     return map;
   }, [tasks]);
 
   const selectedDate = fromISODate(selectedISO);
   const selectedTasks = (tasksByDay.get(selectedISO) ?? []).filter(
-    (t) => t.parent_task_id === null
+    (task) => task.parent_task_id === null
   );
   const selectedSubtasks = (tasksByDay.get(selectedISO) ?? []).filter(
-    (t) => t.parent_task_id !== null
+    (task) => task.parent_task_id !== null
   );
 
   const undated = useMemo(
     () =>
       (tasks ?? []).filter(
-        (t) => !t.due_date && !t.is_done && t.parent_task_id === null
+        (task) => !task.due_date && !task.is_done && task.parent_task_id === null
       ),
     [tasks]
   );
 
-  const monthLabel = `${RU_MONTHS[monthAnchor.getMonth()]} ${monthAnchor.getFullYear()}`;
+  const monthLabel = `${t(`month.${monthAnchor.getMonth()}`)} ${monthAnchor.getFullYear()}`;
+  const weekdays = Array.from({ length: 7 }, (_, i) => t(`wd.${i}`));
 
   async function toggle(task: Task) {
     const updated = await api.updateTask(task.id, {
@@ -91,10 +96,17 @@ export function CalendarPage() {
       has_time: task.has_time,
       due_at: task.due_at,
       remind_minutes_before: task.remind_minutes_before,
+      recurrence: task.recurrence,
       priority: task.priority,
       is_done: !task.is_done,
     });
-    setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+    setTasks((prev) => {
+      const list = prev ?? [];
+      if (updated.archived_at) {
+        return list.filter((t) => t.id !== task.id);
+      }
+      return list.map((t) => (t.id === task.id ? updated : t));
+    });
   }
 
   async function postpone(task: Task) {
@@ -122,7 +134,7 @@ export function CalendarPage() {
   }
 
   async function remove(task: Task) {
-    if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
+    if (!window.confirm(t("confirm.delete_task").replace("{title}", task.title))) return;
     await api.deleteTask(task.id);
     setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id && t.parent_task_id !== task.id));
   }
@@ -148,23 +160,21 @@ export function CalendarPage() {
     navigate(`/new?day=${selectedISO}`);
   }
 
-  if (!tasks) return <div className="spinner">Загрузка…</div>;
+  if (!tasks) return <div className="spinner">{t("loading")}</div>;
 
   const catById = new Map(cats.map((c) => [c.id, c] as const));
   const today = new Date();
+  const locale = lang === "ru" ? "ru-RU" : "en-US";
 
   return (
     <div className="page">
       <div className="page-header">
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            <CalendarIcon /> calendar
-          </span>
           <div className="page-header__title-row">
-            <h1>Календарь</h1>
+            <h1>{t("calendar.title")}</h1>
           </div>
           <div className="page-header__subtitle">
-            Тапни по числу — увидишь задачи на этот день и сможешь добавить новую.
+            {t("calendar.subtitle")}
           </div>
         </div>
       </div>
@@ -174,7 +184,7 @@ export function CalendarPage() {
           <button
             className="cal__nav"
             onClick={() => setMonthAnchor(addMonths(monthAnchor, -1))}
-            aria-label="Предыдущий месяц"
+            aria-label={t("calendar.prev_month")}
           >
             <ChevronLeftIcon />
           </button>
@@ -182,15 +192,15 @@ export function CalendarPage() {
           <button
             className="cal__nav"
             onClick={() => setMonthAnchor(addMonths(monthAnchor, 1))}
-            aria-label="Следующий месяц"
+            aria-label={t("calendar.next_month")}
           >
             <ChevronRightIcon />
           </button>
         </div>
 
         <div className="cal__grid cal__grid--head">
-          {RU_WEEKDAYS_SHORT.map((w) => (
-            <div key={w} className="cal__weekday">
+          {weekdays.map((w, i) => (
+            <div key={i} className="cal__weekday">
               {w}
             </div>
           ))}
@@ -221,8 +231,8 @@ export function CalendarPage() {
               >
                 <span className="cal__num">{d.getDate()}</span>
                 {total > 0 ? (
-                  <span className="cal__count" aria-label={`задач: ${total}`}>
-                    {open > 0 ? open : "✓"}
+                  <span className="cal__count">
+                    {open > 0 ? open : "\u2713"}
                   </span>
                 ) : (
                   <span className="cal__count cal__count--empty" aria-hidden>
@@ -238,54 +248,77 @@ export function CalendarPage() {
       <div className="day-strip">
         <div className="day-strip__date">
           <SparkIcon />
-          {selectedDate.toLocaleDateString("ru-RU", {
+          {selectedDate.toLocaleDateString(locale, {
             weekday: "long",
             day: "numeric",
             month: "long",
           })}
         </div>
-        <button className="day-strip__add" onClick={addForSelected}>
-          <PlusIcon /> Новая задача
-        </button>
+        <div className="day-strip__actions">
+          <button
+            className={`day-strip__view-btn ${viewMode === "list" ? "day-strip__view-btn--active" : ""}`}
+            onClick={() => { haptic("light"); setViewMode("list"); }}
+            aria-label={t("calendar.list")}
+          >
+            <ListIcon />
+          </button>
+          <button
+            className={`day-strip__view-btn ${viewMode === "timeline" ? "day-strip__view-btn--active" : ""}`}
+            onClick={() => { haptic("light"); setViewMode("timeline"); }}
+            aria-label={t("calendar.hourly")}
+          >
+            <ClockIcon />
+          </button>
+          <button className="day-strip__add" onClick={addForSelected}>
+            <PlusIcon /> {t("calendar.new")}
+          </button>
+        </div>
       </div>
 
-      {selectedTasks.length === 0 && selectedSubtasks.length === 0 && (
+      {viewMode === "timeline" && (
+        <HourlyTimeline
+          tasks={[...selectedTasks, ...selectedSubtasks]}
+          categories={catById}
+        />
+      )}
+
+      {viewMode === "list" && selectedTasks.length === 0 && selectedSubtasks.length === 0 && (
         <div className="empty">
           <div className="empty__icon">
             <CalendarIcon />
           </div>
-          <div className="empty__title">На этот день пусто</div>
-          <div>Жми «Новая задача», чтобы добавить дело на этот день.</div>
+          <div className="empty__title">{t("calendar.empty_title")}</div>
+          <div>{t("calendar.empty_text")}</div>
         </div>
       )}
 
-      {selectedTasks.map((t) => (
+      {viewMode === "list" && selectedTasks.map((task) => (
         <TaskRow
-          key={t.id}
-          task={t}
-          category={t.category_id ? catById.get(t.category_id) : null}
+          key={task.id}
+          task={task}
+          category={task.category_id ? catById.get(task.category_id) : null}
           onToggle={toggle}
-          subtasks={(tasks ?? []).filter((c) => c.parent_task_id === t.id)}
+          subtasks={(tasks ?? []).filter((c) => c.parent_task_id === task.id)}
           onToggleSub={toggle}
-          onPostpone={!t.is_done ? postpone : undefined}
+          onPostpone={!task.is_done ? postpone : undefined}
           onArchive={archive}
           onDelete={remove}
         />
       ))}
 
-      {selectedSubtasks.length > 0 && (
+      {viewMode === "list" && selectedSubtasks.length > 0 && (
         <div className="section-block">
           <div className="section-block__header">
             <div className="section-block__title">
-              <InboxIcon /> подзадачи на этот день
+              <InboxIcon /> {t("calendar.subtasks_label")}
             </div>
             <div className="section-block__count">{selectedSubtasks.length}</div>
           </div>
-          {selectedSubtasks.map((t) => (
+          {selectedSubtasks.map((task) => (
             <TaskRow
-              key={t.id}
-              task={t}
-              category={t.category_id ? catById.get(t.category_id) : null}
+              key={task.id}
+              task={task}
+              category={task.category_id ? catById.get(task.category_id) : null}
               onToggle={toggle}
               compact
             />
@@ -297,17 +330,17 @@ export function CalendarPage() {
         <div className="section-block">
           <div className="section-block__header">
             <div className="section-block__title">
-              <InboxIcon /> без даты
+              <InboxIcon /> {t("section.undated")}
             </div>
             <div className="section-block__count">{undated.length}</div>
           </div>
-          {undated.map((t) => (
+          {undated.map((task) => (
             <TaskRow
-              key={t.id}
-              task={t}
-              category={t.category_id ? catById.get(t.category_id) : null}
+              key={task.id}
+              task={task}
+              category={task.category_id ? catById.get(task.category_id) : null}
               onToggle={toggle}
-              subtasks={(tasks ?? []).filter((c) => c.parent_task_id === t.id)}
+              subtasks={(tasks ?? []).filter((c) => c.parent_task_id === task.id)}
               onToggleSub={toggle}
               onPostpone={postpone}
               onDelete={remove}

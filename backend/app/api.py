@@ -1,6 +1,7 @@
+from calendar import monthrange
 from datetime import UTC, date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,8 +19,22 @@ from app.schemas import (
     UserOut,
     UserUpdate,
 )
+from app.subscription import (
+    FREE_DAILY_LIMIT,
+    can_create_category,
+    can_create_task,
+    count_tasks_created_today,
+    is_premium,
+)
 
 router = APIRouter(prefix="/api", tags=["api"])
+
+
+@router.get("/bot-info")
+async def bot_info(request: Request) -> dict:
+    username = getattr(request.app.state, "bot_username", "")
+    return {"bot_username": username}
+
 
 SUPPORT_LABEL = "Поддержка и приватность"
 SUPPORT_TEXT = (
@@ -116,6 +131,42 @@ async def _validate_parent(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "task cannot be its own parent")
 
 
+def _next_due_date(current: date, recurrence: str) -> date:
+    if recurrence == "daily":
+        return current + timedelta(days=1)
+    if recurrence == "weekly":
+        return current + timedelta(weeks=1)
+    if recurrence == "monthly":
+        y, m = current.year, current.month + 1
+        if m > 12:
+            y += 1
+            m = 1
+        day = min(current.day, monthrange(y, m)[1])
+        return date(y, m, day)
+    return current + timedelta(days=1)
+
+
+def _create_next_recurrence(task: Task, user_id: int) -> Task:
+    next_date = _next_due_date(task.due_date, task.recurrence)
+    next_due_at = None
+    if task.has_time and task.due_at:
+        delta = next_date - task.due_date
+        next_due_at = task.due_at + delta
+    return Task(
+        user_id=user_id,
+        title=task.title,
+        description=task.description,
+        category_id=task.category_id,
+        parent_task_id=None,
+        due_date=next_date,
+        has_time=task.has_time,
+        due_at=next_due_at,
+        remind_minutes_before=task.remind_minutes_before,
+        recurrence=task.recurrence,
+        is_done=False,
+    )
+
+
 # -------------------- /me --------------------
 
 
@@ -178,6 +229,11 @@ async def create_category(
     session: AsyncSession = Depends(get_session),
 ):
     await _ensure_user(session, tg)
+    if not await can_create_category(session, tg.id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Создание категорий доступно только с Premium-подпиской",
+        )
     cat = Category(user_id=tg.id, name=payload.name, color=payload.color, emoji=payload.emoji)
     session.add(cat)
     try:
@@ -224,15 +280,35 @@ async def delete_category(
 
 
 async def _sync_reminders(session: AsyncSession, task: Task) -> None:
-    await session.execute(delete(Reminder).where(Reminder.task_id == task.id))
-    if (
-        task.due_at
+    need_reminder = (
+        task.due_at is not None
         and task.remind_minutes_before is not None
         and not task.is_done
         and task.archived_at is None
-    ):
-        fire_at = task.due_at - timedelta(minutes=task.remind_minutes_before)
-        session.add(Reminder(task_id=task.id, fire_at=fire_at))
+    )
+
+    if not need_reminder:
+        await session.execute(delete(Reminder).where(Reminder.task_id == task.id))
+        return
+
+    fire_at = task.due_at - timedelta(minutes=task.remind_minutes_before)
+
+    existing = await session.execute(
+        select(Reminder).where(Reminder.task_id == task.id)
+    )
+    existing_reminders = list(existing.scalars().all())
+
+    matching = next((r for r in existing_reminders if r.fire_at == fire_at), None)
+    if matching is not None:
+        for r in existing_reminders:
+            if r.id != matching.id:
+                await session.delete(r)
+        return
+
+    for r in existing_reminders:
+        await session.delete(r)
+    await session.flush()
+    session.add(Reminder(task_id=task.id, fire_at=fire_at, sent=False))
 
 
 AUTO_ARCHIVE_AFTER = timedelta(hours=24)
@@ -313,10 +389,18 @@ async def create_task(
     tg: TelegramUser = Depends(_get_dep()),
     session: AsyncSession = Depends(get_session),
 ):
-    await _ensure_user(session, tg)
+    user = await _ensure_user(session, tg)
+    if not await can_create_task(session, tg.id, user.tz):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Дневной лимит задач исчерпан. Оформи Premium для безлимитных задач.",
+        )
     await _validate_category(session, tg, payload.category_id)
     await _validate_parent(session, tg, None, payload.parent_task_id)
     due_date, has_time, due_at, remind = _normalize_task_fields(payload)
+
+    if remind is not None and remind > 0 and not await is_premium(session, tg.id):
+        remind = 0
 
     task = Task(
         user_id=tg.id,
@@ -328,6 +412,7 @@ async def create_task(
         has_time=has_time,
         due_at=due_at,
         remind_minutes_before=remind,
+        recurrence=payload.recurrence,
         priority=payload.priority,
         is_done=payload.is_done,
         done_at=datetime.now(UTC) if payload.is_done else None,
@@ -337,6 +422,44 @@ async def create_task(
     await _sync_reminders(session, task)
     await session.commit()
     await session.refresh(task)
+
+    if not await is_premium(session, tg.id):
+        daily = await count_tasks_created_today(session, tg.id, user.tz)
+        if daily >= FREE_DAILY_LIMIT:
+            import asyncio
+
+            from aiogram.types import (
+                InlineKeyboardButton,
+                InlineKeyboardMarkup,
+            )
+
+            async def _send_limit_nudge() -> None:
+                try:
+                    from app.bot import bot as tg_bot
+
+                    await tg_bot.send_message(
+                        tg.id,
+                        "⚠️ <b>Дневной лимит задач!</b>\n\n"
+                        f"Ты создал {daily} "
+                        f"из {FREE_DAILY_LIMIT} "
+                        "задач сегодня на бесплатном плане.\n\n"
+                        "Подключи Premium — "
+                        "безлимитные задачи, "
+                        "ввод задач текстом и голосом!",
+                        reply_markup=InlineKeyboardMarkup(
+                            inline_keyboard=[[
+                                InlineKeyboardButton(
+                                    text="💎 Подключить Premium",
+                                    callback_data="show_premium",
+                                )
+                            ]]
+                        ),
+                    )
+                except Exception:
+                    pass
+
+            asyncio.create_task(_send_limit_nudge())
+
     return task
 
 
@@ -351,9 +474,13 @@ async def update_task(
     if task is None or task.user_id != tg.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
 
+    await _ensure_user(session, tg)
     await _validate_category(session, tg, payload.category_id)
     await _validate_parent(session, tg, task_id, payload.parent_task_id)
     due_date, has_time, due_at, remind = _normalize_task_fields(payload)
+
+    if remind is not None and remind > 0 and not await is_premium(session, tg.id):
+        remind = 0
 
     task.title = payload.title
     task.description = payload.description
@@ -363,13 +490,18 @@ async def update_task(
     task.has_time = has_time
     task.due_at = due_at
     task.remind_minutes_before = remind
+    task.recurrence = payload.recurrence
     task.priority = payload.priority
-    # Track when a task was marked done so we can auto-archive later.
     was_done = task.is_done
     if payload.is_done and not task.is_done:
         task.done_at = datetime.now(UTC)
+        # Create next occurrence for recurring tasks
+        if task.recurrence and task.due_date:
+            next_task = _create_next_recurrence(task, tg.id)
+            session.add(next_task)
     elif not payload.is_done:
         task.done_at = None
+        task.archived_at = None
     task.is_done = payload.is_done
     await session.flush()
     await _sync_reminders(session, task)
@@ -378,9 +510,9 @@ async def update_task(
     if payload.is_done and not was_done:
         user = await session.get(User, tg.id)
         user_tz = user.tz if user else "UTC"
-        is_premium = False  # TODO: integrate with subscription
+        user_is_premium = await is_premium(session, tg.id)
         await award_task_completion(
-            session, tg.id, task, is_premium=is_premium, user_tz=user_tz
+            session, tg.id, task, is_premium=user_is_premium, user_tz=user_tz
         )
 
     await session.commit()

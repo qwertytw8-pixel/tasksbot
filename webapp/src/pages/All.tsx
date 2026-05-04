@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api, type Category, type Task } from "../api";
 import { TaskRow, isTaskOverdue } from "../components/TaskRow";
+import { useI18n, getStoredHorizon } from "../i18n";
 import {
   AlertTriangleIcon,
   CalendarIcon,
@@ -9,7 +10,6 @@ import {
   ClockIcon,
   FolderIcon,
   InboxIcon,
-  ListIcon,
   SparkIcon,
   SunriseIcon,
 } from "../icons";
@@ -26,21 +26,22 @@ type SectionKey =
 
 interface SectionDef {
   key: SectionKey;
-  title: string;
+  titleKey: string;
   icon: typeof SparkIcon;
 }
 
 const SECTION_ORDER: SectionDef[] = [
-  { key: "overdue", title: "Просрочено", icon: AlertTriangleIcon },
-  { key: "today", title: "Сегодня", icon: SparkIcon },
-  { key: "tomorrow", title: "Завтра", icon: SunriseIcon },
-  { key: "week", title: "Ближайшие 7 дней", icon: CalendarIcon },
-  { key: "later", title: "Позже", icon: ClockIcon },
-  { key: "undated", title: "Без даты", icon: InboxIcon },
-  { key: "done", title: "Готово за последние 24 часа", icon: CheckIcon },
+  { key: "overdue", titleKey: "section.overdue", icon: AlertTriangleIcon },
+  { key: "today", titleKey: "section.today", icon: SparkIcon },
+  { key: "tomorrow", titleKey: "section.tomorrow", icon: SunriseIcon },
+  { key: "week", titleKey: "section.week", icon: CalendarIcon },
+  { key: "later", titleKey: "section.later", icon: ClockIcon },
+  { key: "undated", titleKey: "section.undated", icon: InboxIcon },
+  { key: "done", titleKey: "section.done", icon: CheckIcon },
 ];
 
 export function AllPage() {
+  const { t } = useI18n();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
   const [filterCat, setFilterCat] = useState<number | null>(null);
@@ -64,13 +65,19 @@ export function AllPage() {
     return map;
   }, [tasks]);
 
+  const horizon = getStoredHorizon();
+
   const sectioned = useMemo(() => {
     if (!tasks) return null;
     const now = new Date();
     const today = todayISO();
     const tomorrow = tomorrowISO();
     const in7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
-    const last24 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const horizonDate = horizon > 0
+      ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + horizon)
+      : null;
 
     const buckets: Record<SectionKey, Task[]> = {
       overdue: [],
@@ -89,7 +96,7 @@ export function AllPage() {
     for (const t of filtered) {
       if (t.is_done) {
         const doneAt = t.done_at ? new Date(t.done_at) : new Date(t.created_at);
-        if (doneAt >= last24) buckets.done.push(t);
+        if (doneAt >= startOfDay) buckets.done.push(t);
         continue;
       }
       if (isTaskOverdue(t, now)) {
@@ -98,6 +105,7 @@ export function AllPage() {
       }
       if (t.has_time && t.due_at) {
         const d = new Date(t.due_at);
+        if (horizonDate && d > horizonDate) continue;
         const iso = toISODate(d);
         if (iso === today) buckets.today.push(t);
         else if (iso === tomorrow) buckets.tomorrow.push(t);
@@ -106,6 +114,7 @@ export function AllPage() {
         continue;
       }
       if (t.due_date) {
+        if (horizonDate && fromISODate(t.due_date) > horizonDate) continue;
         if (t.due_date === today) buckets.today.push(t);
         else if (t.due_date === tomorrow) buckets.tomorrow.push(t);
         else if (fromISODate(t.due_date) <= in7) buckets.week.push(t);
@@ -115,7 +124,7 @@ export function AllPage() {
       buckets.undated.push(t);
     }
     return buckets;
-  }, [tasks, filterCat]);
+  }, [tasks, filterCat, horizon]);
 
   async function toggle(task: Task) {
     const updated = await api.updateTask(task.id, {
@@ -127,10 +136,17 @@ export function AllPage() {
       has_time: task.has_time,
       due_at: task.due_at,
       remind_minutes_before: task.remind_minutes_before,
+      recurrence: task.recurrence,
       priority: task.priority,
       is_done: !task.is_done,
     });
-    setTasks((prev) => (prev ?? []).map((t) => (t.id === task.id ? updated : t)));
+    setTasks((prev) => {
+      const list = prev ?? [];
+      if (updated.archived_at) {
+        return list.filter((t) => t.id !== task.id);
+      }
+      return list.map((t) => (t.id === task.id ? updated : t));
+    });
   }
 
   async function postpone(task: Task) {
@@ -158,7 +174,7 @@ export function AllPage() {
   }
 
   async function remove(task: Task) {
-    if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
+    if (!window.confirm(t("confirm.delete_task").replace("{title}", task.title))) return;
     await api.deleteTask(task.id);
     setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id && t.parent_task_id !== task.id));
   }
@@ -168,7 +184,7 @@ export function AllPage() {
     setTasks((prev) => (prev ?? []).filter((t) => t.id !== task.id));
   }
 
-  if (!tasks || !sectioned) return <div className="spinner">Загрузка…</div>;
+  if (!tasks || !sectioned) return <div className="spinner">{t("loading")}</div>;
 
   const catById = new Map(cats.map((c) => [c.id, c] as const));
   const focusCount =
@@ -186,14 +202,11 @@ export function AllPage() {
     <div className="page">
       <div className="page-header">
         <div className="page-header__stack">
-          <span className="page-header__eyebrow">
-            <ListIcon /> library
-          </span>
           <div className="page-header__title-row">
-            <h1>Все</h1>
+            <h1>{t("all.title")}</h1>
           </div>
           <div className="page-header__subtitle">
-            Полная лента задач: просроченное, ближайшее и всё, что ждёт даты.
+            {t("all.subtitle")}
           </div>
         </div>
       </div>
@@ -201,13 +214,13 @@ export function AllPage() {
       <div className="stats-row">
         <div className="stat-card">
           <div className="stat-card__label">
-            <SparkIcon /> В фокусе
+            <SparkIcon /> {t("all.focus")}
           </div>
           <div className="stat-card__value">{focusCount}</div>
         </div>
         <div className={`stat-card ${overdueCount > 0 ? "stat-card--danger" : ""}`}>
           <div className="stat-card__label">
-            <AlertTriangleIcon /> Просрочено
+            <AlertTriangleIcon /> {t("all.overdue")}
           </div>
           <div className={`stat-card__value ${overdueCount === 0 ? "stat-card__value--muted" : ""}`}>
             {overdueCount}
@@ -215,7 +228,7 @@ export function AllPage() {
         </div>
         <div className="stat-card stat-card--success">
           <div className="stat-card__label">
-            <CheckIcon /> Закрыто
+            <CheckIcon /> {t("all.closed")}
           </div>
           <div className={`stat-card__value ${doneCount === 0 ? "stat-card__value--muted" : ""}`}>
             {doneCount}
@@ -228,7 +241,7 @@ export function AllPage() {
           className={`chip ${filterCat === null ? "chip--active" : ""}`}
           onClick={() => setFilterCat(null)}
         >
-          Все
+          {t("all.filter_all")}
         </button>
         {cats.map((c) => (
           <button
@@ -248,8 +261,8 @@ export function AllPage() {
           <div className="empty__icon">
             <FolderIcon />
           </div>
-          <div className="empty__title">Чисто</div>
-          <div>Добавь первую задачу круглой кнопкой внизу.</div>
+          <div className="empty__title">{t("all.empty_title")}</div>
+          <div>{t("all.empty_text")}</div>
         </div>
       )}
 
@@ -258,17 +271,17 @@ export function AllPage() {
         if (!items.length) return null;
         const isDone = section.key === "done";
         return (
-          <Section key={section.key} title={section.title} count={items.length} icon={section.icon}>
-            {items.map((t) => (
+          <Section key={section.key} title={t(section.titleKey)} count={items.length} icon={section.icon}>
+            {items.map((task) => (
               <TaskRow
-                key={t.id}
-                task={t}
-                category={t.category_id ? catById.get(t.category_id) : null}
+                key={task.id}
+                task={task}
+                category={task.category_id ? catById.get(task.category_id) : null}
                 onToggle={toggle}
-                subtasks={childrenByParent.get(t.id)}
+                subtasks={childrenByParent.get(task.id)}
                 onToggleSub={toggle}
                 onPostpone={!isDone ? postpone : undefined}
-                onArchive={isDone || section.key === "overdue" ? archive : undefined}
+                onArchive={archive}
                 onDelete={remove}
               />
             ))}
