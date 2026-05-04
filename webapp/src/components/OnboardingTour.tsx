@@ -102,13 +102,13 @@ function PetIcon() {
         </linearGradient>
       </defs>
       <circle cx="24" cy="24" r="24" fill="url(#ob-pet)" opacity="0.15" />
-      {/* main pad */}
-      <ellipse cx="24" cy="30" rx="9" ry="7.5" fill="url(#ob-pet)" />
-      {/* toe pads — four round circles */}
-      <circle cx="14" cy="19" r="4" fill="url(#ob-pet)" />
-      <circle cx="22" cy="14" r="4.5" fill="url(#ob-pet)" />
-      <circle cx="31" cy="14.5" r="4.5" fill="url(#ob-pet)" />
-      <circle cx="34" cy="20" r="4" fill="url(#ob-pet)" />
+      {/* main pad — centered */}
+      <ellipse cx="24" cy="29" rx="8" ry="7" fill="url(#ob-pet)" />
+      {/* four symmetric toe pads */}
+      <circle cx="13.5" cy="17" r="4" fill="url(#ob-pet)" />
+      <circle cx="21" cy="12" r="4" fill="url(#ob-pet)" />
+      <circle cx="27" cy="12" r="4" fill="url(#ob-pet)" />
+      <circle cx="34.5" cy="17" r="4" fill="url(#ob-pet)" />
     </svg>
   );
 }
