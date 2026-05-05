@@ -39,6 +39,8 @@ export function AdminPage() {
   const [coinsBusy, setCoinsBusy] = useState(false);
   const [coinsMsg, setCoinsMsg] = useState<string | null>(null);
 
+  const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
+
   useEffect(() => {
     void loadStats();
   }, []);
@@ -107,6 +109,16 @@ export function AdminPage() {
       setGrantMsg(String(e));
     } finally {
       setGrantBusy(false);
+    }
+  }
+
+  async function testNotification() {
+    setTestNotifMsg(null);
+    try {
+      const res = await api.adminTestNotification();
+      setTestNotifMsg(res.message);
+    } catch (e) {
+      setTestNotifMsg(String(e));
     }
   }
 
@@ -204,6 +216,19 @@ export function AdminPage() {
           ) : (
             <div className="spinner">Загрузка…</div>
           )}
+          <div style={{ marginTop: 14 }}>
+            <button
+              className="btn"
+              onClick={() => void testNotification()}
+            >
+              🔔 Тест уведомлений
+            </button>
+            {testNotifMsg && (
+              <div className="page-header__subtitle" style={{ marginTop: 8 }}>
+                {testNotifMsg}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

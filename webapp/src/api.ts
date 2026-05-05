@@ -363,6 +363,12 @@ export const api = {
       },
     ),
 
+  adminTestNotification: () =>
+    request<{ success: boolean; message: string }>(
+      "/api/admin/test-notification",
+      { method: "POST" },
+    ),
+
   botInfo: () => request<{ bot_username: string }>("/api/bot-info"),
 
   createInvoice: (plan: string) =>

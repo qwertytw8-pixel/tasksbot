@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -215,4 +215,43 @@ async def admin_grant_coins(
         "success": True,
         "message": f"Выдано {payload.coins} монет пользователю {payload.user_id}",
         "new_balance": profile.coins,
+    }
+
+
+@router.post("/test-notification", response_model=dict)
+async def admin_test_notification(
+    request: Request,
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    await _require_admin(session, tg)
+
+    from aiogram import Bot
+
+    bot: Bot = request.app.state.bot
+
+    admins = (
+        await session.execute(
+            select(User).where(User.is_admin.is_(True))
+        )
+    ).scalars().all()
+
+    sent = 0
+    for admin in admins:
+        try:
+            await bot.send_message(
+                chat_id=admin.id,
+                text=(
+                    "🔔 <b>Тестовое уведомление</b>\n\n"
+                    "Если ты видишь это сообщение — "
+                    "отправка уведомлений работает!"
+                ),
+            )
+            sent += 1
+        except Exception:
+            pass
+
+    return {
+        "success": True,
+        "message": f"Отправлено {sent} из {len(admins)} админам",
     }
