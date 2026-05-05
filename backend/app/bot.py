@@ -6,7 +6,7 @@ import asyncio
 import io
 import json
 import logging
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F
@@ -33,11 +33,10 @@ from app.db import Subscription, Task, User, get_sessionmaker
 from app.nlp import (
     ParsedTask,
     commit_parsed,
-    extract_global_date_context,
     format_summary,
     parse_ru,
-    split_into_tasks,
 )
+from app.nlp_ai import smart_parse_tasks
 from app.subscription import PREMIUM_PLANS, RENEWAL_DISCOUNT_PLAN, is_premium
 
 log = logging.getLogger(__name__)
@@ -763,75 +762,34 @@ async def on_plain_text(message: Message) -> None:
 
 
 async def _handle_task_text(message: Message, text: str) -> None:
-    chunks = split_into_tasks(text)
-    if not chunks:
-        chunks = [text]
-
-    # Extract global date context from the full text before splitting.
-    # If a chunk has no date of its own, we inject the global date.
-    global_date: date | None = None
-    if len(chunks) > 1 and message.from_user is not None:
-        sm = get_sessionmaker()
-        async with sm() as session:
-            user = await _ensure_user(
-                session,
-                TelegramUser(
-                    id=message.from_user.id,
-                    first_name=message.from_user.first_name or "",
-                    last_name=message.from_user.last_name,
-                    username=message.from_user.username,
-                    language_code=message.from_user.language_code,
-                    is_premium=None,
-                ),
-            )
-            tz_name = user.tz or "UTC"
-        global_date = extract_global_date_context(text, tz_name=tz_name)
-
-    ru = _is_ru(message=message)
-    if len(chunks) == 1:
-        try:
-            result = await _create_task_from_text(message, chunks[0])
-        except Exception:  # pragma: no cover
-            log.exception("failed to create task from NL text")
-            err = (
-                "Ой, не получилось добавить задачу — "
-                "попробуй ещё раз чуть позже или открой приложение:"
-            ) if ru else (
-                "Oops, couldn't add the task — "
-                "try again later or open the app:"
-            )
-            await message.answer(err, reply_markup=_open_app_kb(ru=ru))
-            return
-        if result is None:
-            return
-        parsed, task, tz = result
-        await message.answer(
-            _format_task_confirmation(parsed, task, tz, ru=ru),
-            reply_markup=_task_actions_kb(task.id, ru=ru),
-        )
+    if message.from_user is None:
         return
 
-    results: list[tuple[ParsedTask, Task, str]] = []
-    for chunk in chunks:
-        try:
-            result = await _create_task_from_text(message, chunk)
-            if result is not None:
-                parsed, task, tz = result
-                # Apply global date to chunks that didn't have their own
-                if global_date is not None and parsed.due_date is None:
-                    parsed.due_date = global_date
-                    task.due_date = global_date
-                    sm2 = get_sessionmaker()
-                    async with sm2() as s2:
-                        t2 = await s2.get(Task, task.id)
-                        if t2 is not None:
-                            t2.due_date = global_date
-                            await s2.commit()
-                results.append((parsed, task, tz))
-        except Exception:  # pragma: no cover
-            log.exception("failed to create task from chunk: %s", chunk)
+    ru = _is_ru(message=message)
+    settings = get_settings()
 
-    if not results:
+    # Resolve user timezone
+    tg = TelegramUser(
+        id=message.from_user.id,
+        first_name=message.from_user.first_name or "",
+        last_name=message.from_user.last_name,
+        username=message.from_user.username,
+        language_code=message.from_user.language_code,
+        is_premium=None,
+    )
+    sm = get_sessionmaker()
+    async with sm() as session:
+        user = await _ensure_user(session, tg)
+        tz_name = user.tz or "UTC"
+
+    # AI-powered parsing with automatic regex fallback
+    parsed_tasks = await smart_parse_tasks(
+        text,
+        groq_api_key=settings.groq_api_key,
+        tz_name=tz_name,
+    )
+
+    if not parsed_tasks:
         err = (
             "Не удалось разобрать задачи — попробуй ещё раз." if ru
             else "Couldn't parse the tasks — please try again."
@@ -839,6 +797,39 @@ async def _handle_task_text(message: Message, text: str) -> None:
         await message.answer(err, reply_markup=_open_app_kb(ru=ru))
         return
 
+    # Persist all parsed tasks
+    results: list[tuple[ParsedTask, Task, str]] = []
+    for parsed in parsed_tasks:
+        try:
+            sm2 = get_sessionmaker()
+            async with sm2() as session:
+                user = await _ensure_user(session, tg)
+                task = await commit_parsed(session, user, parsed)
+                await _sync_reminders(session, task)
+                await session.commit()
+                await session.refresh(task)
+            results.append((parsed, task, tz_name))
+        except Exception:
+            log.exception("failed to create task from parsed: %s", parsed.title)
+
+    if not results:
+        err = (
+            "Не удалось создать задачи — попробуй ещё раз." if ru
+            else "Couldn't create the tasks — please try again."
+        )
+        await message.answer(err, reply_markup=_open_app_kb(ru=ru))
+        return
+
+    # Single task — show with action buttons
+    if len(results) == 1:
+        parsed, task, tz = results[0]
+        await message.answer(
+            _format_task_confirmation(parsed, task, tz, ru=ru),
+            reply_markup=_task_actions_kb(task.id, ru=ru),
+        )
+        return
+
+    # Multiple tasks — show summary
     header = (
         f"✅ <b>Создано задач: {len(results)}</b>"
         if ru else
