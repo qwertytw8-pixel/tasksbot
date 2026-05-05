@@ -249,12 +249,12 @@ export function SunriseIcon(props: IconProps) {
 
 export function PawIcon(props: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <ellipse cx="12" cy="17" rx="5" ry="4" />
-      <circle cx="7" cy="10" r="2" />
-      <circle cx="17" cy="10" r="2" />
-      <circle cx="9.5" cy="7" r="1.5" />
-      <circle cx="14.5" cy="7" r="1.5" />
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <ellipse cx="12" cy="17.2" rx="5" ry="3.8" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" />
+      <ellipse cx="7.3" cy="10.5" rx="2" ry="2.3" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.4" />
+      <ellipse cx="16.7" cy="10.5" rx="2" ry="2.3" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.4" />
+      <ellipse cx="9.8" cy="7.2" rx="1.6" ry="1.9" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.4" />
+      <ellipse cx="14.2" cy="7.2" rx="1.6" ry="1.9" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   );
 }
@@ -305,20 +305,20 @@ export function GridIcon(props: IconProps) {
 
 export function CoinIcon(props: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M14.5 9a3.5 3.5 0 0 0-5 0" />
-      <path d="M12 6v12" />
-      <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <circle cx="12" cy="12" r="9.5" fill="currentColor" opacity="0.15" />
+      <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="6.5" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 2.5" />
+      <text x="12" y="16.5" textAnchor="middle" fontSize="11" fontWeight="800" fill="currentColor" fontFamily="system-ui">$</text>
     </svg>
   );
 }
 
 export function FireIcon(props: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M8.5 14.5A4 4 0 0 0 12 20a4 4 0 0 0 3.5-5.5L12 10l-3.5 4.5Z" />
-      <path d="M12 2c0 4-4 6-4 10a6 6 0 0 0 12 0c0-4-4-6-4-10" />
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path d="M12 2C12 5.5 8.5 7.5 8.5 12a5.5 5.5 0 0 0 11 0C19.5 7.5 16 5.5 16 2c-1 2-2.5 3-4 0Z" fill="currentColor" opacity="0.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14.5 16.5c0 1.38-1.12 2.5-2.5 2.5s-2.5-1.12-2.5-2.5S10.5 12 12 10c1.5 2 2.5 4.12 2.5 6.5Z" fill="currentColor" opacity="0.25" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -340,6 +340,70 @@ export function FlagIcon(props: IconProps) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
       <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  );
+}
+
+export function StarBadgeIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3L12 14.1l-4.8 2.5.9-5.3L4.3 7.6l5.3-.8L12 2Z" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function RocketIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09Z" />
+      <path d="M12 15l-3-3A22 22 0 0 1 15.5 3.5c2.5 0 4.5.5 5 1s1 2.5 1 5A22 22 0 0 1 12 15Z" />
+      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 4 0 4 0" />
+      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-4 0-4" />
+    </svg>
+  );
+}
+
+export function TargetIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function DiamondIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path d="M6 3h12l4 6-10 12L2 9l4-6Z" fill="currentColor" opacity="0.12" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M2 9h20" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M10 3l-2 6 4 12 4-12-2-6" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+export function HeartIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function CrownIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path d="M2 20h20L19 8l-4 5-3-6-3 6-4-5-3 12Z" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M2 20h20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function BoltIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8Z" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   );
 }

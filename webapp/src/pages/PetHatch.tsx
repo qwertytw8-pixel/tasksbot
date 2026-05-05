@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { api, type HatchResponse } from "../api";
 import { PetView } from "../components/PetView";
+import { useToast } from "../components/Toast";
 import { t } from "../useLocale";
 import { haptic } from "../telegram";
 
@@ -17,10 +18,13 @@ export function PetHatchPage() {
   const eggSlug = searchParams.get("egg") ?? "egg_common";
   const isFirst = searchParams.get("first") === "1";
   const navigate = useNavigate();
+  const { show: showToast } = useToast();
 
-  const [phase, setPhase] = useState<"egg" | "hatching" | "cracking" | "reveal">("egg");
+  const [phase, setPhase] = useState<"egg" | "hatching" | "cracking" | "reveal" | "naming">("egg");
   const [result, setResult] = useState<HatchResponse | null>(null);
   const [error, setError] = useState("");
+  const [petName, setPetName] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const doHatch = useCallback(async () => {
     setPhase("hatching");
@@ -37,10 +41,31 @@ export function PetHatchPage() {
         haptic("heavy");
       }, 2800);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error");
+      const msg = e instanceof Error ? e.message : "Error";
+      if (msg.includes("429") || msg.includes("free egg limit")) {
+        showToast(t("Лимит бесплатных яиц исчерпан (3/нед)!", "Free egg limit reached (3/week)!"), "error");
+      }
+      setError(msg);
       setPhase("egg");
     }
-  }, [eggSlug]);
+  }, [eggSlug, showToast]);
+
+  const handleName = useCallback(async () => {
+    if (!result) return;
+    const name = petName.trim();
+    if (name.length > 0 && name.length <= 64) {
+      setSaving(true);
+      try {
+        await api.gameRenamePet(result.pet.id, name);
+        showToast(t(`${name} — отличное имя!`, `${name} — great name!`), "success");
+      } catch {
+        // ignore
+      } finally {
+        setSaving(false);
+      }
+    }
+    navigate("/pet");
+  }, [result, petName, navigate, showToast]);
 
   if (error) {
     return (
@@ -49,6 +74,55 @@ export function PetHatchPage() {
         <button className="pet-nav__btn" onClick={() => navigate("/pet")}>
           {t("Назад", "Back")}
         </button>
+      </div>
+    );
+  }
+
+  if (phase === "naming" && result) {
+    const rarityColor =
+      result.pet.rarity === "epic"
+        ? "#F59E0B"
+        : result.pet.rarity === "rare"
+          ? "#818CF8"
+          : "#9CA3AF";
+
+    return (
+      <div className="page pet-page pet-hatch-reveal">
+        <div className="pet-hatch-reveal__content">
+          <PetView
+            characterType={result.pet.character_type}
+            rarity={result.pet.rarity}
+            stage={1}
+            size={140}
+          />
+          <div
+            className="pet-hatch-reveal__rarity"
+            style={{ color: rarityColor, fontWeight: 800, fontSize: 16, marginTop: 10 }}
+          >
+            {t(result.rarity_name_ru, result.rarity_name_en).toUpperCase()}
+          </div>
+          <div className="pet-hatch-naming">
+            <h3>{t("Как назовёшь?", "Name your pet!")}</h3>
+            <input
+              className="pet-hatch-naming__input"
+              type="text"
+              placeholder={t("Введи имя…", "Enter name…")}
+              value={petName}
+              onChange={(e) => setPetName(e.target.value)}
+              maxLength={64}
+              autoFocus
+            />
+            <div className="pet-hatch-naming__actions">
+              <button
+                className="pet-first-egg__btn"
+                onClick={handleName}
+                disabled={saving}
+              >
+                {petName.trim() ? t("Готово!", "Done!") : t("Пропустить", "Skip")}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -90,9 +164,9 @@ export function PetHatchPage() {
           <button
             className="pet-first-egg__btn"
             style={{ marginTop: 24 }}
-            onClick={() => navigate("/pet")}
+            onClick={() => setPhase("naming")}
           >
-            {t("Отлично!", "Awesome!")}
+            {t("Дать имя!", "Name it!")}
           </button>
         </div>
       </div>
@@ -135,7 +209,7 @@ export function PetHatchPage() {
             </h2>
             <p>{t("Нажми, чтобы открыть!", "Tap to open!")}</p>
             <button className="pet-first-egg__btn" onClick={doHatch}>
-              {t("Открыть! 🎉", "Open! 🎉")}
+              {t("Открыть!", "Open!")}
             </button>
           </>
         )}
