@@ -22,3 +22,4 @@ pnpm dev
 Vercel: подключи репо, root = `webapp/`, Framework = Vite. В Project Settings → Environment Variables
 добавь `VITE_API_URL` = публичный URL бэкенда (Fly.io). Получишь домен типа
 `https://tasksbot.vercel.app` — его и пропиши в @BotFather в настройках Mini App.
+  ; git add webapp/README.md ; git commit -m "chore: trigger Vercel rebuild" ; git push origin main
