@@ -1,15 +1,29 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { api, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
 import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon } from "../icons";
 import { t } from "../useLocale";
+import { haptic } from "../telegram";
+
+interface TapParticle {
+  id: number;
+  x: number;
+  y: number;
+  emoji: string;
+}
+
+const TAP_EMOJIS = ["\u2728", "\u2764\uFE0F", "\u2B50", "\uD83D\uDCAB", "\uD83C\uDF1F"];
+let tapId = 0;
 
 export function PetPage() {
   const [profile, setProfile] = useState<GameProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tapping, setTapping] = useState(false);
+  const [particles, setParticles] = useState<TapParticle[]>([]);
+  const petAreaRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -27,11 +41,38 @@ export function PetPage() {
     load();
   }, [load]);
 
-  if (loading) return <div className="spinner">{t("Загрузка…", "Loading…")}</div>;
+  const handlePetTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    haptic("light");
+    setTapping(true);
+    setTimeout(() => setTapping(false), 300);
+
+    const rect = petAreaRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    let clientX: number, clientY: number;
+    if ("touches" in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const emoji = TAP_EMOJIS[Math.floor(Math.random() * TAP_EMOJIS.length)];
+    const id = tapId++;
+
+    setParticles((prev) => [...prev, { id, x, y, emoji }]);
+    setTimeout(() => {
+      setParticles((prev) => prev.filter((p) => p.id !== id));
+    }, 800);
+  }, []);
+
+  if (loading) return <div className="spinner">{t("\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430\u2026", "Loading\u2026")}</div>;
   if (error) return <div className="page"><p style={{ color: "var(--tb-danger)" }}>{error}</p></div>;
   if (!profile) return null;
 
-  // If user has no pet yet, redirect to hatch
   if (!profile.has_pet) {
     return <PetFirstEgg />;
   }
@@ -65,14 +106,19 @@ export function PetPage() {
         <div className="pet-header__streak">
           <FireIcon className="pet-header__streak-icon" style={{ width: 18, height: 18, color: "#f97316" }} />
           <span className="pet-header__streak-value">
-            {profile.streak_days} {t("дн.", "d")}
+            {profile.streak_days} {t("\u0434\u043d.", "d")}
           </span>
         </div>
       </div>
 
-      {/* Pet display */}
+      {/* Pet display — tappable */}
       {pet && (
-        <div className="pet-display">
+        <div
+          className={`pet-display pet-display--tappable ${tapping ? "pet-display--tapping" : ""}`}
+          ref={petAreaRef}
+          onClick={handlePetTap}
+          style={{ position: "relative", cursor: "pointer" }}
+        >
           <PetView
             characterType={pet.character_type}
             rarity={pet.rarity}
@@ -80,6 +126,22 @@ export function PetPage() {
             accessorySlug={pet.accessory_slug}
             size={160}
           />
+
+          {/* Tap particles */}
+          {particles.map((p) => (
+            <span
+              key={p.id}
+              className="pet-tap-particle"
+              style={{ left: p.x, top: p.y }}
+            >
+              {p.emoji}
+            </span>
+          ))}
+
+          {/* Pet name */}
+          {pet.name && (
+            <div className="pet-display__name">{pet.name}</div>
+          )}
 
           {/* XP progress bar */}
           <div className="pet-xp">
@@ -91,8 +153,8 @@ export function PetPage() {
               <span className="pet-xp__stage">
                 {" "}
                 {t(pet.stage_name_ru, pet.stage_name_en)}
-                {pet.stage < 5 && ` → ${t(
-                  ["Малыш", "Подросток", "Взрослый", "Мастер", "Легенда"][pet.stage] ?? "?",
+                {pet.stage < 5 && ` \u2192 ${t(
+                  ["\u041c\u0430\u043b\u044b\u0448", "\u041f\u043e\u0434\u0440\u043e\u0441\u0442\u043e\u043a", "\u0412\u0437\u0440\u043e\u0441\u043b\u044b\u0439", "\u041c\u0430\u0441\u0442\u0435\u0440", "\u041b\u0435\u0433\u0435\u043d\u0434\u0430"][pet.stage] ?? "?",
                   ["Baby", "Teen", "Adult", "Master", "Legend"][pet.stage] ?? "?"
                 )}`}
               </span>
@@ -105,7 +167,7 @@ export function PetPage() {
       <div className="pet-stats">
         <div className="pet-stats__row">
           <span>
-            {t("Сегодня", "Today")}: +{profile.daily_coins_earned} <CoinIcon style={{ width: 14, height: 14, color: "#facc15", verticalAlign: "middle" }} />
+            {t("\u0421\u0435\u0433\u043e\u0434\u043d\u044f", "Today")}: +{profile.daily_coins_earned} <CoinIcon style={{ width: 14, height: 14, color: "#facc15", verticalAlign: "middle" }} />
           </span>
           <span className="pet-stats__cap">
             ({profile.daily_coins_earned}/{profile.daily_cap})
@@ -119,7 +181,7 @@ export function PetPage() {
           <>
             <div className="pet-stats__row" style={{ marginTop: 8 }}>
               <span>
-                {t("Задачи дня", "Today's tasks")}
+                {t("\u0417\u0430\u0434\u0430\u0447\u0438 \u0434\u043d\u044f", "Today's tasks")}
               </span>
               <span>
                 {profile.today_tasks_done}/{profile.today_tasks_total}
@@ -136,15 +198,15 @@ export function PetPage() {
       <div className="pet-nav">
         <button className="pet-nav__btn" onClick={() => navigate("/pet/shop")}>
           <ShopBagIcon style={{ width: 18, height: 18 }} />
-          {t("Магазин", "Shop")}
+          {t("\u041c\u0430\u0433\u0430\u0437\u0438\u043d", "Shop")}
         </button>
         <button className="pet-nav__btn" onClick={() => navigate("/pet/achievements")}>
           <TrophyIcon style={{ width: 18, height: 18 }} />
-          {t("Достижения", "Achievements")}
+          {t("\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u044f", "Achievements")}
         </button>
         <button className="pet-nav__btn" onClick={() => navigate("/pet/collection")}>
           <GridIcon style={{ width: 18, height: 18 }} />
-          {t("Коллекция", "Collection")}
+          {t("\u041a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044f", "Collection")}
         </button>
       </div>
     </div>
@@ -160,13 +222,13 @@ function PetFirstEgg() {
         <div className="pet-first-egg__egg-img">
           <img src="/game/eggs/common.png" alt="egg" width={120} height={120} draggable={false} />
         </div>
-        <h2>{t("Твоё первое яйцо!", "Your first egg!")}</h2>
-        <p>{t("Нажми, чтобы узнать, кто внутри!", "Tap to find out who's inside!")}</p>
+        <h2>{t("\u0422\u0432\u043e\u0451 \u043f\u0435\u0440\u0432\u043e\u0435 \u044f\u0439\u0446\u043e!", "Your first egg!")}</h2>
+        <p>{t("\u041d\u0430\u0436\u043c\u0438, \u0447\u0442\u043e\u0431\u044b \u0443\u0437\u043d\u0430\u0442\u044c, \u043a\u0442\u043e \u0432\u043d\u0443\u0442\u0440\u0438!", "Tap to find out who's inside!")}</p>
         <button
           className="pet-first-egg__btn"
           onClick={() => navigate("/pet/hatch?egg=egg_common&first=1")}
         >
-          {t("Открыть! 🎉", "Open! 🎉")}
+          {t("\u041e\u0442\u043a\u0440\u044b\u0442\u044c!", "Open!")}
         </button>
       </div>
     </div>

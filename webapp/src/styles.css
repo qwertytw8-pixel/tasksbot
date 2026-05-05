@@ -3316,6 +3316,203 @@ button {
   padding: 32px 0;
 }
 
+/* Collection tabs */
+.collection-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  margin-bottom: 16px;
+}
+
+.collection-tabs__btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--tb-radius-xs);
+  background: transparent;
+  color: var(--tb-hint);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.collection-tabs__btn--active {
+  background: var(--tb-accent-grad);
+  color: #fff;
+}
+
+/* Collection rarity badge */
+.pet-collection__rarity-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+/* Collection pet name */
+.pet-collection__name {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Background image in collection */
+.pet-collection__bg-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));
+}
+
+/* Pet tap interaction */
+.pet-display--tappable {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pet-display--tapping .pet-view__img {
+  animation: pet-tap-bounce 0.3s ease;
+}
+
+@keyframes pet-tap-bounce {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.92); }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.pet-tap-particle {
+  position: absolute;
+  font-size: 20px;
+  pointer-events: none;
+  animation: tap-particle-fly 0.8s ease-out forwards;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+@keyframes tap-particle-fly {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+  30% { opacity: 1; transform: translate(-50%, -100%) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -200%) scale(0.6); }
+}
+
+/* Pet name on main page */
+.pet-display__name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tb-text);
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* Pet naming screen */
+.pet-hatch-naming {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.pet-hatch-naming h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.pet-hatch-naming__input {
+  width: 200px;
+  padding: 10px 14px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  border: 2px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-glass);
+  color: var(--tb-text);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.pet-hatch-naming__input:focus {
+  border-color: var(--tb-accent-strong);
+}
+
+.pet-hatch-naming__actions {
+  margin-top: 16px;
+}
+
+/* Toast notification system */
+.toast-container {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: calc(100% - 24px);
+  max-width: 380px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--tb-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: toast-slide-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.toast--success {
+  background: rgba(16, 185, 129, 0.92);
+  color: #fff;
+}
+
+.toast--error {
+  background: rgba(239, 68, 68, 0.92);
+  color: #fff;
+}
+
+.toast--info {
+  background: rgba(99, 102, 241, 0.92);
+  color: #fff;
+}
+
+.toast--achievement {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(234, 88, 12, 0.95));
+  color: #fff;
+}
+
+.toast__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.toast__message {
+  flex: 1;
+  line-height: 1.3;
+}
+
+@keyframes toast-slide-in {
+  0% { transform: translateY(-30px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
 
 /* ========== Custom DatePicker ========== */
 

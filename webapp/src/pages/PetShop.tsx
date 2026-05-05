@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { api, type GameItem, type GameProfile } from "../api";
 import { CoinIcon } from "../icons";
+import { useToast } from "../components/Toast";
 import { t } from "../useLocale";
 import { haptic } from "../telegram";
 
@@ -12,6 +13,7 @@ export function PetShopPage() {
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<number | null>(null);
   const navigate = useNavigate();
+  const { show: showToast } = useToast();
 
   const load = useCallback(async () => {
     try {
@@ -49,20 +51,24 @@ export function PetShopPage() {
           await api.gameSetBackground(boughtItem.id);
         }
         await load();
-      } catch {
-        // ignore
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "";
+        if (msg.includes("429") || msg.includes("free egg limit")) {
+          showToast(t("Лимит бесплатных яиц исчерпан (3/нед). Купи редкое или эпическое!", "Free egg limit reached (3/week). Buy a rare or epic egg!"), "error");
+        } else if (msg.includes("Not enough") || msg.includes("coins")) {
+          showToast(t("Недостаточно монет!", "Not enough coins!"), "error");
+        }
       } finally {
         setBuying(null);
       }
     },
-    [profile, buying, load, navigate]
+    [profile, buying, load, navigate, showToast]
   );
 
   if (loading) return <div className="spinner">{t("Загрузка…", "Loading…")}</div>;
   if (!profile) return null;
 
   const eggs = items.filter((i) => i.type === "egg");
-  const accessories = items.filter((i) => i.type === "accessory");
   const backgrounds = items.filter((i) => i.type === "background");
 
   return (
@@ -79,8 +85,6 @@ export function PetShopPage() {
 
       {/* Eggs */}
       <ShopSection title={t("Яйца", "Eggs")} items={eggs} coins={profile.coins} buying={buying} onBuy={handleBuy} />
-      {/* Accessories */}
-      <ShopSection title={t("Аксессуары", "Accessories")} items={accessories} coins={profile.coins} buying={buying} onBuy={handleBuy} />
       {/* Backgrounds */}
       <ShopSection title={t("Фоны", "Backgrounds")} items={backgrounds} coins={profile.coins} buying={buying} onBuy={handleBuy} />
     </div>

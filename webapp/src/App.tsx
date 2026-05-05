@@ -3,6 +3,7 @@ import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "reac
 
 import { api } from "./api";
 import { OnboardingTour } from "./components/OnboardingTour";
+import { ToastProvider } from "./components/Toast";
 import { useI18n } from "./i18n";
 import {
   CalendarIcon,
@@ -59,6 +60,7 @@ export function App() {
   }, []);
 
   return (
+    <ToastProvider>
     <div className="app">
       <Suspense fallback={<PageFallback />}>
         <Routes>
@@ -85,6 +87,7 @@ export function App() {
         <OnboardingTour onComplete={() => setShowOnboarding(false)} />
       )}
     </div>
+    </ToastProvider>
   );
 }
 
