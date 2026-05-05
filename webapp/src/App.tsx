@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
+// Build trigger: force Vercel rebuild v2
 import { api } from "./api";
 import { DailyRewardModal } from "./components/DailyRewardModal";
 import { OnboardingTour } from "./components/OnboardingTour";
