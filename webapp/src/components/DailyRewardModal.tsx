@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { api, DailyRewardStatus } from "../api";
+import { api, type DailyRewardStatus } from "../api";
 import { useLocale } from "../useLocale";
 
 interface Props {
