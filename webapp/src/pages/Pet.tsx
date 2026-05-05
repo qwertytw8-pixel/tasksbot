@@ -124,6 +124,7 @@ export function PetPage() {
             rarity={pet.rarity}
             stage={pet.stage}
             accessorySlug={pet.accessory_slug}
+            backgroundSlug={profile.active_background_slug}
             size={160}
           />
 
