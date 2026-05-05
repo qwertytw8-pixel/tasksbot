@@ -368,16 +368,9 @@ async def ensure_game_schema(conn: AsyncConnection) -> None:
         """,
         "CREATE INDEX IF NOT EXISTS ix_game_egg_drops_slug ON game_egg_drops (egg_slug)",
         # v9: daily login reward columns
-        """
-        DO $$ BEGIN
-            ALTER TABLE game_profiles
-                ADD COLUMN IF NOT EXISTS daily_login_day DATE;
-            ALTER TABLE game_profiles
-                ADD COLUMN IF NOT EXISTS
-                daily_login_streak INTEGER NOT NULL DEFAULT 0;
-        EXCEPTION WHEN others THEN NULL;
-        END $$
-        """,
+        "ALTER TABLE game_profiles ADD COLUMN IF NOT EXISTS daily_login_day DATE",
+        "ALTER TABLE game_profiles ADD COLUMN IF NOT EXISTS"
+        " daily_login_streak INTEGER NOT NULL DEFAULT 0",
     ]
     for s in stmts:
         await conn.execute(text(s))

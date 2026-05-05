@@ -1,3 +1,12 @@
+FROM python:3.12-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+COPY .git /tmp/repo/.git
+WORKDIR /tmp/repo
+RUN git rev-parse --short HEAD > /tmp/build_sha 2>/dev/null || echo "unknown" > /tmp/build_sha
+RUN date -u +"%Y-%m-%dT%H:%M:%SZ" > /tmp/build_time
+
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -16,6 +25,12 @@ RUN pip install --upgrade pip && pip install .
 
 COPY backend/ .
 
+# Build metadata for /healthz version check
+COPY --from=builder /tmp/build_sha /tmp/build_time /app/
+RUN echo "BUILD_SHA=$(cat /app/build_sha)" > /app/.build_env \
+    && echo "BUILD_TIME=$(cat /app/build_time)" >> /app/.build_env \
+    && rm -f /app/build_sha /app/build_time
+
 EXPOSE 8080
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "export $(cat /app/.build_env | xargs) && exec uvicorn app.main:app --host 0.0.0.0 --port 8080"]

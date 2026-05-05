@@ -114,7 +114,13 @@ app.include_router(admin_router)
 
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+    import os
+
+    return {
+        "status": "ok",
+        "build_sha": os.getenv("BUILD_SHA", "unknown"),
+        "build_time": os.getenv("BUILD_TIME", "unknown"),
+    }
 
 
 @app.post("/migrate/neon")
