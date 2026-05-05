@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
+import { DailyRewardModal } from "./components/DailyRewardModal";
 import { OnboardingTour } from "./components/OnboardingTour";
 import { ToastProvider } from "./components/Toast";
 import { useI18n } from "./i18n";
@@ -37,6 +38,7 @@ function PageFallback() {
 
 export function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showDailyReward, setShowDailyReward] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +51,16 @@ export function App() {
         }
         if (!cancelled && !me.onboarding_completed) {
           setShowOnboarding(true);
+        }
+        if (!cancelled && me.onboarding_completed) {
+          try {
+            const reward = await api.dailyRewardStatus();
+            if (!cancelled && !reward.claimed_today) {
+              setShowDailyReward(true);
+            }
+          } catch {
+            // ignore
+          }
         }
       } catch {
         // ignore — user will see error in pages
@@ -83,6 +95,9 @@ export function App() {
       </Suspense>
       <Fab />
       <TabBar />
+      {showDailyReward && (
+        <DailyRewardModal onClose={() => setShowDailyReward(false)} />
+      )}
       {showOnboarding && (
         <OnboardingTour onComplete={() => setShowOnboarding(false)} />
       )}
