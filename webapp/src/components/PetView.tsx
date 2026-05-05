@@ -49,7 +49,8 @@ export function PetView({
   const [loaded, setLoaded] = useState(false);
 
   const imgSrc = getPetImagePath(characterType, rarity, stage);
-  const bgSrc = backgroundSlug ? `/game/bg/${backgroundSlug}.png` : null;
+  const bgName = backgroundSlug?.replace(/^bg_/, "") ?? null;
+  const bgSrc = bgName ? `/game/bg/${bgName}.png` : null;
 
   return (
     <div className={`pet-view ${animate ? "pet-view--evolving" : ""}`} style={{ textAlign: "center" }}>

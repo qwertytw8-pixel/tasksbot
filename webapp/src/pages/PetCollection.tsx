@@ -104,6 +104,17 @@ export function PetCollectionPage() {
     [load, showToast]
   );
 
+  const handleRemoveBackground = useCallback(async () => {
+    try {
+      await api.gameSetBackground(null);
+      haptic("medium");
+      showToast(t("Фон убран", "Background removed"), "info");
+      await load();
+    } catch {
+      // ignore
+    }
+  }, [load, showToast]);
+
   if (loading) return <div className="spinner">{t("Загрузка…", "Loading…")}</div>;
 
   const activePetId = profile?.active_pet?.id;
@@ -233,9 +244,14 @@ export function PetCollectionPage() {
                   </div>
                   <div className="pet-collection__actions">
                     {isEquipped ? (
-                      <div className="pet-collection__active-badge">
-                        {t("Установлен", "Equipped")}
-                      </div>
+                      <button
+                        className="pet-collection__delete-btn"
+                        onClick={handleRemoveBackground}
+                        title={t("Убрать фон", "Remove background")}
+                        style={{ fontSize: 11, padding: "4px 10px" }}
+                      >
+                        {t("Убрать", "Remove")}
+                      </button>
                     ) : (
                       <button
                         className="pet-collection__activate-btn"
