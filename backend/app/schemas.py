@@ -148,3 +148,8 @@ class AdminUserOut(BaseModel):
 class AdminGrantIn(BaseModel):
     user_id: int
     duration_days: int | None = None  # None = unlimited
+
+
+class AdminGrantCoinsIn(BaseModel):
+    user_id: int
+    coins: int = Field(ge=1, le=100_000)

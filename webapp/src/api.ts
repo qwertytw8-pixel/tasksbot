@@ -232,6 +232,18 @@ export interface GameAchievement {
   progress: number;
 }
 
+export interface DailyRewardStatus {
+  current_day: number;
+  claimed_today: boolean;
+  rewards: number[];
+}
+
+export interface DailyRewardClaim {
+  coins_earned: number;
+  current_day: number;
+  next_reward: number | null;
+}
+
 export const api = {
   me: () => request<User>("/api/me"),
   updateMe: (tz: string) =>
@@ -302,6 +314,10 @@ export const api = {
       body: JSON.stringify({ item_id }),
     }),
   gameAchievements: () => request<GameAchievement[]>("/api/game/achievements"),
+  dailyRewardStatus: () =>
+    request<DailyRewardStatus>("/api/game/daily-reward"),
+  claimDailyReward: () =>
+    request<DailyRewardClaim>("/api/game/daily-reward", { method: "POST" }),
 
   // -------------------- Subscription & Admin --------------------
   subscriptionStatus: () =>
@@ -338,6 +354,20 @@ export const api = {
         duration_days: durationDays,
       }),
     }),
+  adminGrantCoins: (userId: number, coins: number) =>
+    request<{ success: boolean; message: string; new_balance: number }>(
+      "/api/admin/grant-coins",
+      {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId, coins }),
+      },
+    ),
+
+  adminTestNotification: () =>
+    request<{ success: boolean; message: string }>(
+      "/api/admin/test-notification",
+      { method: "POST" },
+    ),
 
   botInfo: () => request<{ bot_username: string }>("/api/bot-info"),
 

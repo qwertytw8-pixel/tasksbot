@@ -98,6 +98,18 @@ class GameAchievementOut(BaseModel):
     progress: int = 0
 
 
+class DailyRewardStatus(BaseModel):
+    current_day: int = 0
+    claimed_today: bool = False
+    rewards: list[int] = []
+
+
+class DailyRewardClaim(BaseModel):
+    coins_earned: int
+    current_day: int
+    next_reward: int | None = None
+
+
 class DeletePetResponse(BaseModel):
     deleted: bool = True
     message: str = "pet deleted"

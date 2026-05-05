@@ -37,6 +37,8 @@ class GameProfile(Base):
     daily_coins_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     active_pet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     active_background_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    daily_login_day: Mapped[date | None] = mapped_column(Date, nullable=True)
+    daily_login_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False
     )

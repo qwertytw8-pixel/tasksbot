@@ -33,6 +33,8 @@ from app.game_models import (
 )
 from app.game_schemas import (
     BuyRequest,
+    DailyRewardClaim,
+    DailyRewardStatus,
     DeletePetResponse,
     EquipRequest,
     GameAchievementOut,
@@ -571,3 +573,78 @@ async def get_achievements(
         )
 
     return result
+
+
+# -------------------- Daily Login Reward --------------------
+
+DAILY_REWARDS = [5, 10, 15, 20, 30, 40, 75]
+
+
+@router.get("/daily-reward", response_model=DailyRewardStatus)
+async def daily_reward_status(
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.api import _ensure_user
+    user = await _ensure_user(session, tg)
+    profile = await _ensure_profile(session, tg.id)
+    today = _user_today(user.tz)
+
+    claimed = profile.daily_login_day == today
+    day = profile.daily_login_streak
+    if not claimed and profile.daily_login_day is not None:
+        diff = (today - profile.daily_login_day).days
+        if diff > 1:
+            day = 0
+
+    return DailyRewardStatus(
+        current_day=min(day, 7),
+        claimed_today=claimed,
+        rewards=DAILY_REWARDS,
+    )
+
+
+@router.post("/daily-reward", response_model=DailyRewardClaim)
+async def claim_daily_reward(
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.api import _ensure_user
+    user = await _ensure_user(session, tg)
+    profile = await _ensure_profile(session, tg.id)
+    today = _user_today(user.tz)
+
+    if profile.daily_login_day == today:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Daily reward already claimed today",
+        )
+
+    if profile.daily_login_day is not None:
+        diff = (today - profile.daily_login_day).days
+        if diff == 1:
+            profile.daily_login_streak = min(profile.daily_login_streak + 1, 7)
+        elif diff > 1:
+            profile.daily_login_streak = 1
+        else:
+            profile.daily_login_streak = 1
+    else:
+        profile.daily_login_streak = 1
+
+    day_index = profile.daily_login_streak - 1
+    reward = DAILY_REWARDS[day_index] if day_index < len(DAILY_REWARDS) else DAILY_REWARDS[-1]
+
+    profile.coins += reward
+    profile.total_coins_earned += reward
+    profile.daily_login_day = today
+
+    await session.commit()
+
+    next_day = profile.daily_login_streak
+    next_reward = DAILY_REWARDS[next_day] if next_day < len(DAILY_REWARDS) else None
+
+    return DailyRewardClaim(
+        coins_earned=reward,
+        current_day=profile.daily_login_streak,
+        next_reward=next_reward,
+    )
