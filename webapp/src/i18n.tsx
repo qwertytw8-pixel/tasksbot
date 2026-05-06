@@ -45,6 +45,14 @@ export function useI18n() {
   return useContext(I18nContext);
 }
 
+/** Inline locale picker that reacts to i18n context changes */
+export function useT() {
+  const { lang } = useContext(I18nContext);
+  return useCallback((ru: string, en: string): string => {
+    return lang === "ru" ? ru : en;
+  }, [lang]);
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(getStoredLang);
 
@@ -139,6 +147,8 @@ const ru: Record<string, string> = {
   "profile.premium_until": "До",
   "profile.premium_lifetime": "Бессрочная",
   "profile.premium_unlock": "Разблокируй все возможности",
+  "profile.coins_title": "Баланс",
+  "profile.daily_reward_btn": "Ежедневная награда",
   "profile.promo": "Промокод",
   "profile.promo_placeholder": "Введи промокод",
   "profile.promo_activate": "Активировать",

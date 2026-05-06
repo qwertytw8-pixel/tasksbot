@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { t } from "../useLocale";
+import { useT } from "../i18n";
 
 interface PetViewProps {
   characterType: string;
@@ -42,6 +42,7 @@ export function PetView({
   backgroundSlug,
   animate = false,
 }: PetViewProps) {
+  const t = useT();
   const borderColor = RARITY_COLORS[rarity] ?? RARITY_COLORS.common;
   const glow = RARITY_GLOW[rarity] ?? RARITY_GLOW.common;
   const label = CHARACTER_LABELS[characterType];

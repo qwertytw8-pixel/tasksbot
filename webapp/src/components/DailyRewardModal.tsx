@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api, type DailyRewardStatus } from "../api";
-import { useLocale } from "../useLocale";
+import { CoinIcon } from "../icons";
+import { useT } from "../i18n";
 
 interface Props {
   onClose: () => void;
@@ -11,7 +12,8 @@ const DAY_LABELS_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const DAY_LABELS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function DailyRewardModal({ onClose }: Props) {
-  const locale = useLocale();
+  const t = useT();
+  const locale = t("ru", "en") as "ru" | "en";
   const [status, setStatus] = useState<DailyRewardStatus | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [earned, setEarned] = useState<number | null>(null);
@@ -77,7 +79,10 @@ export function DailyRewardModal({ onClose }: Props) {
                 <span className="daily-reward-day-label">
                   {dayLabels[i]}
                 </span>
-                <span className="daily-reward-coins">🪙 {reward}</span>
+                <span className="daily-reward-coins">
+                  <CoinIcon style={{ width: 14, height: 14, verticalAlign: "-2px", marginRight: 2 }} />
+                  {reward}
+                </span>
                 {isCollected && <span className="daily-reward-check">✓</span>}
               </div>
             );

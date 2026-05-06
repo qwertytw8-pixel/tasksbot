@@ -15,7 +15,7 @@ import {
   TrophyIcon,
   CheckIcon,
 } from "../icons";
-import { t } from "../useLocale";
+import { useT } from "../i18n";
 
 const ACHIEVEMENT_ICONS: Record<string, (color: string) => ReactNode> = {
   "\uD83C\uDFAF": (c) => <TargetIcon style={{ width: 24, height: 24, color: c }} />,
@@ -38,6 +38,7 @@ function getAchievementIcon(icon: string, unlocked: boolean): ReactNode {
 }
 
 export function PetAchievementsPage() {
+  const t = useT();
   const [achievements, setAchievements] = useState<GameAchievement[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -101,6 +102,7 @@ export function PetAchievementsPage() {
 }
 
 function AchievementCard({ achievement: a }: { achievement: GameAchievement }) {
+  const t = useT();
   const progress = Math.min(100, (a.progress / a.condition_value) * 100);
 
   return (

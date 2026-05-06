@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, type HatchResponse } from "../api";
 import { PetView } from "../components/PetView";
 import { useToast } from "../components/Toast";
-import { t } from "../useLocale";
+import { useT } from "../i18n";
 import { haptic } from "../telegram";
 
 const EGG_IMAGES: Record<string, string> = {
@@ -14,6 +14,7 @@ const EGG_IMAGES: Record<string, string> = {
 };
 
 export function PetHatchPage() {
+  const t = useT();
   const [searchParams] = useSearchParams();
   const eggSlug = searchParams.get("egg") ?? "egg_common";
   const isFirst = searchParams.get("first") === "1";
