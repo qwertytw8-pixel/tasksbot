@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
 import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon } from "../icons";
-import { t } from "../useLocale";
+import { useT } from "../i18n";
 import { haptic } from "../telegram";
 
 interface TapParticle {
@@ -18,6 +18,7 @@ const TAP_EMOJIS = ["\u2728", "\u2764\uFE0F", "\u2B50", "\uD83D\uDCAB", "\uD83C\
 let tapId = 0;
 
 export function PetPage() {
+  const t = useT();
   const [profile, setProfile] = useState<GameProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -215,6 +216,7 @@ export function PetPage() {
 }
 
 function PetFirstEgg() {
+  const t = useT();
   const navigate = useNavigate();
 
   return (

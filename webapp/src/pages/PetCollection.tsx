@@ -5,7 +5,7 @@ import { api, type GameItem, type GamePet, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
 import { TrashXIcon } from "../icons";
 import { useToast } from "../components/Toast";
-import { t } from "../useLocale";
+import { useT } from "../i18n";
 import { haptic } from "../telegram";
 
 type Tab = "pets" | "backgrounds";
@@ -23,6 +23,7 @@ const RARITY_LABELS: Record<string, [string, string]> = {
 };
 
 export function PetCollectionPage() {
+  const t = useT();
   const [pets, setPets] = useState<GamePet[]>([]);
   const [profile, setProfile] = useState<GameProfile | null>(null);
   const [ownedItems, setOwnedItems] = useState<GameItem[]>([]);

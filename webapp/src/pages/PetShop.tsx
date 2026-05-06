@@ -4,10 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { api, type GameItem, type GameProfile } from "../api";
 import { CoinIcon } from "../icons";
 import { useToast } from "../components/Toast";
-import { t } from "../useLocale";
+import { useT } from "../i18n";
 import { haptic } from "../telegram";
 
 export function PetShopPage() {
+  const t = useT();
   const [items, setItems] = useState<GameItem[]>([]);
   const [profile, setProfile] = useState<GameProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,6 +129,7 @@ function ShopCard({
   buying: number | null;
   onBuy: (item: GameItem) => void;
 }) {
+  const t = useT();
   const canAfford = coins >= item.price;
   const isOwned = item.owned && item.type !== "egg";
   const isBuying = buying === item.id;
