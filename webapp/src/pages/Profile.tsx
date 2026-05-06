@@ -121,13 +121,15 @@ function ProfileHome({ onResetOnboarding, onShowDailyReward }: { onResetOnboardi
             <CoinIcon style={{ width: 20, height: 20 }} />
             <span>{gameProfile?.coins ?? 0}</span>
           </div>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => onShowDailyReward?.()}
-          >
-            {t("profile.daily_reward_btn")}
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => onShowDailyReward?.()}
+            >
+              {t("profile.daily_reward_btn")}
+            </button>
+          )}
         </div>
       </div>
 

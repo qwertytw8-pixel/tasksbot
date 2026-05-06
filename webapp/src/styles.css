@@ -4563,8 +4563,12 @@ button {
 
 .daily-reward-modal {
   position: relative;
-  background: var(--card-bg);
-  border-radius: 20px;
+  background: var(--tb-glass-strong);
+  backdrop-filter: var(--tb-blur);
+  -webkit-backdrop-filter: var(--tb-blur);
+  border: 1px solid var(--tb-glass-border);
+  box-shadow: var(--tb-shadow);
+  border-radius: var(--tb-radius);
   padding: 28px 20px 24px;
   width: 90%;
   max-width: 360px;
