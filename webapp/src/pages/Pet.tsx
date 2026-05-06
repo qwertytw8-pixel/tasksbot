@@ -124,11 +124,11 @@ export function PetPage() {
       {/* Header with coins and streak */}
       <div className="pet-header">
         <div className="pet-header__coins">
-          <CoinIcon className="pet-header__coin-icon" style={{ width: 18, height: 18, color: "#facc15" }} />
+          <CoinIcon className="pet-header__coin-icon" style={{ width: 18, height: 18, color: "var(--tb-accent-strong)" }} />
           <span className="pet-header__coin-value">{profile.coins}</span>
         </div>
         <div className="pet-header__streak">
-          <FireIcon className="pet-header__streak-icon" style={{ width: 18, height: 18, color: "#f97316" }} />
+          <FireIcon className="pet-header__streak-icon" style={{ width: 18, height: 18, color: "var(--tb-accent-strong)" }} />
           <span className="pet-header__streak-value">
             {profile.streak_days} {t("\u0434\u043d.", "d")}
           </span>
@@ -147,6 +147,8 @@ export function PetPage() {
             characterType={pet.character_type}
             rarity={pet.rarity}
             stage={pet.stage}
+            name={pet.name}
+            showName={false}
             accessorySlug={pet.accessory_slug}
             backgroundSlug={profile.active_background_slug}
             size={160}
@@ -198,7 +200,7 @@ export function PetPage() {
                 }}
                 title={t("\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c", "Rename")}
               >
-                <EditIcon style={{ width: 14, height: 14 }} />
+                <EditIcon style={{ width: 14, height: 14, color: "var(--tb-accent-strong)" }} />
               </button>
             </div>
           )}

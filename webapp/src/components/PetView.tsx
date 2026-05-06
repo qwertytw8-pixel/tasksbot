@@ -6,6 +6,8 @@ interface PetViewProps {
   characterType: string;
   rarity: string;
   stage: number;
+  name?: string | null;
+  showName?: boolean;
   accessorySlug?: string | null;
   size?: number;
   backgroundSlug?: string | null;
@@ -38,6 +40,8 @@ export function PetView({
   characterType,
   rarity,
   stage,
+  name,
+  showName = true,
   size = 160,
   backgroundSlug,
   animate = false,
@@ -46,7 +50,8 @@ export function PetView({
   const borderColor = RARITY_COLORS[rarity] ?? RARITY_COLORS.common;
   const glow = RARITY_GLOW[rarity] ?? RARITY_GLOW.common;
   const label = CHARACTER_LABELS[characterType];
-  const name = label ? t(label[0], label[1]) : characterType;
+  const defaultName = label ? t(label[0], label[1]) : characterType;
+  const displayName = name || defaultName;
   const [loaded, setLoaded] = useState(false);
 
   const imgSrc = getPetImagePath(characterType, rarity, stage);
@@ -73,7 +78,7 @@ export function PetView({
       >
         <img
           src={imgSrc}
-          alt={name}
+          alt={displayName}
           width={size}
           height={size}
           className={`pet-view__img ${loaded ? "pet-view__img--loaded" : ""}`}
@@ -82,9 +87,11 @@ export function PetView({
           style={{ objectFit: "contain" }}
         />
       </div>
-      <div className="pet-view__name" style={{ marginTop: 8, fontWeight: 700, fontSize: 16 }}>
-        {name}
-      </div>
+      {showName && (
+        <div className="pet-view__name" style={{ marginTop: 8, fontWeight: 700, fontSize: 16 }}>
+          {displayName}
+        </div>
+      )}
     </div>
   );
 }

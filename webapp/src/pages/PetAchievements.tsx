@@ -31,7 +31,7 @@ const ACHIEVEMENT_ICONS: Record<string, (color: string) => ReactNode> = {
 };
 
 function getAchievementIcon(icon: string, unlocked: boolean): ReactNode {
-  const color = unlocked ? "#F59E0B" : "#9CA3AF";
+  const color = unlocked ? "var(--tb-accent-strong)" : "#9CA3AF";
   const factory = ACHIEVEMENT_ICONS[icon];
   if (factory) return factory(color);
   return <StarBadgeIcon style={{ width: 24, height: 24, color }} />;
@@ -132,7 +132,7 @@ function AchievementCard({ achievement: a }: { achievement: GameAchievement }) {
         )}
       </div>
       <div className="achievement-card__reward">
-        +{a.reward_coins} <CoinIcon style={{ width: 14, height: 14, color: "#facc15", verticalAlign: "middle" }} />
+        +{a.reward_coins} <CoinIcon style={{ width: 14, height: 14, color: "var(--tb-accent-strong)", verticalAlign: "middle" }} />
       </div>
     </div>
   );
