@@ -147,8 +147,7 @@ const ru: Record<string, string> = {
   "profile.premium_until": "До",
   "profile.premium_lifetime": "Бессрочная",
   "profile.premium_unlock": "Разблокируй все возможности",
-  "profile.coins_title": "Баланс",
-  "profile.daily_reward_btn": "Ежедневная награда",
+  // profile.coins_title and profile.daily_reward_btn removed — moved to admin
   "profile.promo": "Промокод",
   "profile.promo_placeholder": "Введи промокод",
   "profile.promo_activate": "Активировать",
@@ -178,6 +177,30 @@ const ru: Record<string, string> = {
   "profile.admin": "👑 Админ-панель",
   "profile.admin_sub": "Статистика, промокоды, управление пользователями",
   "profile.back": "Профиль",
+
+  // Daily Reward
+  "dr.title": "Ежедневный бонус",
+  "dr.subtitle": "Заходи каждый день и получай монетки!",
+  "dr.claimed": "Сегодня уже получено!",
+  "dr.earned": "+{coins} монет получено!",
+  "dr.claim": "Забрать награду",
+  "dr.days": "Пн,Вт,Ср,Чт,Пт,Сб,Вс",
+
+  // Admin
+  "admin.test_daily_reward": "🎁 Тест ежедневной награды",
+
+  // Pet
+  "pet.rename": "Имя питомца",
+  "pet.rename_placeholder": "Например, Пушок",
+  "pet.save_name": "Сохранить",
+
+  // Pet Collection
+  "collection.remove": "Убрать",
+  "collection.equip": "Установить",
+
+  // Pet Achievements
+  "achievements.title": "Достижения",
+  "achievements.subtitle": "Выполняй задачи — открывай достижения!",
 
   // Support page
   "support.title": "Поддержка",
@@ -472,6 +495,30 @@ const en: Record<string, string> = {
   "profile.admin": "👑 Admin panel",
   "profile.admin_sub": "Stats, promo codes, user management",
   "profile.back": "Profile",
+
+  // Daily Reward
+  "dr.title": "Daily Reward",
+  "dr.subtitle": "Visit every day and earn coins!",
+  "dr.claimed": "Already claimed today!",
+  "dr.earned": "+{coins} coins earned!",
+  "dr.claim": "Claim Reward",
+  "dr.days": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+
+  // Admin
+  "admin.test_daily_reward": "🎁 Test daily reward",
+
+  // Pet
+  "pet.rename": "Pet name",
+  "pet.rename_placeholder": "e.g. Fluffy",
+  "pet.save_name": "Save",
+
+  // Pet Collection
+  "collection.remove": "Remove",
+  "collection.equip": "Equip",
+
+  // Pet Achievements
+  "achievements.title": "Achievements",
+  "achievements.subtitle": "Complete tasks to unlock achievements!",
 
   // Support page
   "support.title": "Support",

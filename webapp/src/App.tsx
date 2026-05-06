@@ -87,9 +87,9 @@ export function App() {
           <Route path="/pet/achievements" element={<PetAchievementsPage />} />
           <Route path="/pet/shop" element={<PetShopPage />} />
           <Route path="/pet/collection" element={<PetCollectionPage />} />
-          <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} onShowDailyReward={() => setShowDailyReward(true)} />} />
+          <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/about" element={<Navigate to="/profile" replace />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin" element={<AdminPage onShowDailyReward={() => setShowDailyReward(true)} />} />
           <Route path="/new" element={<TaskFormPage />} />
           <Route path="/edit/:id" element={<TaskFormPage />} />
         </Routes>

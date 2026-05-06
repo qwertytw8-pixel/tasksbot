@@ -2,18 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api, type DailyRewardStatus } from "../api";
 import { CoinIcon } from "../icons";
-import { useT } from "../i18n";
+import { useI18n } from "../i18n";
 
 interface Props {
   onClose: () => void;
 }
 
-const DAY_LABELS_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-const DAY_LABELS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 export function DailyRewardModal({ onClose }: Props) {
-  const t = useT();
-  const locale = t("ru", "en") as "ru" | "en";
+  const { t, lang } = useI18n();
+  const locale = lang;
   const [status, setStatus] = useState<DailyRewardStatus | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [earned, setEarned] = useState<number | null>(null);
@@ -42,7 +39,7 @@ export function DailyRewardModal({ onClose }: Props) {
 
   if (!status) return null;
 
-  const dayLabels = locale === "ru" ? DAY_LABELS_RU : DAY_LABELS_EN;
+  const dayLabels = t("dr.days").split(",");
   const rewards = status.rewards;
   const currentDay = status.current_day;
   const alreadyClaimed = status.claimed_today;
@@ -57,14 +54,8 @@ export function DailyRewardModal({ onClose }: Props) {
           ✕
         </button>
 
-        <h2 className="daily-reward-title">
-          {locale === "ru" ? "Ежедневный бонус" : "Daily Reward"}
-        </h2>
-        <p className="daily-reward-subtitle">
-          {locale === "ru"
-            ? "Заходи каждый день и получай монетки!"
-            : "Visit every day and earn coins!"}
-        </p>
+        <h2 className="daily-reward-title">{t("dr.title")}</h2>
+        <p className="daily-reward-subtitle">{t("dr.subtitle")}</p>
 
         <div className="daily-reward-grid">
           {rewards.map((reward, i) => {
@@ -91,23 +82,17 @@ export function DailyRewardModal({ onClose }: Props) {
 
         {earned !== null ? (
           <div className="daily-reward-earned">
-            {locale === "ru"
-              ? `+${earned} монет получено!`
-              : `+${earned} coins earned!`}
+            {t("dr.earned").replace("{coins}", String(earned))}
           </div>
         ) : alreadyClaimed ? (
-          <div className="daily-reward-earned">
-            {locale === "ru"
-              ? "Сегодня уже получено!"
-              : "Already claimed today!"}
-          </div>
+          <div className="daily-reward-earned">{t("dr.claimed")}</div>
         ) : (
           <button
             className="daily-reward-btn"
             disabled={claiming}
             onClick={claim}
           >
-            {locale === "ru" ? "Забрать награду" : "Claim Reward"}
+            {t("dr.claim")}
           </button>
         )}
       </div>

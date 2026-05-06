@@ -249,12 +249,17 @@ export function SunriseIcon(props: IconProps) {
 
 export function PawIcon(props: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" {...props}>
-      <ellipse cx="12" cy="17.2" rx="5" ry="3.8" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" />
-      <ellipse cx="7.3" cy="10.5" rx="2" ry="2.3" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.4" />
-      <ellipse cx="16.7" cy="10.5" rx="2" ry="2.3" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.4" />
-      <ellipse cx="9.8" cy="7.2" rx="1.6" ry="1.9" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.4" />
-      <ellipse cx="14.2" cy="7.2" rx="1.6" ry="1.9" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.4" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <ellipse cx="12" cy="16.8" rx="4.6" ry="3.5" fill="currentColor" opacity="0.14" />
+      <ellipse cx="12" cy="16.8" rx="4.6" ry="3.5" />
+      <ellipse cx="7.3" cy="10.3" rx="1.9" ry="2.2" fill="currentColor" opacity="0.14" />
+      <ellipse cx="7.3" cy="10.3" rx="1.9" ry="2.2" />
+      <ellipse cx="16.7" cy="10.3" rx="1.9" ry="2.2" fill="currentColor" opacity="0.14" />
+      <ellipse cx="16.7" cy="10.3" rx="1.9" ry="2.2" />
+      <ellipse cx="9.8" cy="6.9" rx="1.5" ry="1.8" fill="currentColor" opacity="0.14" />
+      <ellipse cx="9.8" cy="6.9" rx="1.5" ry="1.8" />
+      <ellipse cx="14.2" cy="6.9" rx="1.5" ry="1.8" fill="currentColor" opacity="0.14" />
+      <ellipse cx="14.2" cy="6.9" rx="1.5" ry="1.8" />
     </svg>
   );
 }
@@ -281,12 +286,13 @@ export function ShopBagIcon(props: IconProps) {
 
 export function TrophyIcon(props: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
       <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
       <path d="M4 22h16" />
       <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22" />
       <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" fill="currentColor" opacity="0.14" />
       <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
     </svg>
   );
@@ -316,9 +322,11 @@ export function CoinIcon(props: IconProps) {
 
 export function FireIcon(props: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" {...props}>
-      <path d="M12 2C12 5.5 8.5 7.5 8.5 12a5.5 5.5 0 0 0 11 0C19.5 7.5 16 5.5 16 2c-1 2-2.5 3-4 0Z" fill="currentColor" opacity="0.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14.5 16.5c0 1.38-1.12 2.5-2.5 2.5s-2.5-1.12-2.5-2.5S10.5 12 12 10c1.5 2 2.5 4.12 2.5 6.5Z" fill="currentColor" opacity="0.25" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 2c0 2.8-2 4.8-3 7.8-1 3 0 5.5 1.5 7.5C10 15.5 9 13 9.5 11c.5-2 1.5-3.5 2.5-5.5.5 1.5 1.5 3 2 5 .5 2 0 4.5-1 6.5 1.5-2 2.5-4.5 1.5-7.5-1-3-3-5-3-7.8Z" fill="currentColor" opacity="0.18" />
+      <path d="M12 2c0 2.8-2 4.8-3 7.8-1 3 0 5.5 1.5 7.5C10 15.5 9 13 9.5 11c.5-2 1.5-3.5 2.5-5.5.5 1.5 1.5 3 2 5 .5 2 0 4.5-1 6.5 1.5-2 2.5-4.5 1.5-7.5-1-3-3-5-3-7.8Z" />
+      <path d="M12 8c-.5 1.5-1.5 3-1.5 5s.5 3.5 1.5 4.5c1-1 1.5-2.5 1.5-4.5S12.5 9.5 12 8Z" fill="currentColor" opacity="0.28" />
+      <path d="M12 8c-.5 1.5-1.5 3-1.5 5s.5 3.5 1.5 4.5c1-1 1.5-2.5 1.5-4.5S12.5 9.5 12 8Z" />
     </svg>
   );
 }
@@ -404,6 +412,15 @@ export function BoltIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
       <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8Z" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function EditIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
     </svg>
   );
 }

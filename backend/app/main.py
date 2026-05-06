@@ -19,6 +19,7 @@ from app.bot import configure_bot_commands, dp
 from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
 from app.game_seed import ensure_game_schema, seed_game_data
+from app.jobs import set_bot_for_scheduler, start_scheduler, stop_scheduler
 from app.scheduler import (
     run_daily_summary,
     run_personal_offers,
@@ -66,32 +67,37 @@ async def lifespan(app: FastAPI):
     bot_me = await bot.get_me()
     app.state.bot_username = bot_me.username or ""
 
-    # Webhook
-    await bot.set_webhook(
-        url=settings.webhook_url,
-        secret_token=settings.webhook_secret,
-        drop_pending_updates=True,
-        allowed_updates=dp.resolve_used_update_types(),
-    )
-    await configure_bot_commands(bot)
-
-    # Menu button — shows "Открыть" in chat list
     try:
-        await bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(
-                text="Открыть",
-                web_app=WebAppInfo(url=settings.webapp_url),
-            ),
-        )
-        log.info("menu button set")
-    except Exception as exc:
-        log.warning("menu button failed: %s", exc)
+        # Webhook — may fail if DNS is not yet propagated (Amvera cold-start)
+        try:
+            await bot.set_webhook(
+                url=settings.webhook_url,
+                secret_token=settings.webhook_secret,
+                drop_pending_updates=True,
+                allowed_updates=dp.resolve_used_update_types(),
+            )
+            await configure_bot_commands(bot)
+            log.info("webhook set: %s", settings.webhook_url)
+        except Exception as exc:
+            log.warning("webhook setup failed: %s", exc)
 
-    log.info("webhook set: %s", settings.webhook_url)
+        # Menu button — shows "Открыть" in chat list
+        try:
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="Открыть",
+                    web_app=WebAppInfo(url=settings.webapp_url),
+                ),
+            )
+            log.info("menu button set")
+        except Exception as exc:
+            log.warning("menu button failed: %s", exc)
 
-    try:
+        set_bot_for_scheduler(bot)
+        start_scheduler(bot)
         yield
     finally:
+        stop_scheduler()
         await bot.session.close()
 
 

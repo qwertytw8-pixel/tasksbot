@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate } from "react-router-dom";
 
-import { api, type Category, type GameProfile, type PrivacyInfo, type SubscriptionStatus, type Task } from "../api";
+import { api, type Category, type PrivacyInfo, type SubscriptionStatus, type Task } from "../api";
 import { TaskRow } from "../components/TaskRow";
 import { useI18n, getStoredHorizon, setStoredHorizon } from "../i18n";
 import {
@@ -9,7 +9,6 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ChevronLeftIcon,
-  CoinIcon,
   HelpIcon,
   MonitorIcon,
   MoonIcon,
@@ -27,7 +26,7 @@ const SUPPORT_TG_URL = "https://t.me/ficsyk";
 
 const HORIZON_OPTIONS = [7, 14, 30, 90, 0] as const;
 
-function ProfileHome({ onResetOnboarding, onShowDailyReward }: { onResetOnboarding?: () => void; onShowDailyReward?: () => void }) {
+function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) {
   const { t, lang, setLang } = useI18n();
   const navigate = useNavigate();
   const [mode, setMode] = useState<ThemeMode>(() => getStoredMode());
@@ -37,15 +36,13 @@ function ProfileHome({ onResetOnboarding, onShowDailyReward }: { onResetOnboardi
   const [promoMsg, setPromoMsg] = useState<string | null>(null);
   const [promoBusy, setPromoBusy] = useState(false);
   const [horizon, setHorizonState] = useState(() => getStoredHorizon());
-  const [gameProfile, setGameProfile] = useState<GameProfile | null>(null);
 
   useEffect(() => {
     void (async () => {
       try {
-        const [me, sub, gp] = await Promise.all([api.me(), api.subscriptionStatus(), api.gameProfile()]);
+        const [me, sub] = await Promise.all([api.me(), api.subscriptionStatus()]);
         setSubStatus(sub);
         setIsAdmin(me.is_admin);
-        setGameProfile(gp);
       } catch {
         // ignore
       }
@@ -111,27 +108,6 @@ function ProfileHome({ onResetOnboarding, onShowDailyReward }: { onResetOnboardi
         />
       </div>
 
-      {/* Coins & Daily Reward */}
-      <div className="surface" style={{ marginBottom: 14 }}>
-        <div className="surface__heading">
-          <CoinIcon /> {t("profile.coins_title")}
-        </div>
-        <div className="promo-row" style={{ marginTop: 8 }}>
-          <div className="coin-badge" style={{ flex: 1, justifyContent: "flex-start", padding: "10px 12px" }}>
-            <CoinIcon style={{ width: 20, height: 20 }} />
-            <span>{gameProfile?.coins ?? 0}</span>
-          </div>
-          {isAdmin && (
-            <button
-              type="button"
-              className="btn"
-              onClick={() => onShowDailyReward?.()}
-            >
-              {t("profile.daily_reward_btn")}
-            </button>
-          )}
-        </div>
-      </div>
 
       <div className="surface" style={{ marginBottom: 14 }}>
         <div className="surface__heading">
@@ -549,10 +525,10 @@ function ArchivePage() {
   );
 }
 
-export function ProfileRoutes({ onResetOnboarding, onShowDailyReward }: { onResetOnboarding?: () => void; onShowDailyReward?: () => void }) {
+export function ProfileRoutes({ onResetOnboarding }: { onResetOnboarding?: () => void }) {
   return (
     <Routes>
-      <Route index element={<ProfileHome onResetOnboarding={onResetOnboarding} onShowDailyReward={onShowDailyReward} />} />
+      <Route index element={<ProfileHome onResetOnboarding={onResetOnboarding} />} />
       <Route path="archive" element={<ArchivePage />} />
       <Route path="support" element={<SupportPage />} />
       <Route path="privacy" element={<PrivacyPage />} />

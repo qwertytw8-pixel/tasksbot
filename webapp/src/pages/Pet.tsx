@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { api, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
-import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon } from "../icons";
+import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon, EditIcon } from "../icons";
 import { useT } from "../i18n";
 import { haptic } from "../telegram";
 
@@ -24,6 +24,9 @@ export function PetPage() {
   const [error, setError] = useState("");
   const [tapping, setTapping] = useState(false);
   const [particles, setParticles] = useState<TapParticle[]>([]);
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [renaming, setRenaming] = useState(false);
   const petAreaRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -42,7 +45,27 @@ export function PetPage() {
     load();
   }, [load]);
 
-  const handlePetTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const handleSaveName = useCallback(async () => {
+    const activePet = profile?.active_pet;
+    if (!activePet || !newName.trim()) return;
+    setRenaming(true);
+    try {
+      await api.gameRenamePet(activePet.id, newName.trim());
+      setProfile((prev: GameProfile | null) =>
+        prev && prev.active_pet
+          ? { ...prev, active_pet: { ...prev.active_pet, name: newName.trim() } as typeof prev.active_pet }
+          : prev
+      );
+      setEditingName(false);
+      haptic("light");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setRenaming(false);
+    }
+  }, [profile, newName]);
+
+  const handlePetTap = useCallback((e: MouseEvent | TouchEvent) => {
     haptic("light");
     setTapping(true);
     setTimeout(() => setTapping(false), 300);
@@ -64,9 +87,9 @@ export function PetPage() {
     const emoji = TAP_EMOJIS[Math.floor(Math.random() * TAP_EMOJIS.length)];
     const id = tapId++;
 
-    setParticles((prev) => [...prev, { id, x, y, emoji }]);
+    setParticles((prev: TapParticle[]) => [...prev, { id, x, y, emoji }]);
     setTimeout(() => {
-      setParticles((prev) => prev.filter((p) => p.id !== id));
+      setParticles((prev: TapParticle[]) => prev.filter((p: TapParticle) => p.id !== id));
     }, 800);
   }, []);
 
@@ -112,7 +135,7 @@ export function PetPage() {
         </div>
       </div>
 
-      {/* Pet display — tappable */}
+      {/* Pet display */}
       {pet && (
         <div
           className={`pet-display pet-display--tappable ${tapping ? "pet-display--tapping" : ""}`}
@@ -140,9 +163,44 @@ export function PetPage() {
             </span>
           ))}
 
-          {/* Pet name */}
-          {pet.name && (
-            <div className="pet-display__name">{pet.name}</div>
+          {/* Pet name + edit */}
+          {editingName ? (
+            <div className="pet-name-edit">
+              <input
+                className="pet-name-edit__input"
+                type="text"
+                maxLength={16}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder={t("\u041d\u0430\u043f\u0440\u0438\u043c\u0435\u0440, \u041f\u0443\u0448\u043e\u043a", "e.g. Fluffy")}
+                autoFocus
+              />
+              <button
+                className="pet-name-edit__btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSaveName();
+                }}
+                disabled={renaming || !newName.trim()}
+              >
+                {t("\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c", "Save")}
+              </button>
+            </div>
+          ) : (
+            <div className="pet-display__name-row">
+              <div className="pet-display__name">{pet.name}</div>
+              <button
+                className="pet-display__edit-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNewName(pet.name || "");
+                  setEditingName(true);
+                }}
+                title={t("\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c", "Rename")}
+              >
+                <EditIcon style={{ width: 14, height: 14 }} />
+              </button>
+            </div>
           )}
 
           {/* XP progress bar */}

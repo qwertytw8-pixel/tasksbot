@@ -15,7 +15,7 @@ import {
   UserIcon,
 } from "../icons";
 
-export function AdminPage() {
+export function AdminPage({ onShowDailyReward }: { onShowDailyReward?: () => void }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"stats" | "promos" | "users" | "grant" | "coins">("stats");
   const [stats, setStats] = useState<AdminStatsOut | null>(null);
@@ -216,15 +216,23 @@ export function AdminPage() {
           ) : (
             <div className="spinner">Загрузка…</div>
           )}
-          <div style={{ marginTop: 14 }}>
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button
               className="btn"
               onClick={() => void testNotification()}
             >
               🔔 Тест уведомлений
             </button>
+            {onShowDailyReward && (
+              <button
+                className="btn btn--outline"
+                onClick={() => onShowDailyReward()}
+              >
+                🎁 Daily Reward
+              </button>
+            )}
             {testNotifMsg && (
-              <div className="page-header__subtitle" style={{ marginTop: 8 }}>
+              <div className="page-header__subtitle" style={{ marginTop: 8, width: "100%" }}>
                 {testNotifMsg}
               </div>
             )}
