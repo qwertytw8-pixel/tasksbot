@@ -203,7 +203,7 @@ export function AdminPage() {
       {tab === "stats" && (
         <div className="surface">
           <div className="surface__heading">
-            <SparkIcon /> Статистика
+            <SparkIcon /> Статистика 🧪
           </div>
           {stats ? (
             <div className="admin-stats">
