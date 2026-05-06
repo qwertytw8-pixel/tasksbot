@@ -9,8 +9,7 @@ interface Props {
 }
 
 export function DailyRewardModal({ onClose }: Props) {
-  const { t, lang } = useI18n();
-  const locale = lang;
+  const { t } = useI18n();
   const [status, setStatus] = useState<DailyRewardStatus | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [earned, setEarned] = useState<number | null>(null);
