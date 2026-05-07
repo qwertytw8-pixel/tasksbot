@@ -577,14 +577,6 @@ async def update_task(
     await session.commit()
     await session.refresh(task)
 
-    # Send bot notifications for game events (fire-and-forget)
-    if game_event:
-        try:
-            bot = request.app.state.bot
-            await _send_game_notifications(bot, tg.id, game_event)
-        except Exception:
-            logging.getLogger(__name__).exception("game notification failed")
-
     # Attach game event to response for frontend celebration
     if game_event is not None:
         task.game_event = GameEventOut(
