@@ -1235,7 +1235,7 @@ Slug `bg_meadow` не матчил файл `meadow.png`, и `backgroundSlug` н
 
 - Vercel фронтенд: деплой OK, последний деплой DD2UepK7Z (Production, Ready)
 - Amvera бэкенд: контейнер запущен, API отвечает 200 OK, webhook установлен
-- CI: ruff lint + tsc typecheck — оба проходят
+- CI: ruff lint + tsc typecheck — оба проходят (см. исправления от 06.05.2026 ниже)
 - Все PR замержены в main
 
 ### Инфраструктура — деплой
