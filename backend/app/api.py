@@ -12,8 +12,10 @@ from app.config import get_settings
 from app.db import Category, Reminder, Task, User, get_session
 from app.game import GameEvent, award_task_completion
 from app.schemas import (
+    AchievementEventOut,
     CategoryIn,
     CategoryOut,
+    GameEventOut,
     PrivacyInfo,
     TaskIn,
     TaskOut,
@@ -582,6 +584,31 @@ async def update_task(
             await _send_game_notifications(bot, tg.id, game_event)
         except Exception:
             logging.getLogger(__name__).exception("game notification failed")
+
+    # Attach game event to response for frontend celebration
+    if game_event is not None:
+        task.game_event = GameEventOut(
+            coins_earned=game_event.coins_earned,
+            xp_earned=game_event.xp_earned,
+            streak_days=game_event.streak_days,
+            streak_lost=game_event.streak_lost,
+            streak_lost_previous=game_event.streak_lost_previous,
+            new_stage=game_event.new_stage,
+            stage_name_ru=game_event.stage_name_ru,
+            stage_name_en=game_event.stage_name_en,
+            perfect_day=game_event.perfect_day,
+            achievements_unlocked=[
+                AchievementEventOut(
+                    slug=ach["slug"],
+                    name_ru=ach["name_ru"],
+                    name_en=ach["name_en"],
+                    icon=ach["icon"],
+                    reward_coins=ach["reward_coins"],
+                )
+                for ach in game_event.achievements_unlocked
+            ],
+            daily_cap_reached=game_event.daily_cap_reached,
+        )
 
     return task
 

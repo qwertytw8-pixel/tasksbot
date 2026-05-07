@@ -31,6 +31,28 @@ class TaskIn(BaseModel):
     is_done: bool = False
 
 
+class AchievementEventOut(BaseModel):
+    slug: str
+    name_ru: str
+    name_en: str
+    icon: str
+    reward_coins: int
+
+
+class GameEventOut(BaseModel):
+    coins_earned: int = 0
+    xp_earned: int = 0
+    streak_days: int = 0
+    streak_lost: bool = False
+    streak_lost_previous: int = 0
+    new_stage: int | None = None
+    stage_name_ru: str | None = None
+    stage_name_en: str | None = None
+    perfect_day: bool = False
+    achievements_unlocked: list[AchievementEventOut] = []
+    daily_cap_reached: bool = False
+
+
 class TaskOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -48,6 +70,7 @@ class TaskOut(BaseModel):
     done_at: datetime | None
     archived_at: datetime | None
     created_at: datetime
+    game_event: GameEventOut | None = None
 
 
 class UserOut(BaseModel):

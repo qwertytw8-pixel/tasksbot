@@ -16,6 +16,28 @@ export interface Category {
   emoji: string | null;
 }
 
+export interface AchievementEvent {
+  slug: string;
+  name_ru: string;
+  name_en: string;
+  icon: string;
+  reward_coins: number;
+}
+
+export interface GameEvent {
+  coins_earned: number;
+  xp_earned: number;
+  streak_days: number;
+  streak_lost: boolean;
+  streak_lost_previous: number;
+  new_stage: number | null;
+  stage_name_ru: string | null;
+  stage_name_en: string | null;
+  perfect_day: boolean;
+  achievements_unlocked: AchievementEvent[];
+  daily_cap_reached: boolean;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -32,6 +54,7 @@ export interface Task {
   done_at: string | null;
   archived_at: string | null;
   created_at: string;
+  game_event?: GameEvent | null;
 }
 
 export interface TaskInput {
@@ -377,3 +400,27 @@ export const api = {
       body: JSON.stringify({ plan }),
     }),
 };
+
+export function showAchievementModal(gameEvent: GameEvent) {
+  document.dispatchEvent(new CustomEvent("show-achievement", { detail: gameEvent }));
+}
+
+export async function toggleTask(task: Task): Promise<Task> {
+  const updated = await api.updateTask(task.id, {
+    title: task.title,
+    description: task.description,
+    category_id: task.category_id,
+    parent_task_id: task.parent_task_id,
+    due_date: task.due_date,
+    has_time: task.has_time,
+    due_at: task.due_at,
+    remind_minutes_before: task.remind_minutes_before,
+    recurrence: task.recurrence,
+    priority: task.priority,
+    is_done: !task.is_done,
+  });
+  if (updated.game_event) {
+    showAchievementModal(updated.game_event);
+  }
+  return updated;
+}

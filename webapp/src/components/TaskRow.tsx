@@ -408,6 +408,7 @@ export function TaskRow({
             </button>
             {confettiOrigin && (
               <Confetti
+                active
                 originX={confettiOrigin.x}
                 originY={confettiOrigin.y}
                 onDone={() => setConfettiOrigin(null)}

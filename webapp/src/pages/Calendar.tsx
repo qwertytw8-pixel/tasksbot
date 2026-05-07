@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { api, type Category, type Task } from "../api";
+import { api, toggleTask, type Category, type Task } from "../api";
 import { HourlyTimeline } from "../components/HourlyTimeline";
 import { TaskRow } from "../components/TaskRow";
 import { useI18n } from "../i18n";
@@ -87,19 +87,7 @@ export function CalendarPage() {
   const weekdays = Array.from({ length: 7 }, (_, i) => t(`wd.${i}`));
 
   async function toggle(task: Task) {
-    const updated = await api.updateTask(task.id, {
-      title: task.title,
-      description: task.description,
-      category_id: task.category_id,
-      parent_task_id: task.parent_task_id,
-      due_date: task.due_date,
-      has_time: task.has_time,
-      due_at: task.due_at,
-      remind_minutes_before: task.remind_minutes_before,
-      recurrence: task.recurrence,
-      priority: task.priority,
-      is_done: !task.is_done,
-    });
+    const updated = await toggleTask(task);
     setTasks((prev) => {
       const list = prev ?? [];
       if (updated.archived_at) {

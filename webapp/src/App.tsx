@@ -3,6 +3,8 @@ import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "reac
 
 // Build trigger: force Vercel rebuild v2
 import { api } from "./api";
+import type { GameEvent } from "./api";
+import { AchievementModal } from "./components/AchievementModal";
 import { DailyRewardModal } from "./components/DailyRewardModal";
 import { OnboardingTour } from "./components/OnboardingTour";
 import { ToastProvider } from "./components/Toast";
@@ -40,6 +42,7 @@ function PageFallback() {
 export function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showDailyReward, setShowDailyReward] = useState(false);
+  const [gameEvent, setGameEvent] = useState<GameEvent | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +75,16 @@ export function App() {
     };
   }, []);
 
+  // Listen for game event celebrations from anywhere in the app
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as GameEvent;
+      if (detail) setGameEvent(detail);
+    };
+    document.addEventListener("show-achievement", handler);
+    return () => document.removeEventListener("show-achievement", handler);
+  }, []);
+
   return (
     <ToastProvider>
     <div className="app">
@@ -101,6 +114,12 @@ export function App() {
       )}
       {showOnboarding && (
         <OnboardingTour onComplete={() => setShowOnboarding(false)} />
+      )}
+      {gameEvent && (
+        <AchievementModal
+          gameEvent={gameEvent}
+          onClose={() => setGameEvent(null)}
+        />
       )}
     </div>
     </ToastProvider>
