@@ -17,6 +17,65 @@ interface TapParticle {
 const TAP_EMOJIS = ["\u2728", "\u2764\uFE0F", "\u2B50", "\uD83D\uDCAB", "\uD83C\uDF1F"];
 let tapId = 0;
 
+interface MoodLevel {
+  emoji: string;
+  labelRu: string;
+  labelEn: string;
+  className: string;
+}
+
+const MOOD_LEVELS: MoodLevel[] = [
+  { emoji: "\uD83D\uDCA4", labelRu: "\u041F\u0438\u0442\u043E\u043C\u0435\u0446 \u0441\u043A\u0443\u0447\u0430\u0435\u0442\u2026", labelEn: "Your pet is bored\u2026", className: "pet-mood--idle" },
+  { emoji: "\uD83D\uDE10", labelRu: "\u041C\u043E\u0436\u043D\u043E \u043B\u0443\u0447\u0448\u0435", labelEn: "Could be better", className: "pet-mood--low" },
+  { emoji: "\uD83D\uDE0A", labelRu: "\u0425\u043E\u0440\u043E\u0448\u0438\u0439 \u0434\u0435\u043D\u044C", labelEn: "Good day", className: "pet-mood--good" },
+  { emoji: "\uD83D\uDD25", labelRu: "\u0412 \u0443\u0434\u0430\u0440\u0435!", labelEn: "On fire!", className: "pet-mood--fire" },
+];
+
+function getMood(tasksDone: number, streakActive: boolean): MoodLevel {
+  if (tasksDone >= 5 && streakActive) return MOOD_LEVELS[3];
+  if (tasksDone >= 3) return MOOD_LEVELS[2];
+  if (tasksDone >= 1) return MOOD_LEVELS[1];
+  return MOOD_LEVELS[0];
+}
+
+interface PetPhrase {
+  ru: string;
+  en: string;
+}
+
+const PET_PHRASES_IDLE: PetPhrase[] = [
+  { ru: "\u041F\u043E\u0433\u043B\u0430\u0434\u044C \u043C\u0435\u043D\u044F!", en: "Pet me!" },
+  { ru: "\u0414\u0430\u0432\u0430\u0439 \u0447\u0442\u043E-\u043D\u0438\u0431\u0443\u0434\u044C \u0441\u0434\u0435\u043B\u0430\u0435\u043C!", en: "Let's do something!" },
+  { ru: "\u0421\u043A\u0443\u0447\u0430\u044E\u2026", en: "Bored\u2026" },
+];
+
+const PET_PHRASES_LOW: PetPhrase[] = [
+  { ru: "\u0425\u043E\u0440\u043E\u0448\u0435\u0435 \u043D\u0430\u0447\u0430\u043B\u043E!", en: "Good start!" },
+  { ru: "\u0414\u0430\u0432\u0430\u0439 \u0435\u0449\u0451!", en: "Keep going!" },
+  { ru: "\u0422\u044B \u043C\u043E\u043B\u043E\u0434\u0435\u0446!", en: "You're doing great!" },
+];
+
+const PET_PHRASES_GOOD: PetPhrase[] = [
+  { ru: "\u041A\u0440\u0443\u0442\u043E \u0441\u0435\u0433\u043E\u0434\u043D\u044F!", en: "Awesome today!" },
+  { ru: "\u041C\u043D\u0435 \u043D\u0440\u0430\u0432\u0438\u0442\u0441\u044F!", en: "I like it!" },
+  { ru: "\u041C\u044B \u043A\u043E\u043C\u0430\u043D\u0434\u0430!", en: "We're a team!" },
+];
+
+const PET_PHRASES_FIRE: PetPhrase[] = [
+  { ru: "\u0422\u044B \u043B\u0435\u0433\u0435\u043D\u0434\u0430! \uD83D\uDD25", en: "You're a legend! \uD83D\uDD25" },
+  { ru: "\u041D\u0435\u0440\u0435\u0430\u043B\u044C\u043D\u043E!", en: "Unreal!" },
+  { ru: "\u0413\u043E\u0440\u0438\u043C!", en: "We're on fire!" },
+];
+
+function getPetPhrase(tasksDone: number, streakActive: boolean): PetPhrase {
+  let phrases: PetPhrase[];
+  if (tasksDone >= 5 && streakActive) phrases = PET_PHRASES_FIRE;
+  else if (tasksDone >= 3) phrases = PET_PHRASES_GOOD;
+  else if (tasksDone >= 1) phrases = PET_PHRASES_LOW;
+  else phrases = PET_PHRASES_IDLE;
+  return phrases[Math.floor(Math.random() * phrases.length)];
+}
+
 export function PetPage() {
   const t = useT();
   const [profile, setProfile] = useState<GameProfile | null>(null);
@@ -27,6 +86,7 @@ export function PetPage() {
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState(false);
+  const [phrase, setPhrase] = useState<PetPhrase | null>(null);
   const petAreaRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -34,6 +94,7 @@ export function PetPage() {
     try {
       const p = await api.gameProfile();
       setProfile(p);
+      setPhrase(getPetPhrase(p.today_tasks_done, p.streak_days > 0));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -119,23 +180,25 @@ export function PetPage() {
     ? Math.min(100, (profile.today_tasks_done / profile.today_tasks_total) * 100)
     : 0;
 
+  const mood = getMood(profile.today_tasks_done, profile.streak_days > 0);
+
   return (
     <div className="page pet-page">
-      {/* Header with coins and streak */}
+      {/* Glass header pills */}
       <div className="pet-header">
-        <div className="pet-header__coins">
-          <CoinIcon className="pet-header__coin-icon" style={{ width: 18, height: 18, color: "var(--tb-accent-strong)" }} />
-          <span className="pet-header__coin-value">{profile.coins}</span>
+        <div className="pet-header__pill">
+          <CoinIcon style={{ width: 16, height: 16, color: "#facc15" }} />
+          <span className="pet-header__pill-value">{profile.coins}</span>
         </div>
-        <div className="pet-header__streak">
-          <FireIcon className="pet-header__streak-icon" style={{ width: 18, height: 18, color: "var(--tb-accent-strong)" }} />
-          <span className="pet-header__streak-value">
+        <div className="pet-header__pill">
+          <FireIcon style={{ width: 16, height: 16, color: "#f97316" }} />
+          <span className="pet-header__pill-value">
             {profile.streak_days} {t("\u0434\u043d.", "d")}
           </span>
         </div>
       </div>
 
-      {/* Pet display */}
+      {/* Pet display with breathing animation */}
       {pet && (
         <div
           className={`pet-display pet-display--tappable ${tapping ? "pet-display--tapping" : ""}`}
@@ -143,16 +206,27 @@ export function PetPage() {
           onClick={handlePetTap}
           style={{ position: "relative", cursor: "pointer" }}
         >
-          <PetView
-            characterType={pet.character_type}
-            rarity={pet.rarity}
-            stage={pet.stage}
-            name={pet.name}
-            showName={false}
-            accessorySlug={pet.accessory_slug}
-            backgroundSlug={profile.active_background_slug}
-            size={160}
-          />
+          <div className={`pet-display__breathing pet-display__breathing--${pet.rarity}`}>
+            <PetView
+              characterType={pet.character_type}
+              rarity={pet.rarity}
+              stage={pet.stage}
+              name={pet.name}
+              showName={false}
+              accessorySlug={pet.accessory_slug}
+              backgroundSlug={profile.active_background_slug}
+              size={160}
+            />
+          </div>
+
+          {/* Floating rarity particles */}
+          {pet.rarity !== "common" && (
+            <div className={`pet-display__rarity-particles pet-display__rarity-particles--${pet.rarity}`}>
+              <span className="rarity-dot rarity-dot--1" />
+              <span className="rarity-dot rarity-dot--2" />
+              <span className="rarity-dot rarity-dot--3" />
+            </div>
+          )}
 
           {/* Tap particles */}
           {particles.map((p) => (
@@ -164,6 +238,13 @@ export function PetPage() {
               {p.emoji}
             </span>
           ))}
+
+          {/* Pet phrase bubble */}
+          {phrase && (
+            <div className="pet-phrase">
+              <span className="pet-phrase__text">{t(phrase.ru, phrase.en)}</span>
+            </div>
+          )}
 
           {/* Pet name + edit */}
           {editingName ? (
@@ -205,10 +286,12 @@ export function PetPage() {
             </div>
           )}
 
-          {/* XP progress bar */}
+          {/* XP progress bar with shimmer */}
           <div className="pet-xp">
             <div className="pet-xp__bar">
-              <div className="pet-xp__fill" style={{ width: `${xpProgress}%` }} />
+              <div className="pet-xp__fill" style={{ width: `${xpProgress}%` }}>
+                <div className="pet-xp__shimmer" />
+              </div>
             </div>
             <div className="pet-xp__text">
               {pet.xp}/{pet.xp_for_next} XP
@@ -225,50 +308,57 @@ export function PetPage() {
         </div>
       )}
 
-      {/* Today stats */}
-      <div className="pet-stats">
-        <div className="pet-stats__row">
-          <span>
-            {t("\u0421\u0435\u0433\u043e\u0434\u043d\u044f", "Today")}: +{profile.daily_coins_earned} <CoinIcon style={{ width: 14, height: 14, color: "#facc15", verticalAlign: "middle" }} />
-          </span>
-          <span className="pet-stats__cap">
-            ({profile.daily_coins_earned}/{profile.daily_cap})
-          </span>
-        </div>
-        <div className="pet-stats__bar">
-          <div className="pet-stats__fill" style={{ width: `${dailyProgress}%` }} />
+      {/* Mood Widget */}
+      <div className={`pet-mood ${mood.className}`}>
+        <span className="pet-mood__emoji">{mood.emoji}</span>
+        <span className="pet-mood__label">{t(mood.labelRu, mood.labelEn)}</span>
+        <span className="pet-mood__tasks">
+          {profile.today_tasks_done}/{profile.today_tasks_total || "0"}
+        </span>
+      </div>
+
+      {/* Glass stats cards */}
+      <div className="pet-stats-grid">
+        <div className="pet-stat-card">
+          <div className="pet-stat-card__header">
+            <CoinIcon style={{ width: 14, height: 14, color: "#facc15" }} />
+            <span>{t("\u0421\u0435\u0433\u043e\u0434\u043d\u044f", "Today")}</span>
+          </div>
+          <div className="pet-stat-card__value">+{profile.daily_coins_earned}</div>
+          <div className="pet-stat-card__bar">
+            <div className="pet-stat-card__fill" style={{ width: `${dailyProgress}%` }} />
+          </div>
+          <div className="pet-stat-card__sub">{profile.daily_coins_earned}/{profile.daily_cap}</div>
         </div>
 
         {profile.today_tasks_total > 0 && (
-          <>
-            <div className="pet-stats__row" style={{ marginTop: 8 }}>
-              <span>
-                {t("\u0417\u0430\u0434\u0430\u0447\u0438 \u0434\u043d\u044f", "Today's tasks")}
-              </span>
-              <span>
-                {profile.today_tasks_done}/{profile.today_tasks_total}
-              </span>
+          <div className="pet-stat-card">
+            <div className="pet-stat-card__header">
+              <span style={{ fontSize: 14 }}>{"\u2705"}</span>
+              <span>{t("\u0417\u0430\u0434\u0430\u0447\u0438", "Tasks")}</span>
             </div>
-            <div className="pet-stats__bar">
-              <div className="pet-stats__fill pet-stats__fill--tasks" style={{ width: `${taskProgress}%` }} />
+            <div className="pet-stat-card__value">{profile.today_tasks_done}/{profile.today_tasks_total}</div>
+            <div className="pet-stat-card__bar">
+              <div className="pet-stat-card__fill pet-stat-card__fill--tasks" style={{ width: `${taskProgress}%` }} />
             </div>
-          </>
+            <div className="pet-stat-card__sub">{Math.round(taskProgress)}%</div>
+          </div>
         )}
       </div>
 
-      {/* Navigation buttons */}
+      {/* Glass pill navigation */}
       <div className="pet-nav">
         <button className="pet-nav__btn" onClick={() => navigate("/pet/shop")}>
-          <ShopBagIcon style={{ width: 18, height: 18 }} />
-          {t("\u041c\u0430\u0433\u0430\u0437\u0438\u043d", "Shop")}
+          <ShopBagIcon style={{ width: 20, height: 20 }} />
+          <span>{t("\u041c\u0430\u0433\u0430\u0437\u0438\u043d", "Shop")}</span>
         </button>
         <button className="pet-nav__btn" onClick={() => navigate("/pet/achievements")}>
-          <TrophyIcon style={{ width: 18, height: 18 }} />
-          {t("\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u044f", "Achievements")}
+          <TrophyIcon style={{ width: 20, height: 20 }} />
+          <span>{t("\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u044f", "Achievements")}</span>
         </button>
         <button className="pet-nav__btn" onClick={() => navigate("/pet/collection")}>
-          <GridIcon style={{ width: 18, height: 18 }} />
-          {t("\u041a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044f", "Collection")}
+          <GridIcon style={{ width: 20, height: 20 }} />
+          <span>{t("\u041a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044f", "Collection")}</span>
         </button>
       </div>
     </div>
