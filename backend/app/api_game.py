@@ -14,6 +14,7 @@ from app.db import Task, get_session
 from app.game import (
     CHARACTER_NAMES_EN,
     CHARACTER_NAMES_RU,
+    COMBO_COIN_MULTS,
     EVOLUTION_THRESHOLDS,
     FREE_DAILY_CAP,
     PREMIUM_DAILY_CAP,
@@ -31,7 +32,6 @@ from app.game_models import (
     GameProfile,
     GameUserAchievement,
 )
-from app.game import COMBO_COIN_MULTS
 from app.game_schemas import (
     BuyRequest,
     DailyRewardClaim,
