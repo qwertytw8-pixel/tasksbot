@@ -2632,38 +2632,118 @@ button {
   animation: tb-fade-in 0.32s ease both;
 }
 
-/* Header: coins + streak */
+/* ── Glass header pills ── */
 .pet-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0 16px;
+  padding: 4px 0 12px;
 }
 
-.pet-header__coins,
-.pet-header__streak {
-  display: flex;
+.pet-header__pill {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 6px 14px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: 100px;
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
   font-weight: 700;
-  font-size: 18px;
+  font-size: 15px;
 }
 
-.pet-header__coin-icon,
-.pet-header__streak-icon {
-  font-size: 22px;
-  flex-shrink: 0;
+.pet-header__pill-value {
+  color: var(--tb-text);
 }
 
-/* Pet display area */
+/* ── Pet display area ── */
 .pet-display {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0 20px;
+  padding: 8px 0 16px;
 }
 
-/* XP progress */
+/* Breathing animation wrapper */
+.pet-display__breathing {
+  animation: pet-breathe 3s ease-in-out infinite;
+}
+
+@keyframes pet-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* Rarity floating particles */
+.pet-display__rarity-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rarity-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+
+.rarity-dot--1 {
+  top: 15%;
+  left: 12%;
+  animation: rarity-float 3s ease-in-out infinite;
+}
+
+.rarity-dot--2 {
+  top: 25%;
+  right: 14%;
+  animation: rarity-float 3s ease-in-out infinite 1s;
+}
+
+.rarity-dot--3 {
+  bottom: 30%;
+  left: 18%;
+  animation: rarity-float 3s ease-in-out infinite 2s;
+}
+
+.pet-display__rarity-particles--rare .rarity-dot { background: #818CF8; }
+.pet-display__rarity-particles--epic .rarity-dot { background: #F59E0B; }
+
+@keyframes rarity-float {
+  0%, 100% { transform: translateY(0) scale(0.6); opacity: 0; }
+  50% { transform: translateY(-18px) scale(1); opacity: 0.8; }
+}
+
+/* Pet phrase speech bubble */
+.pet-phrase {
+  margin-top: 8px;
+  padding: 6px 14px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: 100px;
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  animation: phrase-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  box-shadow: var(--tb-shadow-soft);
+}
+
+.pet-phrase__text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tb-text);
+}
+
+@keyframes phrase-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── XP progress (glass) ── */
 .pet-xp {
   width: 100%;
   max-width: 280px;
@@ -2683,6 +2763,28 @@ button {
   border-radius: 5px;
   background: var(--tb-accent-grad);
   transition: width 0.5s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.pet-xp__shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  animation: xp-shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes xp-shimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
 }
 
 .pet-xp__text {
@@ -2697,77 +2799,144 @@ button {
   font-weight: 600;
 }
 
-/* Stats block */
-.pet-stats {
+/* ── Mood Widget ── */
+.pet-mood {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
   background: var(--tb-glass);
   border: 1px solid var(--tb-glass-border);
   border-radius: var(--tb-radius-sm);
-  padding: 14px 16px;
-  margin-bottom: 16px;
   backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  margin-bottom: 12px;
+  box-shadow: var(--tb-shadow-soft);
+  animation: tb-fade-in 0.4s ease both 0.15s;
 }
 
-.pet-stats__row {
-  display: flex;
-  justify-content: space-between;
+.pet-mood__emoji {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.pet-mood__label {
+  flex: 1;
   font-size: 14px;
+  font-weight: 700;
+  color: var(--tb-text);
+}
+
+.pet-mood__tasks {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tb-hint);
+  padding: 2px 8px;
+  background: var(--tb-glass-highlight);
+  border-radius: 100px;
+}
+
+.pet-mood--idle { border-left: 3px solid #9CA3AF; }
+.pet-mood--low { border-left: 3px solid #FBBF24; }
+.pet-mood--good { border-left: 3px solid #34D399; }
+.pet-mood--fire { border-left: 3px solid #F97316; }
+
+/* ── Stats grid (glass cards) ── */
+.pet-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pet-stat-card {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  padding: 12px 14px;
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
+}
+
+.pet-stat-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tb-hint);
+  margin-bottom: 4px;
+}
+
+.pet-stat-card__value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--tb-text);
   margin-bottom: 6px;
 }
 
-.pet-stats__cap {
-  color: var(--tb-hint);
-}
-
-.pet-stats__bar {
-  height: 6px;
+.pet-stat-card__bar {
+  height: 5px;
   border-radius: 3px;
   background: var(--tb-cell-bg);
   overflow: hidden;
 }
 
-.pet-stats__fill {
+.pet-stat-card__fill {
   height: 100%;
   border-radius: 3px;
   background: var(--tb-accent-grad);
   transition: width 0.5s ease;
 }
 
-.pet-stats__fill--tasks {
+.pet-stat-card__fill--tasks {
   background: linear-gradient(135deg, #10B981, #059669);
 }
 
-/* Navigation buttons */
+.pet-stat-card__sub {
+  font-size: 11px;
+  color: var(--tb-hint);
+  margin-top: 4px;
+  text-align: right;
+}
+
+/* ── Navigation pills ── */
 .pet-nav {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 4px;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .pet-nav__btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 14px 8px;
   background: var(--tb-glass);
   border: 1px solid var(--tb-glass-border);
-  border-radius: var(--tb-radius-sm);
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: var(--tb-radius);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tb-text);
   cursor: pointer;
   backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .pet-nav__btn svg {
-  width: 20px;
-  height: 20px;
-  opacity: 0.85;
+  width: 22px;
+  height: 22px;
+  opacity: 0.8;
+  color: var(--tb-accent-strong);
 }
 
 .pet-nav__btn:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
   box-shadow: var(--tb-shadow-press);
 }
 
@@ -3081,23 +3250,31 @@ button {
 }
 
 .pet-achievements__section--locked {
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
 .achievement-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   background: var(--tb-glass);
   border: 1px solid var(--tb-glass-border);
   border-radius: var(--tb-radius-sm);
   backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
+  transition: transform 0.15s ease;
+}
+
+.achievement-card:active {
+  transform: scale(0.98);
 }
 
 .achievement-card--unlocked {
   border-color: var(--tb-accent-strong);
   background: var(--tb-accent-soft);
+  box-shadow: 0 4px 16px rgba(109, 93, 252, 0.12);
 }
 
 .achievement-card__icon {
@@ -3165,31 +3342,35 @@ button {
 
 .shop-section__title {
   margin-bottom: 10px;
+  font-weight: 700;
 }
 
 .shop-section__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .shop-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px 6px;
+  gap: 6px;
+  padding: 14px 8px;
   background: var(--tb-glass);
   border: 1px solid var(--tb-glass-border);
   border-radius: var(--tb-radius-sm);
   cursor: pointer;
   position: relative;
   backdrop-filter: var(--tb-blur-light);
-  transition: transform 0.15s ease;
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .shop-card:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
+  box-shadow: var(--tb-shadow-press);
 }
 
 .shop-card--owned {
@@ -3244,10 +3425,18 @@ button {
   border: 1px solid var(--tb-glass-border);
   border-radius: var(--tb-radius-sm);
   backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
+  transition: transform 0.15s ease;
+}
+
+.pet-collection__card:active {
+  transform: scale(0.97);
 }
 
 .pet-collection__card--active {
   border-color: var(--tb-accent-strong);
+  box-shadow: 0 4px 16px rgba(109, 93, 252, 0.12);
 }
 
 .pet-collection__info {
@@ -3324,6 +3513,9 @@ button {
   background: var(--tb-glass);
   border: 1px solid var(--tb-glass-border);
   border-radius: var(--tb-radius-sm);
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
   margin-bottom: 16px;
 }
 
@@ -4777,167 +4969,5 @@ button {
 .pet-name-edit__btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* ============================================
-   Liquid Glass — Pet Interface
-   ============================================ */
-
-.pet-view__frame {
-  backdrop-filter: var(--tb-blur);
-  -webkit-backdrop-filter: var(--tb-blur);
-}
-
-.pet-display {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur-light);
-  -webkit-backdrop-filter: var(--tb-blur-light);
-  border-radius: var(--tb-radius);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--tb-glass-highlight),
-    0 12px 40px rgba(28, 22, 57, 0.1);
-  padding: 24px 16px;
-  margin: 0 8px 16px;
-}
-
-.pet-header {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur-light);
-  -webkit-backdrop-filter: var(--tb-blur-light);
-  border-radius: var(--tb-radius);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow: inset 0 1px 0 var(--tb-glass-highlight);
-  margin: 0 8px 12px;
-  padding: 10px 16px;
-}
-
-.pet-nav {
-  gap: 10px;
-  padding: 0 8px;
-}
-
-.pet-nav__btn {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur-light);
-  -webkit-backdrop-filter: var(--tb-blur-light);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--tb-glass-highlight),
-    0 4px 12px rgba(28, 22, 57, 0.06);
-  border-radius: var(--tb-radius-sm);
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-
-.pet-nav__btn:active {
-  transform: scale(0.96);
-  box-shadow: 0 2px 6px rgba(28, 22, 57, 0.08);
-}
-
-.pet-stats {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur-light);
-  -webkit-backdrop-filter: var(--tb-blur-light);
-  border-radius: var(--tb-radius);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--tb-glass-highlight),
-    0 8px 24px rgba(28, 22, 57, 0.08);
-  margin: 0 8px 16px;
-  padding: 14px 16px;
-}
-
-.shop-card {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur-light);
-  -webkit-backdrop-filter: var(--tb-blur-light);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--tb-glass-highlight),
-    0 6px 20px rgba(28, 22, 57, 0.08);
-  border-radius: var(--tb-radius-sm);
-  transition: transform 0.15s, box-shadow 0.2s;
-}
-
-.shop-card:active {
-  transform: scale(0.97);
-}
-
-.achievement-card {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur-light);
-  -webkit-backdrop-filter: var(--tb-blur-light);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--tb-glass-highlight),
-    0 6px 20px rgba(28, 22, 57, 0.08);
-  border-radius: var(--tb-radius-sm);
-}
-
-.pet-collection__card {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur-light);
-  -webkit-backdrop-filter: var(--tb-blur-light);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--tb-glass-highlight),
-    0 6px 20px rgba(28, 22, 57, 0.08);
-  border-radius: var(--tb-radius-sm);
-  transition: transform 0.15s, box-shadow 0.2s;
-}
-
-.pet-collection__card:active {
-  transform: scale(0.97);
-}
-
-.collection-tabs {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur-light);
-  -webkit-backdrop-filter: var(--tb-blur-light);
-  border-radius: var(--tb-radius-sm);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow: inset 0 1px 0 var(--tb-glass-highlight);
-  margin: 0 8px 16px;
-  padding: 4px;
-}
-
-.collection-tabs__btn--active {
-  background: var(--tb-glass-strong);
-  box-shadow: 0 2px 8px rgba(28, 22, 57, 0.08);
-}
-
-.pet-name-edit {
-  background: var(--tb-glass-strong);
-  backdrop-filter: var(--tb-blur-light);
-  border-radius: var(--tb-radius-sm);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow: inset 0 1px 0 var(--tb-glass-highlight);
-}
-
-.pet-xp__bar {
-  background: var(--tb-glass-strong);
-  border: 1px solid var(--tb-glass-border);
-}
-
-.pet-stats__bar {
-  background: var(--tb-glass-strong);
-  border: 1px solid var(--tb-glass-border);
-}
-
-.achievement-card__progress-bar {
-  background: var(--tb-glass-strong);
-  border: 1px solid var(--tb-glass-border);
-}
-
-.pet-first-egg__content {
-  background: var(--tb-glass);
-  backdrop-filter: var(--tb-blur);
-  -webkit-backdrop-filter: var(--tb-blur);
-  border-radius: var(--tb-radius);
-  border: 1px solid var(--tb-glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--tb-glass-highlight),
-    0 16px 48px rgba(28, 22, 57, 0.12);
-  padding: 32px 24px;
 }
 
