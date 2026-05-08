@@ -15,6 +15,8 @@ class GameProfileOut(BaseModel):
     tasks_completed_total: int
     daily_coins_earned: int
     daily_cap: int
+    combo_count: int = 0
+    combo_multiplier: float = 1.0
     active_pet: "GamePetOut | None" = None
     active_background_slug: str | None = None
     today_tasks_done: int = 0
@@ -93,6 +95,7 @@ class GameAchievementOut(BaseModel):
     condition_type: str
     condition_value: int
     reward_coins: int
+    tier: str = "bronze"
     unlocked: bool = False
     unlocked_at: datetime | None = None
     progress: int = 0
@@ -127,3 +130,19 @@ class GameEventOut(BaseModel):
     perfect_day: bool = False
     achievements_unlocked: list[dict] = []
     daily_cap_reached: bool = False
+    combo_count: int = 0
+    combo_multiplier: float = 1.0
+
+
+class ReportOut(BaseModel):
+    period: str
+    period_start: str
+    period_end: str
+    tasks_completed: int
+    tasks_created: int
+    tasks_on_time: int
+    tasks_high_priority: int
+    current_streak: int
+    total_coins: int
+    perfect_days_total: int
+    tasks_completed_total: int

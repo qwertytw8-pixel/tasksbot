@@ -30,6 +30,27 @@ const ACHIEVEMENT_ICONS: Record<string, (color: string) => ReactNode> = {
   "\u2705": (c) => <CheckIcon style={{ width: 24, height: 24, color: c }} />,
 };
 
+const TIER_COLORS: Record<string, string> = {
+  bronze: "#CD7F32",
+  silver: "#C0C0C0",
+  gold: "#FFD700",
+  diamond: "#B9F2FF",
+};
+
+const TIER_LABELS_RU: Record<string, string> = {
+  bronze: "Бронза",
+  silver: "Серебро",
+  gold: "Золото",
+  diamond: "Бриллиант",
+};
+
+const TIER_LABELS_EN: Record<string, string> = {
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+  diamond: "Diamond",
+};
+
 function getAchievementIcon(icon: string, unlocked: boolean): ReactNode {
   const color = unlocked ? "var(--tb-accent-strong)" : "#9CA3AF";
   const factory = ACHIEVEMENT_ICONS[icon];
@@ -106,13 +127,19 @@ function AchievementCard({ achievement: a }: { achievement: GameAchievement }) {
   const progress = Math.min(100, (a.progress / a.condition_value) * 100);
 
   return (
-    <div className={`achievement-card ${a.unlocked ? "achievement-card--unlocked" : ""}`}>
+    <div className={`achievement-card achievement-card--${a.tier} ${a.unlocked ? "achievement-card--unlocked" : ""}`}>
       <div className="achievement-card__icon">
         {getAchievementIcon(a.icon, a.unlocked)}
       </div>
       <div className="achievement-card__info">
         <div className="achievement-card__name">
           {t(a.name_ru, a.name_en)}
+          <span
+            className="achievement-card__tier"
+            style={{ color: TIER_COLORS[a.tier] || TIER_COLORS.bronze }}
+          >
+            {t(TIER_LABELS_RU[a.tier] || "Бронза", TIER_LABELS_EN[a.tier] || "Bronze")}
+          </span>
         </div>
         <div className="achievement-card__desc">
           {t(a.description_ru, a.description_en)}

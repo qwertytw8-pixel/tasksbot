@@ -14,6 +14,7 @@ from app.db import Task, get_session
 from app.game import (
     CHARACTER_NAMES_EN,
     CHARACTER_NAMES_RU,
+    COMBO_COIN_MULTS,
     EVOLUTION_THRESHOLDS,
     FREE_DAILY_CAP,
     PREMIUM_DAILY_CAP,
@@ -44,6 +45,7 @@ from app.game_schemas import (
     HatchRequest,
     HatchResponse,
     RenameRequest,
+    ReportOut,
     SetBackgroundRequest,
 )
 
@@ -167,6 +169,13 @@ async def get_profile(
 
     await session.commit()
 
+    combo_count = profile.combo_count if profile.combo_date == today else 0
+    combo_mult = 1.0
+    for min_count, mult in COMBO_COIN_MULTS:
+        if combo_count >= min_count:
+            combo_mult = mult
+            break
+
     return GameProfileOut(
         coins=profile.coins,
         total_coins_earned=profile.total_coins_earned,
@@ -176,6 +185,8 @@ async def get_profile(
         tasks_completed_total=profile.tasks_completed_total,
         daily_coins_earned=daily_earned,
         daily_cap=daily_cap,
+        combo_count=combo_count,
+        combo_multiplier=combo_mult,
         active_pet=active_pet_out,
         active_background_slug=bg_slug,
         today_tasks_done=today_done,
@@ -566,6 +577,7 @@ async def get_achievements(
                 condition_type=ach.condition_type,
                 condition_value=ach.condition_value,
                 reward_coins=ach.reward_coins,
+                tier=ach.tier,
                 unlocked=ach.id in unlocked_map,
                 unlocked_at=unlocked_map.get(ach.id),
                 progress=min(progress, ach.condition_value),
@@ -573,6 +585,87 @@ async def get_achievements(
         )
 
     return result
+
+
+# -------------------- GET /report --------------------
+
+@router.get("/report", response_model=ReportOut)
+async def get_report(
+    period: str = "week",
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.api import _ensure_user
+    user = await _ensure_user(session, tg)
+    profile = await _ensure_profile(session, tg.id)
+    today = _user_today(user.tz)
+
+    if period == "month":
+        start_date = today.replace(day=1)
+    else:
+        start_date = today - timedelta(days=today.weekday())
+
+    end_date = today + timedelta(days=1)
+
+    tasks_completed = (
+        await session.execute(
+            select(func.count(Task.id)).where(
+                Task.user_id == tg.id,
+                Task.is_done.is_(True),
+                Task.done_at >= datetime.combine(start_date, datetime.min.time()),
+                Task.done_at < datetime.combine(end_date, datetime.min.time()),
+            )
+        )
+    ).scalar_one()
+
+    tasks_created = (
+        await session.execute(
+            select(func.count(Task.id)).where(
+                Task.user_id == tg.id,
+                Task.created_at >= datetime.combine(start_date, datetime.min.time()),
+                Task.created_at < datetime.combine(end_date, datetime.min.time()),
+            )
+        )
+    ).scalar_one()
+
+    tasks_on_time = (
+        await session.execute(
+            select(func.count(Task.id)).where(
+                Task.user_id == tg.id,
+                Task.is_done.is_(True),
+                Task.done_at >= datetime.combine(start_date, datetime.min.time()),
+                Task.done_at < datetime.combine(end_date, datetime.min.time()),
+                Task.due_at.is_not(None),
+                Task.done_at <= Task.due_at,
+            )
+        )
+    ).scalar_one()
+
+    tasks_high_priority = (
+        await session.execute(
+            select(func.count(Task.id)).where(
+                Task.user_id == tg.id,
+                Task.is_done.is_(True),
+                Task.priority == 3,
+                Task.done_at >= datetime.combine(start_date, datetime.min.time()),
+                Task.done_at < datetime.combine(end_date, datetime.min.time()),
+            )
+        )
+    ).scalar_one()
+
+    return ReportOut(
+        period=period,
+        period_start=str(start_date),
+        period_end=str(today),
+        tasks_completed=tasks_completed,
+        tasks_created=tasks_created,
+        tasks_on_time=tasks_on_time,
+        tasks_high_priority=tasks_high_priority,
+        current_streak=profile.streak_days,
+        total_coins=profile.total_coins_earned,
+        perfect_days_total=profile.perfect_days_count,
+        tasks_completed_total=profile.tasks_completed_total,
+    )
 
 
 # -------------------- Daily Login Reward --------------------

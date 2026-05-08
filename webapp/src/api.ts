@@ -36,6 +36,22 @@ export interface GameEvent {
   perfect_day: boolean;
   achievements_unlocked: AchievementEvent[];
   daily_cap_reached: boolean;
+  combo_count: number;
+  combo_multiplier: number;
+}
+
+export interface GameReportOut {
+  period: string;
+  period_start: string;
+  period_end: string;
+  tasks_completed: number;
+  tasks_created: number;
+  tasks_on_time: number;
+  tasks_high_priority: number;
+  current_streak: number;
+  total_coins: number;
+  perfect_days_total: number;
+  tasks_completed_total: number;
 }
 
 export interface Task {
@@ -211,6 +227,8 @@ export interface GameProfile {
   tasks_completed_total: number;
   daily_coins_earned: number;
   daily_cap: number;
+  combo_count: number;
+  combo_multiplier: number;
   active_pet: GamePet | null;
   active_background_slug: string | null;
   today_tasks_done: number;
@@ -250,6 +268,7 @@ export interface GameAchievement {
   condition_type: string;
   condition_value: number;
   reward_coins: number;
+  tier: string;
   unlocked: boolean;
   unlocked_at: string | null;
   progress: number;
@@ -337,6 +356,8 @@ export const api = {
       body: JSON.stringify({ item_id }),
     }),
   gameAchievements: () => request<GameAchievement[]>("/api/game/achievements"),
+  gameReport: (period: string) =>
+    request<GameReportOut>(`/api/game/report?period=${period}`),
   dailyRewardStatus: () =>
     request<DailyRewardStatus>("/api/game/daily-reward"),
   claimDailyReward: () =>
