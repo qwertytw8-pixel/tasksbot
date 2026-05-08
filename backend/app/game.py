@@ -68,6 +68,16 @@ RARITY_XP_MULTS = {"common": (1.0, 1.0), "rare": (1.05, 1.1), "epic": (1.1, 1.2)
 
 PREMIUM_COIN_BONUS = 1.5
 
+# Combo multipliers: tasks completed today → coin multiplier
+COMBO_COIN_MULTS: list[tuple[int, float]] = [
+    (5, 1.5),
+    (4, 1.3),
+    (3, 1.2),
+    (2, 1.1),
+    (1, 1.0),
+    (0, 1.0),
+]
+
 
 # ---------------------------------------------------------------------------
 # Result dataclass
@@ -86,6 +96,8 @@ class GameEvent:
     perfect_day: bool = False
     achievements_unlocked: list[dict] = field(default_factory=list)
     daily_cap_reached: bool = False
+    combo_count: int = 0
+    combo_multiplier: float = 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +110,13 @@ def _get_streak_mult(
     for min_days, free_m, prem_m in table:
         if streak_days >= min_days:
             return prem_m if is_premium else free_m
+    return 1.0
+
+
+def _get_combo_mult(combo_count: int) -> float:
+    for min_count, mult in COMBO_COIN_MULTS:
+        if combo_count >= min_count:
+            return mult
     return 1.0
 
 
@@ -193,6 +212,15 @@ async def award_task_completion(
         profile.daily_coins_earned = 0
         profile.daily_coins_date = today
 
+    # --- Combo tracking ---
+    if profile.combo_date != today:
+        profile.combo_count = 0
+        profile.combo_date = today
+    combo_mult = _get_combo_mult(profile.combo_count)
+    profile.combo_count += 1
+    event.combo_count = profile.combo_count
+    event.combo_multiplier = combo_mult
+
     # --- Calculate base coins ---
     base_coins = PRIORITY_COINS.get(task.priority, 5)
 
@@ -215,7 +243,7 @@ async def award_task_completion(
     rarity_coin = rarity_coin_m[1] if is_premium else rarity_coin_m[0]
     premium_bonus = PREMIUM_COIN_BONUS if is_premium else 1.0
 
-    final_coins = math.floor(base_coins * streak_coin_m * premium_bonus * rarity_coin)
+    final_coins = math.floor(base_coins * streak_coin_m * premium_bonus * rarity_coin * combo_mult)
 
     # --- Daily cap ---
     daily_cap = PREMIUM_DAILY_CAP if is_premium else FREE_DAILY_CAP

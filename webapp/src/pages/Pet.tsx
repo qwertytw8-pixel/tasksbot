@@ -317,6 +317,21 @@ export function PetPage() {
         </span>
       </div>
 
+      {/* Combo indicator */}
+      {profile.combo_count > 0 && (
+        <div className={`pet-combo ${profile.combo_multiplier > 1 ? "pet-combo--active" : ""}`}>
+          <span className="pet-combo__icon">{"\u26A1"}</span>
+          <span className="pet-combo__label">
+            {t("Комбо", "Combo")} x{profile.combo_count}
+          </span>
+          {profile.combo_multiplier > 1 && (
+            <span className="pet-combo__mult">
+              {"\u00D7"}{profile.combo_multiplier}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Glass stats cards */}
       <div className="pet-stats-grid">
         <div className="pet-stat-card">

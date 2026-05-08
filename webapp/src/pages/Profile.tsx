@@ -7,6 +7,7 @@ import { useI18n, getStoredHorizon, setStoredHorizon } from "../i18n";
 import {
   ArchiveIcon,
   ArrowRightIcon,
+  BarChartIcon,
   CheckIcon,
   ChevronLeftIcon,
   HelpIcon,
@@ -216,6 +217,13 @@ function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) 
       </div>
 
       <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
+        <NavRow
+          to="/profile/report"
+          icon={<BarChartIcon />}
+          title={t("profile.report")}
+          subtitle={t("profile.report_sub")}
+        />
+        <div className="nav-row__divider" />
         <NavRow
           to="/profile/archive"
           icon={<ArchiveIcon />}
@@ -529,12 +537,23 @@ export function ProfileRoutes({ onResetOnboarding }: { onResetOnboarding?: () =>
   return (
     <Routes>
       <Route index element={<ProfileHome onResetOnboarding={onResetOnboarding} />} />
+      <Route path="report" element={<ReportPageLazy />} />
       <Route path="archive" element={<ArchivePage />} />
       <Route path="support" element={<SupportPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
       <Route path="subscription" element={<SubscriptionPageLazy />} />
     </Routes>
   );
+}
+
+function ReportPageLazy() {
+  const { t } = useI18n();
+  const [Comp, setComp] = useState<React.ComponentType | null>(null);
+  useEffect(() => {
+    void import("./Report").then((m) => setComp(() => m.ReportPage));
+  }, []);
+  if (!Comp) return <div className="spinner">{t("loading")}</div>;
+  return <Comp />;
 }
 
 function SubscriptionPageLazy() {

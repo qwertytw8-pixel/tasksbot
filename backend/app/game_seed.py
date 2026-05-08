@@ -112,64 +112,72 @@ ACHIEVEMENTS: list[dict] = [
         "slug": "tasks_1", "icon": "\U0001f4cb",
         "name_ru": "Первые шаги", "name_en": "First Steps",
         "description_ru": "Выполни 1 задачу", "description_en": "Complete 1 task",
-        "condition_type": "tasks_done", "condition_value": 1, "reward_coins": 10, "sort_order": 1,
+        "condition_type": "tasks_done", "condition_value": 1,
+        "reward_coins": 10, "tier": "bronze", "sort_order": 1,
     },
     {
         "slug": "tasks_10", "icon": "\U0001f4cb",
         "name_ru": "Разогрев", "name_en": "Warming Up",
         "description_ru": "Выполни 10 задач", "description_en": "Complete 10 tasks",
-        "condition_type": "tasks_done", "condition_value": 10, "reward_coins": 25, "sort_order": 2,
+        "condition_type": "tasks_done", "condition_value": 10,
+        "reward_coins": 25, "tier": "silver", "sort_order": 2,
     },
     {
         "slug": "tasks_50", "icon": "\U0001f4cb",
         "name_ru": "Трудяга", "name_en": "Hard Worker",
         "description_ru": "Выполни 50 задач", "description_en": "Complete 50 tasks",
-        "condition_type": "tasks_done", "condition_value": 50, "reward_coins": 75, "sort_order": 3,
+        "condition_type": "tasks_done", "condition_value": 50,
+        "reward_coins": 75, "tier": "gold", "sort_order": 3,
     },
     {
         "slug": "tasks_100", "icon": "\U0001f4cb",
         "name_ru": "Марафонец", "name_en": "Marathon Runner",
         "description_ru": "Выполни 100 задач", "description_en": "Complete 100 tasks",
         "condition_type": "tasks_done", "condition_value": 100,
-        "reward_coins": 150, "sort_order": 4,
+        "reward_coins": 150, "tier": "diamond", "sort_order": 4,
     },
     {
         "slug": "tasks_500", "icon": "\U0001f4cb",
         "name_ru": "Легенда", "name_en": "Legend",
         "description_ru": "Выполни 500 задач", "description_en": "Complete 500 tasks",
         "condition_type": "tasks_done", "condition_value": 500,
-        "reward_coins": 500, "sort_order": 5,
+        "reward_coins": 500, "tier": "diamond", "sort_order": 5,
     },
     # Streak
     {
         "slug": "streak_3", "icon": "\U0001f525",
         "name_ru": "На старте", "name_en": "Getting Started",
         "description_ru": "Серия 3 дня подряд", "description_en": "3-day streak",
-        "condition_type": "streak", "condition_value": 3, "reward_coins": 15, "sort_order": 10,
+        "condition_type": "streak", "condition_value": 3,
+        "reward_coins": 15, "tier": "bronze", "sort_order": 10,
     },
     {
         "slug": "streak_7", "icon": "\U0001f525",
         "name_ru": "Неделя огня", "name_en": "Week of Fire",
         "description_ru": "Серия 7 дней подряд", "description_en": "7-day streak",
-        "condition_type": "streak", "condition_value": 7, "reward_coins": 50, "sort_order": 11,
+        "condition_type": "streak", "condition_value": 7,
+        "reward_coins": 50, "tier": "silver", "sort_order": 11,
     },
     {
         "slug": "streak_14", "icon": "\U0001f525",
         "name_ru": "Двухнедельный марафон", "name_en": "Two-Week Marathon",
         "description_ru": "Серия 14 дней подряд", "description_en": "14-day streak",
-        "condition_type": "streak", "condition_value": 14, "reward_coins": 100, "sort_order": 12,
+        "condition_type": "streak", "condition_value": 14,
+        "reward_coins": 100, "tier": "gold", "sort_order": 12,
     },
     {
         "slug": "streak_30", "icon": "\U0001f525",
         "name_ru": "Месяц дисциплины", "name_en": "Month of Discipline",
         "description_ru": "Серия 30 дней подряд", "description_en": "30-day streak",
-        "condition_type": "streak", "condition_value": 30, "reward_coins": 250, "sort_order": 13,
+        "condition_type": "streak", "condition_value": 30,
+        "reward_coins": 250, "tier": "diamond", "sort_order": 13,
     },
     {
         "slug": "streak_60", "icon": "\U0001f525",
         "name_ru": "Несгибаемый", "name_en": "Unstoppable",
         "description_ru": "Серия 60 дней подряд", "description_en": "60-day streak",
-        "condition_type": "streak", "condition_value": 60, "reward_coins": 500, "sort_order": 14,
+        "condition_type": "streak", "condition_value": 60,
+        "reward_coins": 500, "tier": "diamond", "sort_order": 14,
     },
     # Perfect days
     {
@@ -177,41 +185,43 @@ ACHIEVEMENTS: list[dict] = [
         "name_ru": "Идеальный день", "name_en": "Perfect Day",
         "description_ru": "1 идеальный день", "description_en": "1 perfect day",
         "condition_type": "perfect_days", "condition_value": 1,
-        "reward_coins": 15, "sort_order": 20,
+        "reward_coins": 15, "tier": "bronze", "sort_order": 20,
     },
     {
         "slug": "perfect_7", "icon": "\u2b50",
         "name_ru": "Идеальная неделя", "name_en": "Perfect Week",
         "description_ru": "7 идеальных дней", "description_en": "7 perfect days",
         "condition_type": "perfect_days", "condition_value": 7,
-        "reward_coins": 100, "sort_order": 21,
+        "reward_coins": 100, "tier": "silver", "sort_order": 21,
     },
     {
         "slug": "perfect_30", "icon": "\u2b50",
         "name_ru": "Перфекционист", "name_en": "Perfectionist",
         "description_ru": "30 идеальных дней", "description_en": "30 perfect days",
         "condition_type": "perfect_days", "condition_value": 30,
-        "reward_coins": 300, "sort_order": 22,
+        "reward_coins": 300, "tier": "gold", "sort_order": 22,
     },
     # On-time
     {
         "slug": "ontime_5", "icon": "\u23f0",
         "name_ru": "Вовремя", "name_en": "On Time",
         "description_ru": "5 задач до дедлайна", "description_en": "5 tasks before deadline",
-        "condition_type": "ontime", "condition_value": 5, "reward_coins": 20, "sort_order": 30,
+        "condition_type": "ontime", "condition_value": 5,
+        "reward_coins": 20, "tier": "bronze", "sort_order": 30,
     },
     {
         "slug": "ontime_25", "icon": "\u23f0",
         "name_ru": "Часовой механизм", "name_en": "Clockwork",
         "description_ru": "25 задач до дедлайна", "description_en": "25 tasks before deadline",
-        "condition_type": "ontime", "condition_value": 25, "reward_coins": 80, "sort_order": 31,
+        "condition_type": "ontime", "condition_value": 25,
+        "reward_coins": 80, "tier": "silver", "sort_order": 31,
     },
     {
         "slug": "ontime_100", "icon": "\u23f0",
         "name_ru": "Мастер времени", "name_en": "Time Master",
         "description_ru": "100 задач до дедлайна", "description_en": "100 tasks before deadline",
         "condition_type": "ontime", "condition_value": 100,
-        "reward_coins": 200, "sort_order": 32,
+        "reward_coins": 200, "tier": "gold", "sort_order": 32,
     },
     # Priority
     {
@@ -220,7 +230,7 @@ ACHIEVEMENTS: list[dict] = [
         "description_ru": "10 задач с высоким приоритетом",
         "description_en": "10 high priority tasks",
         "condition_type": "high_priority", "condition_value": 10,
-        "reward_coins": 40, "sort_order": 40,
+        "reward_coins": 40, "tier": "silver", "sort_order": 40,
     },
     {
         "slug": "priority_50", "icon": "\U0001f3af",
@@ -228,7 +238,7 @@ ACHIEVEMENTS: list[dict] = [
         "description_ru": "50 задач с высоким приоритетом",
         "description_en": "50 high priority tasks",
         "condition_type": "high_priority", "condition_value": 50,
-        "reward_coins": 150, "sort_order": 41,
+        "reward_coins": 150, "tier": "gold", "sort_order": 41,
     },
     # Shop
     {
@@ -236,16 +246,19 @@ ACHIEVEMENTS: list[dict] = [
         "name_ru": "Первая покупка", "name_en": "First Purchase",
         "description_ru": "Купи 1 предмет", "description_en": "Buy 1 item",
         "condition_type": "items_bought", "condition_value": 1,
-        "reward_coins": 10, "sort_order": 50,
+        "reward_coins": 10, "tier": "bronze", "sort_order": 50,
     },
     {
         "slug": "shop_10", "icon": "\U0001f6cd\ufe0f",
         "name_ru": "Коллекционер", "name_en": "Collector",
         "description_ru": "Купи 10 предметов", "description_en": "Buy 10 items",
         "condition_type": "items_bought", "condition_value": 10,
-        "reward_coins": 50, "sort_order": 51,
+        "reward_coins": 50, "tier": "silver", "sort_order": 51,
     },
 ]
+
+# Tier mapping for existing achievements (used during seed migration)
+ACHIEVEMENT_TIERS: dict[str, str] = {a["slug"]: a["tier"] for a in ACHIEVEMENTS}
 
 EGG_DROPS: list[dict] = [
     # Common egg: ~70% common, ~25% rare, ~5% epic — any character
@@ -371,6 +384,13 @@ async def ensure_game_schema(conn: AsyncConnection) -> None:
         "ALTER TABLE game_profiles ADD COLUMN IF NOT EXISTS daily_login_day DATE",
         "ALTER TABLE game_profiles ADD COLUMN IF NOT EXISTS"
         " daily_login_streak INTEGER NOT NULL DEFAULT 0",
+        # v10: combo system
+        "ALTER TABLE game_profiles ADD COLUMN IF NOT EXISTS"
+        " combo_count INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE game_profiles ADD COLUMN IF NOT EXISTS combo_date DATE",
+        # v10: achievement tiers
+        "ALTER TABLE game_achievements ADD COLUMN IF NOT EXISTS"
+        " tier VARCHAR(16) NOT NULL DEFAULT 'bronze'",
     ]
     for s in stmts:
         await conn.execute(text(s))
@@ -401,6 +421,13 @@ async def seed_game_data(session: AsyncSession) -> None:
     for ach_data in ACHIEVEMENTS:
         if ach_data["slug"] not in existing_achievements:
             session.add(GameAchievement(**ach_data))
+
+    # Update tiers for existing achievements
+    all_achs = (await session.execute(select(GameAchievement))).scalars().all()
+    for db_ach in all_achs:
+        expected_tier = ACHIEVEMENT_TIERS.get(db_ach.slug)
+        if expected_tier and db_ach.tier != expected_tier:
+            db_ach.tier = expected_tier
 
     # Egg drops — recreate if count changed (schema update)
     existing_drops = (await session.execute(select(GameEggDrop.id))).scalars().all()

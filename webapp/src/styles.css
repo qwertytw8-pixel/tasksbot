@@ -2841,6 +2841,157 @@ button {
 .pet-mood--good { border-left: 3px solid #34D399; }
 .pet-mood--fire { border-left: 3px solid #F97316; }
 
+/* ── Combo indicator ── */
+.pet-combo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  border-left: 3px solid #818CF8;
+}
+.pet-combo--active {
+  border-left-color: #F59E0B;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), var(--tb-glass));
+}
+.pet-combo__icon {
+  font-size: 18px;
+}
+.pet-combo__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tb-text);
+}
+.pet-combo__mult {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+/* ── Achievement tier badge ── */
+.achievement-card__tier {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  vertical-align: middle;
+}
+[data-theme="dark"] .achievement-card__tier,
+.dark .achievement-card__tier {
+  background: rgba(255, 255, 255, 0.08);
+}
+.achievement-card--diamond .achievement-card__icon {
+  filter: drop-shadow(0 0 4px rgba(185, 242, 255, 0.5));
+}
+.achievement-card--gold .achievement-card__icon {
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.4));
+}
+
+/* ── Report page ── */
+.report-period {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.report-period__btn {
+  flex: 1;
+  padding: 10px 0;
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-glass);
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  color: var(--tb-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.report-period__btn--active {
+  background: var(--tb-accent-strong);
+  color: #fff;
+  border-color: var(--tb-accent-strong);
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.report-card {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  padding: 16px 14px;
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
+  text-align: center;
+}
+.report-card--accent {
+  border-color: var(--tb-accent-strong);
+  background: linear-gradient(135deg, rgba(var(--tb-accent-rgb, 99, 102, 241), 0.08), var(--tb-glass));
+}
+.report-card__icon {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+}
+.report-card__value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--tb-text);
+  line-height: 1.1;
+}
+.report-card__label {
+  font-size: 12px;
+  color: var(--tb-text-secondary);
+  margin-top: 4px;
+}
+
+.report-summary {
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  padding: 4px 0;
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
+}
+.report-summary__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+}
+.report-summary__row + .report-summary__row {
+  border-top: 1px solid var(--tb-glass-border);
+}
+.report-summary__label {
+  font-size: 14px;
+  color: var(--tb-text-secondary);
+}
+.report-summary__value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tb-text);
+}
+
 /* ── Stats grid (glass cards) ── */
 .pet-stats-grid {
   display: grid;

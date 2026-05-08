@@ -35,6 +35,8 @@ class GameProfile(Base):
     items_purchased_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     daily_coins_earned: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     daily_coins_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    combo_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    combo_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     active_pet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     active_background_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_login_day: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -116,6 +118,7 @@ class GameAchievement(Base):
     condition_type: Mapped[str] = mapped_column(String(32), nullable=False)
     condition_value: Mapped[int] = mapped_column(Integer, nullable=False)
     reward_coins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tier: Mapped[str] = mapped_column(String(16), nullable=False, default="bronze")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
