@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { api, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
-import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon, EditIcon, ScrollIcon, GiftIcon } from "../icons";
+import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon, EditIcon, ScrollIcon } from "../icons";
 import { useT } from "../i18n";
 import { haptic } from "../telegram";
 
@@ -361,32 +361,24 @@ export function PetPage() {
         )}
       </div>
 
-      {/* Glass pill navigation — 2-row layout */}
-      <div className="pet-nav-grid">
-        <div className="pet-nav-grid__row">
-          <button className="pet-nav-card" onClick={() => navigate("/pet/quests")}>
-            <span className="pet-nav-card__icon"><ScrollIcon style={{ width: 22, height: 22 }} /></span>
-            <span className="pet-nav-card__label">{t("\u041a\u0432\u0435\u0441\u0442\u044b", "Quests")}</span>
-          </button>
-          <button className="pet-nav-card" onClick={() => navigate("/pet/spin")}>
-            <span className="pet-nav-card__icon"><GiftIcon style={{ width: 22, height: 22 }} /></span>
-            <span className="pet-nav-card__label">{t("\u0423\u0434\u0430\u0447\u0430", "Spin")}</span>
-          </button>
-          <button className="pet-nav-card" onClick={() => navigate("/pet/shop")}>
-            <span className="pet-nav-card__icon"><ShopBagIcon style={{ width: 22, height: 22 }} /></span>
-            <span className="pet-nav-card__label">{t("\u041c\u0430\u0433\u0430\u0437\u0438\u043d", "Shop")}</span>
-          </button>
-        </div>
-        <div className="pet-nav-grid__row pet-nav-grid__row--center">
-          <button className="pet-nav-card" onClick={() => navigate("/pet/achievements")}>
-            <span className="pet-nav-card__icon"><TrophyIcon style={{ width: 22, height: 22 }} /></span>
-            <span className="pet-nav-card__label">{t("\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u044f", "Achievements")}</span>
-          </button>
-          <button className="pet-nav-card" onClick={() => navigate("/pet/collection")}>
-            <span className="pet-nav-card__icon"><GridIcon style={{ width: 22, height: 22 }} /></span>
-            <span className="pet-nav-card__label">{t("\u041a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044f", "Collection")}</span>
-          </button>
-        </div>
+      {/* Glass pill navigation — 2×2 grid */}
+      <div className="pet-nav-grid pet-nav-grid--2x2">
+        <button className="pet-nav-card" onClick={() => navigate("/pet/quests")}>
+          <span className="pet-nav-card__icon"><ScrollIcon style={{ width: 22, height: 22 }} /></span>
+          <span className="pet-nav-card__label">{t("\u041a\u0432\u0435\u0441\u0442\u044b", "Quests")}</span>
+        </button>
+        <button className="pet-nav-card" onClick={() => navigate("/pet/shop")}>
+          <span className="pet-nav-card__icon"><ShopBagIcon style={{ width: 22, height: 22 }} /></span>
+          <span className="pet-nav-card__label">{t("\u041c\u0430\u0433\u0430\u0437\u0438\u043d", "Shop")}</span>
+        </button>
+        <button className="pet-nav-card" onClick={() => navigate("/pet/achievements")}>
+          <span className="pet-nav-card__icon"><TrophyIcon style={{ width: 22, height: 22 }} /></span>
+          <span className="pet-nav-card__label">{t("\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u044f", "Achievements")}</span>
+        </button>
+        <button className="pet-nav-card" onClick={() => navigate("/pet/collection")}>
+          <span className="pet-nav-card__icon"><GridIcon style={{ width: 22, height: 22 }} /></span>
+          <span className="pet-nav-card__label">{t("\u041a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044f", "Collection")}</span>
+        </button>
       </div>
     </div>
   );
