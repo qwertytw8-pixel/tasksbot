@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +11,8 @@ from app.db import Subscription, Task, User
 
 FREE_MAX_TASKS = 5
 FREE_DAILY_LIMIT = 5
+TRIAL_DAYS = 3
+TRIAL_DISCOUNT_STARS = 69
 
 # Pricing tiers: (label, days, stars)
 PREMIUM_PLANS = [
@@ -21,6 +23,40 @@ PREMIUM_PLANS = [
 PREMIUM_PRICE_STARS = 99  # default (1 month)
 
 RENEWAL_DISCOUNT_PLAN = {"key": "renewal_1m", "label": "1 месяц (скидка)", "days": 30, "stars": 69}
+TRIAL_DISCOUNT_PLAN = {
+    "key": "trial_1m", "label": "1 месяц", "days": 30, "stars": TRIAL_DISCOUNT_STARS,
+}
+
+
+async def activate_trial(session: AsyncSession, user: User) -> None:
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(days=TRIAL_DAYS)
+    user.trial_started_at = now
+    sub = Subscription(
+        user_id=user.id,
+        plan="trial",
+        started_at=now,
+        expires_at=expires_at,
+        is_active=True,
+        source="trial",
+    )
+    session.add(sub)
+    await session.commit()
+
+
+def is_trial_active(user: User) -> bool:
+    if user.trial_started_at is None:
+        return False
+    if user.trial_ended_at is not None:
+        return False
+    now = datetime.now(UTC)
+    return now < user.trial_started_at + timedelta(days=TRIAL_DAYS)
+
+
+def trial_expires_at(user: User) -> datetime | None:
+    if user.trial_started_at is None:
+        return None
+    return user.trial_started_at + timedelta(days=TRIAL_DAYS)
 
 
 async def get_active_subscription(session: AsyncSession, user_id: int) -> Subscription | None:
