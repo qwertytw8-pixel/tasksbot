@@ -15,7 +15,6 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.scheduler import (
     run_daily_summary,
     run_personal_offers,
-    run_streak_at_risk,
     run_subscription_notifications,
     run_tick,
     run_trial_notifications,
@@ -74,7 +73,6 @@ async def _periodic_wrapper():
         await run_daily_summary(_bot_ref)
         await run_subscription_notifications(_bot_ref)
         await run_personal_offers(_bot_ref)
-        await run_streak_at_risk(_bot_ref)
         await run_trial_notifications(_bot_ref)
     except Exception:
         log.exception("periodic job failed")

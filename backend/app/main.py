@@ -24,7 +24,6 @@ from app.rate_limit import RateLimitMiddleware
 from app.scheduler import (
     run_daily_summary,
     run_personal_offers,
-    run_streak_at_risk,
     run_subscription_notifications,
     run_tick,
     run_trial_notifications,
@@ -189,7 +188,6 @@ async def cron_tick(
     summaries = await run_daily_summary(request.app.state.bot)
     sub_notifs = await run_subscription_notifications(request.app.state.bot)
     personal = await run_personal_offers(request.app.state.bot)
-    streak_warns = await run_streak_at_risk(request.app.state.bot)
     trial_notifs = await run_trial_notifications(request.app.state.bot)
     return {
         "status": "ok",
@@ -197,6 +195,5 @@ async def cron_tick(
         "summaries": summaries,
         "sub_notifs": sub_notifs,
         "personal_offers": personal,
-        "streak_warnings": streak_warns,
         "trial_notifs": trial_notifs,
     }
