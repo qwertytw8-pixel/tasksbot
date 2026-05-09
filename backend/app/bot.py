@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import io
 import json
 import logging
@@ -115,6 +114,7 @@ def _is_ru(message: Message | None = None, cq: CallbackQuery | None = None) -> b
 def _open_app_kb(
     show_premium: bool = True,
     ru: bool = True,
+    show_new_task: bool = False,
 ) -> InlineKeyboardMarkup:
     settings = get_settings()
     rows: list[list[InlineKeyboardButton]] = [
@@ -132,16 +132,17 @@ def _open_app_kb(
                 callback_data="show_premium",
             )
         ])
-    rows.append([
-        InlineKeyboardButton(
+    bottom: list[InlineKeyboardButton] = []
+    if show_new_task:
+        bottom.append(InlineKeyboardButton(
             text="➕ Новая задача" if ru else "➕ New task",
             callback_data="new_task",
-        ),
-        InlineKeyboardButton(
-            text="ℹ️ Помощь" if ru else "ℹ️ Help",
-            callback_data="help",
-        ),
-    ])
+        ))
+    bottom.append(InlineKeyboardButton(
+        text="ℹ️ Помощь" if ru else "ℹ️ Help",
+        callback_data="help",
+    ))
+    rows.append(bottom)
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -236,16 +237,35 @@ async def _do_start(message: Message) -> None:
                     callback_data="show_premium",
                 )])
 
-    rows.append([
-        InlineKeyboardButton(
-            text="➕ Новая задача" if ru else "➕ New task",
-            callback_data="new_task",
-        ),
-        InlineKeyboardButton(
-            text="ℹ️ Помощь" if ru else "ℹ️ Help",
-            callback_data="help",
-        ),
-    ])
+    if is_new_user or not message.from_user:
+        rows.append([
+            InlineKeyboardButton(
+                text="ℹ️ Как это работает" if ru else "ℹ️ How it works",
+                callback_data="help",
+            ),
+        ])
+    else:
+        sm2 = get_sessionmaker()
+        async with sm2() as session2:
+            user_is_premium = await is_premium(session2, message.from_user.id)
+        if user_is_premium:
+            rows.append([
+                InlineKeyboardButton(
+                    text="➕ Новая задача" if ru else "➕ New task",
+                    callback_data="new_task",
+                ),
+                InlineKeyboardButton(
+                    text="ℹ️ Помощь" if ru else "ℹ️ Help",
+                    callback_data="help",
+                ),
+            ])
+        else:
+            rows.append([
+                InlineKeyboardButton(
+                    text="ℹ️ Помощь" if ru else "ℹ️ Help",
+                    callback_data="help",
+                ),
+            ])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
 
     img = _welcome_image(ru=ru)
@@ -254,41 +274,7 @@ async def _do_start(message: Message) -> None:
     else:
         await message.answer(welcome, reply_markup=kb)
 
-    if is_new_user and message.from_user:
-        asyncio.create_task(_activate_trial_auto(message))
 
-
-async def _activate_trial_auto(message: Message) -> None:
-    if message.from_user is None:
-        return
-    ru = _is_ru(message=message)
-    await asyncio.sleep(3)
-    sm = get_sessionmaker()
-    async with sm() as session:
-        user = await session.get(User, message.from_user.id)
-        if user is None:
-            return
-        if user.trial_started_at is not None:
-            return
-        await activate_trial(session, user)
-
-    trial_text = TRIAL_TEXT if ru else TRIAL_TEXT_EN
-    img = _asset_image("trial_premium_ru.png" if ru else "trial_premium_en.png")
-    settings = get_settings()
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text="✨ Попробовать сейчас" if ru else "✨ Try it now",
-            web_app=WebAppInfo(url=settings.webapp_url),
-        )],
-        [InlineKeyboardButton(
-            text="📋 Что входит в Premium" if ru else "📋 What's included",
-            callback_data="show_premium",
-        )],
-    ])
-    if img is not None:
-        await message.answer_photo(photo=img, caption=trial_text, reply_markup=kb)
-    else:
-        await message.answer(trial_text, reply_markup=kb)
 
 
 @dp.callback_query(F.data == "activate_trial")
