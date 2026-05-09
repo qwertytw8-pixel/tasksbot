@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { api, type GameItem, type GamePet, type GameProfile } from "../api";
+import { api, type FuseResponse, type GameItem, type GamePet, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
 import { TrashXIcon } from "../icons";
 import { useToast } from "../components/Toast";
 import { useT } from "../i18n";
 import { haptic } from "../telegram";
 
-type Tab = "pets" | "backgrounds";
+type Tab = "pets" | "fusion" | "backgrounds";
 
 const RARITY_COLORS: Record<string, string> = {
   common: "#9CA3AF",
@@ -30,6 +30,9 @@ export function PetCollectionPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [tab, setTab] = useState<Tab>("pets");
+  const [fuseSelected, setFuseSelected] = useState<number[]>([]);
+  const [fusing, setFusing] = useState(false);
+  const [fuseResult, setFuseResult] = useState<FuseResponse | null>(null);
   const navigate = useNavigate();
   const { show: showToast } = useToast();
 
@@ -116,6 +119,30 @@ export function PetCollectionPage() {
     }
   }, [load, showToast]);
 
+  const handleFuseToggle = useCallback((petId: number) => {
+    setFuseSelected((prev) => {
+      if (prev.includes(petId)) return prev.filter((id) => id !== petId);
+      if (prev.length >= 3) return prev;
+      return [...prev, petId];
+    });
+  }, []);
+
+  const handleFuse = useCallback(async () => {
+    if (fuseSelected.length !== 3) return;
+    setFusing(true);
+    try {
+      const result = await api.gameFuse(fuseSelected);
+      setFuseResult(result);
+      haptic("heavy");
+      setFuseSelected([]);
+      await load();
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : "Fusion failed", "error");
+    } finally {
+      setFusing(false);
+    }
+  }, [fuseSelected, load, showToast]);
+
   if (loading) return <div className="spinner">{t("Загрузка…", "Loading…")}</div>;
 
   const activePetId = profile?.active_pet?.id;
@@ -142,13 +169,19 @@ export function PetCollectionPage() {
       <div className="collection-tabs">
         <button
           className={`collection-tabs__btn ${tab === "pets" ? "collection-tabs__btn--active" : ""}`}
-          onClick={() => setTab("pets")}
+          onClick={() => { setTab("pets"); setFuseResult(null); }}
         >
           {t("Питомцы", "Pets")}
         </button>
         <button
+          className={`collection-tabs__btn ${tab === "fusion" ? "collection-tabs__btn--active" : ""}`}
+          onClick={() => { setTab("fusion"); setFuseSelected([]); setFuseResult(null); }}
+        >
+          {t("Слияние", "Fusion")}
+        </button>
+        <button
           className={`collection-tabs__btn ${tab === "backgrounds" ? "collection-tabs__btn--active" : ""}`}
-          onClick={() => setTab("backgrounds")}
+          onClick={() => { setTab("backgrounds"); setFuseResult(null); }}
         >
           {t("Фоны", "Backgrounds")}
         </button>
@@ -215,6 +248,127 @@ export function PetCollectionPage() {
               );
             })}
           </div>
+        </>
+      )}
+
+      {/* Fusion tab */}
+      {tab === "fusion" && (
+        <>
+          <div className="fusion-info">
+            <p>{t(
+              "Объедини 3 питомцев одной редкости, чтобы получить питомца следующей редкости!",
+              "Combine 3 pets of the same rarity to get a pet of the next rarity!"
+            )}</p>
+            <p className="fusion-info__rules">
+              {t("3 обычных → 1 редкий • 3 редких → 1 эпический", "3 Common → 1 Rare • 3 Rare → 1 Epic")}
+            </p>
+          </div>
+
+          {fuseResult && (
+            <div className="fusion-result">
+              <div className="fusion-result__glow">
+                <PetView
+                  characterType={fuseResult.pet.character_type}
+                  rarity={fuseResult.pet.rarity}
+                  stage={fuseResult.pet.stage}
+                  size={120}
+                />
+              </div>
+              <div className="fusion-result__text">
+                <span className="fusion-result__rarity" style={{ color: RARITY_COLORS[fuseResult.pet.rarity] }}>
+                  {t(fuseResult.rarity_name_ru, fuseResult.rarity_name_en)}
+                </span>
+                <span className="fusion-result__name">
+                  {t(fuseResult.character_name_ru, fuseResult.character_name_en)}
+                </span>
+              </div>
+              <button className="fusion-result__close" onClick={() => setFuseResult(null)}>
+                {t("Отлично!", "Awesome!")}
+              </button>
+            </div>
+          )}
+
+          {!fuseResult && (
+            <>
+              <div className="fusion-slots">
+                {[0, 1, 2].map((i) => {
+                  const selectedPet = fuseSelected[i] ? pets.find((p) => p.id === fuseSelected[i]) : null;
+                  return (
+                    <div key={i} className={`fusion-slot ${selectedPet ? "fusion-slot--filled" : ""}`}>
+                      {selectedPet ? (
+                        <PetView
+                          characterType={selectedPet.character_type}
+                          rarity={selectedPet.rarity}
+                          stage={selectedPet.stage}
+                          size={56}
+                        />
+                      ) : (
+                        <span className="fusion-slot__placeholder">?</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {fuseSelected.length === 3 && (
+                <button
+                  className="fusion-btn"
+                  onClick={handleFuse}
+                  disabled={fusing}
+                >
+                  {fusing ? t("Слияние…", "Fusing…") : t("Объединить!", "Fuse!")}
+                </button>
+              )}
+
+              {(() => {
+                const fusable = pets.filter((p) => p.rarity === "common" || p.rarity === "rare");
+                const selectedRarity = fuseSelected.length > 0
+                  ? pets.find((p) => p.id === fuseSelected[0])?.rarity
+                  : null;
+                const filtered = selectedRarity
+                  ? fusable.filter((p) => p.rarity === selectedRarity)
+                  : fusable;
+                return (
+                  <div className="pet-collection__grid">
+                    {filtered.map((pet) => {
+                      const isSelected = fuseSelected.includes(pet.id);
+                      const rarityColor = RARITY_COLORS[pet.rarity] ?? "#9CA3AF";
+                      const [rarityRu, rarityEn] = RARITY_LABELS[pet.rarity] ?? ["?", "?"];
+                      return (
+                        <div
+                          key={pet.id}
+                          className={`pet-collection__card ${isSelected ? "pet-collection__card--fuse-selected" : ""}`}
+                          onClick={() => handleFuseToggle(pet.id)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <div className="pet-collection__rarity-badge" style={{ color: rarityColor }}>
+                            {t(rarityRu, rarityEn)}
+                          </div>
+                          <PetView
+                            characterType={pet.character_type}
+                            rarity={pet.rarity}
+                            stage={pet.stage}
+                            size={80}
+                          />
+                          <div className="pet-collection__name">
+                            {pet.name ?? t("Без имени", "Unnamed")}
+                          </div>
+                          {isSelected && (
+                            <div className="fusion-check">✓</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {filtered.length === 0 && (
+                      <div className="pet-empty">
+                        <p>{t("Нет питомцев для слияния", "No pets available for fusion")}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
+          )}
         </>
       )}
 

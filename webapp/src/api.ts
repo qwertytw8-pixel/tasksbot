@@ -244,6 +244,15 @@ export interface HatchResponse {
   rarity_name_en: string;
 }
 
+export interface FuseResponse {
+  pet: GamePet;
+  character_name_ru: string;
+  character_name_en: string;
+  rarity_name_ru: string;
+  rarity_name_en: string;
+  fused_count: number;
+}
+
 export interface GameItem {
   id: number;
   slug: string;
@@ -402,6 +411,11 @@ export const api = {
     request<DailyQuestsResponse>("/api/game/quests"),
   rerollQuest: (questId: number) =>
     request<RerollQuestResponse>(`/api/game/quests/${questId}/reroll`, { method: "POST" }),
+  gameFuse: (pet_ids: number[]) =>
+    request<FuseResponse>("/api/game/fuse", {
+      method: "POST",
+      body: JSON.stringify({ pet_ids }),
+    }),
   luckySpin: () =>
     request<SpinResponse>("/api/game/spin", { method: "POST" }),
 
