@@ -2995,9 +2995,13 @@ button {
 /* ── Stats grid (glass cards) ── */
 .pet-stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-bottom: 14px;
+}
+
+.pet-stats-grid:has(> :nth-child(2)) {
+  grid-template-columns: 1fr 1fr;
 }
 
 .pet-stat-card {
