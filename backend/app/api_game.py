@@ -852,8 +852,9 @@ async def reroll_quest(
         )
     ).scalars().all()
 
-    from app.game import QUEST_POOL
     import random
+
+    from app.game import QUEST_POOL
     available = [q for q in QUEST_POOL if q["slug"] not in current_quests]
     if not available:
         available = QUEST_POOL
