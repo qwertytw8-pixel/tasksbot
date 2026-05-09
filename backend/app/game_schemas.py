@@ -96,6 +96,7 @@ class GameAchievementOut(BaseModel):
     condition_value: int
     reward_coins: int
     tier: str = "bronze"
+    is_secret: bool = False
     unlocked: bool = False
     unlocked_at: datetime | None = None
     progress: int = 0
@@ -146,3 +147,38 @@ class ReportOut(BaseModel):
     total_coins: int
     perfect_days_total: int
     tasks_completed_total: int
+
+
+class DailyQuestOut(BaseModel):
+    id: int
+    quest_slug: str
+    description_ru: str
+    description_en: str
+    target_value: int
+    progress: int
+    reward_coins: int
+    is_completed: bool
+
+
+class DailyQuestsResponse(BaseModel):
+    quests: list[DailyQuestOut]
+    reroll_available: bool
+    reroll_cost: int = 10
+
+
+class RerollQuestResponse(BaseModel):
+    new_quest: DailyQuestOut
+    coins_remaining: int
+
+
+class SpinReward(BaseModel):
+    reward_type: str  # "coins", "xp", "egg_ticket"
+    amount: int
+    label_ru: str
+    label_en: str
+
+
+class SpinResponse(BaseModel):
+    reward: SpinReward
+    coins_after: int
+    can_spin_again: bool = False

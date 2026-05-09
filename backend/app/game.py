@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import Task
 from app.game_models import (
     GameAchievement,
+    GameDailyQuest,
     GameEggDrop,
     GamePet,
     GameProfile,
@@ -443,3 +444,194 @@ async def hatch_egg(
         profile.active_pet_id = pet.id
 
     return pet
+
+
+# ---------------------------------------------------------------------------
+# Daily Quests
+# ---------------------------------------------------------------------------
+
+QUEST_POOL: list[dict] = [
+    {
+        "slug": "complete_3_tasks",
+        "desc_ru": "Выполни 3 задачи",
+        "desc_en": "Complete 3 tasks",
+        "target": 3,
+        "reward": 20,
+        "condition": "tasks_done_today",
+    },
+    {
+        "slug": "complete_5_tasks",
+        "desc_ru": "Выполни 5 задач",
+        "desc_en": "Complete 5 tasks",
+        "target": 5,
+        "reward": 35,
+        "condition": "tasks_done_today",
+    },
+    {
+        "slug": "complete_high_priority",
+        "desc_ru": "Выполни важную задачу",
+        "desc_en": "Complete a high priority task",
+        "target": 1,
+        "reward": 25,
+        "condition": "high_priority_today",
+    },
+    {
+        "slug": "complete_2_on_time",
+        "desc_ru": "Выполни 2 задачи вовремя",
+        "desc_en": "Complete 2 tasks on time",
+        "target": 2,
+        "reward": 30,
+        "condition": "ontime_today",
+    },
+    {
+        "slug": "keep_streak",
+        "desc_ru": "Сохрани серию",
+        "desc_en": "Keep your streak",
+        "target": 1,
+        "reward": 15,
+        "condition": "streak_active",
+    },
+    {
+        "slug": "perfect_day",
+        "desc_ru": "Идеальный день",
+        "desc_en": "Perfect day",
+        "target": 1,
+        "reward": 50,
+        "condition": "perfect_day",
+    },
+    {
+        "slug": "earn_combo",
+        "desc_ru": "Достигни комбо x3",
+        "desc_en": "Reach combo x3",
+        "target": 3,
+        "reward": 25,
+        "condition": "combo_today",
+    },
+]
+
+REROLL_COST = 10
+
+
+async def generate_daily_quests(
+    session: AsyncSession, user_id: int, today: date
+) -> list[GameDailyQuest]:
+    """Generate 3 random daily quests for a user if they don't exist yet."""
+    existing = (
+        await session.execute(
+            select(GameDailyQuest).where(
+                GameDailyQuest.user_id == user_id,
+                GameDailyQuest.quest_date == today,
+            )
+        )
+    ).scalars().all()
+
+    if existing:
+        return list(existing)
+
+    chosen = random.sample(QUEST_POOL, min(3, len(QUEST_POOL)))
+    quests: list[GameDailyQuest] = []
+    for q in chosen:
+        quest = GameDailyQuest(
+            user_id=user_id,
+            quest_slug=q["slug"],
+            target_value=q["target"],
+            reward_coins=q["reward"],
+            quest_date=today,
+        )
+        session.add(quest)
+        quests.append(quest)
+
+    await session.flush()
+    return quests
+
+
+def get_quest_description(slug: str) -> tuple[str, str]:
+    """Return (desc_ru, desc_en) for a quest slug."""
+    for q in QUEST_POOL:
+        if q["slug"] == slug:
+            return q["desc_ru"], q["desc_en"]
+    return "Квест", "Quest"
+
+
+def get_quest_condition(slug: str) -> str:
+    """Return the condition type for a quest slug."""
+    for q in QUEST_POOL:
+        if q["slug"] == slug:
+            return q["condition"]
+    return ""
+
+
+async def update_quest_progress(
+    session: AsyncSession,
+    user_id: int,
+    today: date,
+    profile: GameProfile,
+    tasks_done_today: int,
+    high_priority_today: int,
+    ontime_today: int,
+    is_perfect_day: bool,
+) -> list[GameDailyQuest]:
+    """Update progress on all daily quests. Returns newly completed quests."""
+    quests = (
+        await session.execute(
+            select(GameDailyQuest).where(
+                GameDailyQuest.user_id == user_id,
+                GameDailyQuest.quest_date == today,
+                GameDailyQuest.is_completed.is_(False),
+            )
+        )
+    ).scalars().all()
+
+    completed: list[GameDailyQuest] = []
+    combo = profile.combo_count if profile.combo_date == today else 0
+
+    for q in quests:
+        condition = get_quest_condition(q.quest_slug)
+        if condition == "tasks_done_today":
+            q.progress = min(tasks_done_today, q.target_value)
+        elif condition == "high_priority_today":
+            q.progress = min(high_priority_today, q.target_value)
+        elif condition == "ontime_today":
+            q.progress = min(ontime_today, q.target_value)
+        elif condition == "streak_active":
+            q.progress = 1 if profile.streak_days >= 1 else 0
+        elif condition == "perfect_day":
+            q.progress = 1 if is_perfect_day else 0
+        elif condition == "combo_today":
+            q.progress = min(combo, q.target_value)
+
+        if q.progress >= q.target_value and not q.is_completed:
+            q.is_completed = True
+            profile.coins += q.reward_coins
+            profile.total_coins_earned += q.reward_coins
+            completed.append(q)
+
+    return completed
+
+
+# ---------------------------------------------------------------------------
+# Lucky Spin
+# ---------------------------------------------------------------------------
+
+SPIN_REWARDS: list[tuple[dict, int]] = [
+    ({"type": "coins", "amount": 5, "ru": "+5 монет", "en": "+5 coins"}, 30),
+    ({"type": "coins", "amount": 10, "ru": "+10 монет", "en": "+10 coins"}, 25),
+    ({"type": "coins", "amount": 25, "ru": "+25 монет", "en": "+25 coins"}, 15),
+    ({"type": "coins", "amount": 50, "ru": "+50 монет", "en": "+50 coins"}, 8),
+    ({"type": "coins", "amount": 100, "ru": "+100 монет", "en": "+100 coins"}, 2),
+    ({"type": "xp", "amount": 10, "ru": "+10 XP", "en": "+10 XP"}, 10),
+    ({"type": "xp", "amount": 25, "ru": "+25 XP", "en": "+25 XP"}, 7),
+    ({"type": "xp", "amount": 50, "ru": "+50 XP", "en": "+50 XP"}, 3),
+]
+
+
+def spin_wheel() -> dict:
+    """Spin the lucky wheel and return a reward."""
+    total = sum(w for _, w in SPIN_REWARDS)
+    roll = random.randint(1, total)
+    cumulative = 0
+    for reward, weight in SPIN_REWARDS:
+        cumulative += weight
+        if roll <= cumulative:
+            return reward
+    return SPIN_REWARDS[0][0]

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 // Build trigger: force Vercel rebuild v2
@@ -31,6 +31,8 @@ const PetHatchPage = lazy(() => import("./pages/PetHatch").then((m) => ({ defaul
 const PetAchievementsPage = lazy(() => import("./pages/PetAchievements").then((m) => ({ default: m.PetAchievementsPage })));
 const PetShopPage = lazy(() => import("./pages/PetShop").then((m) => ({ default: m.PetShopPage })));
 const PetCollectionPage = lazy(() => import("./pages/PetCollection").then((m) => ({ default: m.PetCollectionPage })));
+const DailyQuestsPage = lazy(() => import("./pages/DailyQuests").then((m) => ({ default: m.DailyQuestsPage })));
+const LuckySpinPage = lazy(() => import("./pages/LuckySpin").then((m) => ({ default: m.LuckySpinPage })));
 
 const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin", "/pet"];
 
@@ -85,6 +87,15 @@ export function App() {
     return () => document.removeEventListener("show-achievement", handler);
   }, []);
 
+  // Pet reaction overlay
+  const [petReaction, setPetReaction] = useState(false);
+  useEffect(() => {
+    const handler = () => setPetReaction(true);
+    document.addEventListener("show-pet-reaction", handler);
+    return () => document.removeEventListener("show-pet-reaction", handler);
+  }, []);
+  const clearReaction = useCallback(() => setPetReaction(false), []);
+
   return (
     <ToastProvider>
     <div className="app">
@@ -100,6 +111,8 @@ export function App() {
           <Route path="/pet/achievements" element={<PetAchievementsPage />} />
           <Route path="/pet/shop" element={<PetShopPage />} />
           <Route path="/pet/collection" element={<PetCollectionPage />} />
+          <Route path="/pet/quests" element={<DailyQuestsPage />} />
+          <Route path="/pet/spin" element={<LuckySpinPage />} />
           <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/about" element={<Navigate to="/profile" replace />} />
           <Route path="/admin" element={<AdminPage onShowDailyReward={() => setShowDailyReward(true)} />} />
@@ -121,6 +134,7 @@ export function App() {
           onClose={() => setGameEvent(null)}
         />
       )}
+      {petReaction && <PetReactionOverlay onDone={clearReaction} />}
     </div>
     </ToastProvider>
   );
@@ -135,6 +149,21 @@ function Fab() {
     <button className="fab" aria-label={t("fab.label")} onClick={() => navigate("/new")}>
       <PlusIcon />
     </button>
+  );
+}
+
+const PET_EMOJIS = ["\u{1F389}", "\u{2B50}", "\u{1F31F}", "\u{1F525}", "\u{1F4AA}", "\u{1F60D}", "\u{1F973}"];
+
+function PetReactionOverlay({ onDone }: { onDone: () => void }) {
+  const emoji = PET_EMOJIS[Math.floor(Math.random() * PET_EMOJIS.length)];
+  useEffect(() => {
+    const timer = setTimeout(onDone, 1400);
+    return () => clearTimeout(timer);
+  }, [onDone]);
+  return (
+    <div className="pet-reaction-overlay">
+      <span className="pet-reaction">{emoji}</span>
+    </div>
   );
 }
 
