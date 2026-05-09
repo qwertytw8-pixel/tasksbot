@@ -51,7 +51,7 @@ export function DailyQuestsPage() {
       if (msg.includes("already rerolled") || msg.includes("400")) {
         setShowRerollModal(true);
         setData((prev) => prev ? { ...prev, reroll_available: false } : prev);
-        haptic("warning");
+        haptic("heavy");
       } else {
         setError(msg || "Error");
       }
@@ -63,7 +63,7 @@ export function DailyQuestsPage() {
   const handleRerollAttempt = useCallback((questId: number) => {
     if (data && !data.reroll_available) {
       setShowRerollModal(true);
-      haptic("warning");
+      haptic("heavy");
       return;
     }
     handleReroll(questId);
