@@ -223,7 +223,7 @@ async def _handle_referral(user_id: int, param: str) -> None:
         log.info("referral recorded: %s invited by %s", user_id, referrer_id)
 
 
-@dp.message(CommandStart(deep_link=True, deep_link_encoded=True))
+@dp.message(CommandStart(deep_link=True))
 async def cmd_start_deep(message: Message) -> None:
     args = (message.text or "").split(maxsplit=1)
     param = args[1].strip() if len(args) > 1 else ""
