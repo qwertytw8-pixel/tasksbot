@@ -9,13 +9,23 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from sqlalchemy import func, select, update
 
 from app.db import Reminder, Subscription, Task, User, get_sessionmaker
+
+ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+
+
+def _asset_image(name: str) -> BufferedInputFile | None:
+    p = ASSETS_DIR / name
+    if p.exists():
+        return BufferedInputFile(p.read_bytes(), filename=p.name)
+    return None
 
 log = logging.getLogger(__name__)
 
@@ -455,3 +465,166 @@ async def run_subscription_notifications(bot: Bot) -> int:
                 await session.commit()
 
     return sent_count
+
+
+async def run_trial_notifications(bot: Bot) -> int:
+    """Send trial-related notifications: trial ending, trial expired + discount, last call."""
+    from app.config import get_settings
+    from app.subscription import TRIAL_DISCOUNT_PLAN, trial_expires_at
+
+    sm = get_sessionmaker()
+    now = datetime.now(UTC)
+    sent = 0
+    settings = get_settings()
+
+    async with sm() as session:
+        users = (
+            await session.execute(
+                select(User).where(
+                    User.trial_started_at.isnot(None),
+                    User.trial_ended_at.is_(None),
+                )
+            )
+        ).scalars().all()
+
+        for user in users:
+            expires = trial_expires_at(user)
+            if expires is None:
+                continue
+
+            hours_left = (expires - now).total_seconds() / 3600
+
+            # Trial ending reminder (~12h before end)
+            if 0 < hours_left <= 18 and not user.trial_ending_notified:
+                text_ru = (
+                    "💎 <b>С Premium планировать удобнее</b>\n\n"
+                    "У тебя уже открыт полный доступ, а значит ты можешь "
+                    "пользоваться Task Blo так, как задумано:\n"
+                    "• 🎤 создавать задачи голосом\n"
+                    "• ♾️ не упираться в лимиты\n"
+                    "• 🏷 наводить порядок своими категориями\n\n"
+                    "Если тебе нравится такой формат, его можно будет "
+                    "сохранить и дальше."
+                )
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(
+                        text="🚀 Открыть приложение",
+                        web_app=WebAppInfo(url=settings.webapp_url),
+                    )],
+                    [InlineKeyboardButton(
+                        text="💎 Посмотреть Premium",
+                        callback_data="show_premium",
+                    )],
+                ])
+                try:
+                    img = _asset_image("trial_ending_ru.png")
+                    if img:
+                        await bot.send_photo(
+                            chat_id=user.id, photo=img,
+                            caption=text_ru, reply_markup=kb,
+                        )
+                    else:
+                        await bot.send_message(
+                            chat_id=user.id, text=text_ru, reply_markup=kb,
+                        )
+                    sent += 1
+                except Exception:
+                    log.exception("failed trial ending notif for user %s", user.id)
+                    continue
+                user.trial_ending_notified = True
+                await session.commit()
+
+            # Trial expired — discount offer
+            elif hours_left <= 0 and not user.trial_expired_notified:
+                discount = TRIAL_DISCOUNT_PLAN
+                text_ru = (
+                    "🎁 <b>Пробный период закончился</b>\n\n"
+                    "Если тебе зашёл полный формат Task Blo, можно "
+                    "сохранить все ключевые возможности:\n"
+                    "• 🎤 голосовой ввод\n"
+                    "• ♾️ безлимитные задачи\n"
+                    "• 🏷 свои категории\n\n"
+                    "Сейчас для тебя действует цена на первый месяц:\n"
+                    f"<b>💎 {discount['stars']} ⭐ вместо 99 ⭐</b>"
+                )
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(
+                        text=f"💎 Подключить за {discount['stars']} ⭐",
+                        callback_data="trial_discount",
+                    )],
+                    [InlineKeyboardButton(
+                        text="📋 Продолжить бесплатно",
+                        callback_data="dismiss_trial",
+                    )],
+                ])
+                try:
+                    img = _asset_image("trial_expired_discount_ru.png")
+                    if img:
+                        await bot.send_photo(
+                            chat_id=user.id, photo=img,
+                            caption=text_ru, reply_markup=kb,
+                        )
+                    else:
+                        await bot.send_message(
+                            chat_id=user.id, text=text_ru, reply_markup=kb,
+                        )
+                    sent += 1
+                except Exception:
+                    log.exception("failed trial expired notif for user %s", user.id)
+                    continue
+                user.trial_expired_notified = True
+                user.trial_ended_at = now
+                await session.commit()
+
+        # Last call — 24h after trial expired for users who haven't bought yet
+        last_call_users = (
+            await session.execute(
+                select(User).where(
+                    User.trial_ended_at.isnot(None),
+                    User.trial_expired_notified.is_(True),
+                    User.trial_last_call_sent.is_(False),
+                )
+            )
+        ).scalars().all()
+
+        for user in last_call_users:
+            if user.trial_ended_at is None:
+                continue
+            hours_since_expired = (now - user.trial_ended_at).total_seconds() / 3600
+            if hours_since_expired < 24:
+                continue
+
+            from app.subscription import TRIAL_DISCOUNT_PLAN, get_active_subscription
+
+            sub = await get_active_subscription(session, user.id)
+            if sub is not None:
+                user.trial_last_call_sent = True
+                await session.commit()
+                continue
+
+            discount = TRIAL_DISCOUNT_PLAN
+            text_ru = (
+                "⚡ <b>Сохрани полный доступ со скидкой</b>\n\n"
+                "Оставь себе то, к чему уже успел привыкнуть:\n"
+                "🎤 голосовой ввод, ♾️ безлимитные задачи и "
+                "🏷 свои категории.\n\n"
+                f"<b>Первый месяц — {discount['stars']} ⭐ вместо 99 ⭐</b>"
+            )
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(
+                    text=f"💎 Забрать за {discount['stars']} ⭐",
+                    callback_data="trial_discount",
+                )],
+            ])
+            try:
+                await bot.send_message(
+                    chat_id=user.id, text=text_ru, reply_markup=kb,
+                )
+                sent += 1
+            except Exception:
+                log.exception("failed trial last call for user %s", user.id)
+                continue
+            user.trial_last_call_sent = True
+            await session.commit()
+
+    return sent

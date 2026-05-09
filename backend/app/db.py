@@ -39,6 +39,15 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
     notif_interest_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    trial_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    trial_ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    trial_ending_notified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    trial_expired_notified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    trial_last_call_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False
     )
@@ -340,6 +349,27 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
         (
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS"
             " notif_post_expiry_sent BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
+        # Trial tracking fields on users
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " trial_started_at TIMESTAMPTZ"
+        ),
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " trial_ended_at TIMESTAMPTZ"
+        ),
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " trial_ending_notified BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " trial_expired_notified BOOLEAN NOT NULL DEFAULT FALSE"
+        ),
+        (
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
+            " trial_last_call_sent BOOLEAN NOT NULL DEFAULT FALSE"
         ),
     ]
     for stmt in statements:

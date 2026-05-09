@@ -37,28 +37,52 @@ from app.nlp import (
     parse_ru,
 )
 from app.nlp_ai import smart_parse_tasks
-from app.subscription import PREMIUM_PLANS, RENEWAL_DISCOUNT_PLAN, is_premium
+from app.subscription import (
+    PREMIUM_PLANS,
+    RENEWAL_DISCOUNT_PLAN,
+    TRIAL_DISCOUNT_PLAN,
+    activate_trial,
+    is_premium,
+)
 
 log = logging.getLogger(__name__)
 
 dp = Dispatcher()
 
 WELCOME_TEXT = (
-    "<b>Твой личный task space.</b>\n\n"
-    "Планируй день без шума: задачи, категории и напоминания "
-    "в одном аккуратном Mini App.\n\n"
-    "💎 <b>Premium</b> — безлимитные задачи, свои категории, "
-    "ввод задач текстом и голосом от 99 ⭐/мес.\n\n"
-    "Жми «Открыть приложение» — и поехали."
+    "<b>Task Blo — твой личный планировщик в Telegram ✨</b>\n\n"
+    "• Добавляй задачи текстом и голосом\n"
+    "• Планируй день в удобном Mini App\n"
+    "• Выполняй задачи, возвращайся за стриком и прокачивай питомца 🐾\n\n"
+    "Начни спокойно: открой приложение и добавь первую задачу."
 )
 
 WELCOME_TEXT_EN = (
-    "<b>Your personal task space.</b>\n\n"
-    "Plan your day without noise: tasks, categories, and reminders "
-    "in one clean Mini App.\n\n"
-    "💎 <b>Premium</b> — unlimited tasks, custom categories, "
-    "create tasks via text and voice from 99 ⭐/mo.\n\n"
-    "Tap «Open app» to get started."
+    "<b>Task Blo — your personal planner in Telegram ✨</b>\n\n"
+    "• Add tasks with text or voice\n"
+    "• Plan your day in a clean Mini App\n"
+    "• Complete tasks, keep your streak, and grow your pet 🐾\n\n"
+    "Start simple: open the app and add your first task."
+)
+
+TRIAL_TEXT = (
+    "🎁 <b>Подарок для тебя — Premium на 3 дня</b>\n\n"
+    "Мы уже открыли тебе все функции без ограничений:\n"
+    "• 🎤 голосовой ввод задач\n"
+    "• ♾️ безлимитные задачи\n"
+    "• 🏷 свои категории\n"
+    "• ⏰ ранние напоминания\n\n"
+    "Ничего включать не нужно — просто пользуйся."
+)
+
+TRIAL_TEXT_EN = (
+    "🎁 <b>A gift for you — 3 days of Premium</b>\n\n"
+    "You already have full access to every feature:\n"
+    "• 🎤 voice task input\n"
+    "• ♾️ unlimited tasks\n"
+    "• 🏷 custom categories\n"
+    "• ⏰ early reminders\n\n"
+    "No setup needed — just use it."
 )
 
 NEW_TASK_HINT = (
@@ -156,13 +180,16 @@ def _reply_kb(ru: bool = True) -> ReplyKeyboardMarkup:
     )
 
 
-def _welcome_image() -> BufferedInputFile | None:
-    """Pick the first available welcome image from assets/."""
-    for ext in ("png", "jpg", "jpeg", "webp"):
-        p = ASSETS_DIR / f"welcome.{ext}"
-        if p.exists():
-            return BufferedInputFile(p.read_bytes(), filename=p.name)
+def _asset_image(name: str) -> BufferedInputFile | None:
+    p = ASSETS_DIR / name
+    if p.exists():
+        return BufferedInputFile(p.read_bytes(), filename=p.name)
     return None
+
+
+def _welcome_image(ru: bool = True) -> BufferedInputFile | None:
+    name = "welcome_start_ru.png" if ru else "welcome_start_en.png"
+    return _asset_image(name)
 
 
 @dp.message(CommandStart(deep_link=True, deep_link_encoded=True))
@@ -182,55 +209,144 @@ async def cmd_start(message: Message) -> None:
 
 async def _do_start(message: Message) -> None:
     ru = _is_ru(message=message)
-    kb = _open_app_kb(ru=ru)
-    if ru:
-        welcome = WELCOME_TEXT
-        img = _welcome_image()
-        if img is not None:
-            await message.answer_photo(photo=img, caption=welcome, reply_markup=kb)
-        else:
-            await message.answer(welcome, reply_markup=kb)
+    welcome = WELCOME_TEXT if ru else WELCOME_TEXT_EN
+
+    settings = get_settings()
+    rows: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton(
+            text="🚀 Открыть приложение" if ru else "🚀 Open app",
+            web_app=WebAppInfo(url=settings.webapp_url),
+        )],
+    ]
+
+    is_new_user = False
+    if message.from_user:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            user = await session.get(User, message.from_user.id)
+            if user is None or user.trial_started_at is None:
+                is_new_user = True
+                rows.append([InlineKeyboardButton(
+                    text="🎁 3 дня Premium бесплатно" if ru else "🎁 3 days of Premium free",
+                    callback_data="activate_trial",
+                )])
+            elif not await is_premium(session, message.from_user.id):
+                rows.append([InlineKeyboardButton(
+                    text="💎 Купить Premium" if ru else "💎 Buy Premium",
+                    callback_data="show_premium",
+                )])
+
+    rows.append([
+        InlineKeyboardButton(
+            text="➕ Новая задача" if ru else "➕ New task",
+            callback_data="new_task",
+        ),
+        InlineKeyboardButton(
+            text="ℹ️ Помощь" if ru else "ℹ️ Help",
+            callback_data="help",
+        ),
+    ])
+    kb = InlineKeyboardMarkup(inline_keyboard=rows)
+
+    img = _welcome_image(ru=ru)
+    if img is not None:
+        await message.answer_photo(photo=img, caption=welcome, reply_markup=kb)
     else:
-        welcome = WELCOME_TEXT_EN
         await message.answer(welcome, reply_markup=kb)
 
-    if message.from_user:
-        asyncio.create_task(
-            _premium_nudge(message)
-        )
+    if is_new_user and message.from_user:
+        asyncio.create_task(_activate_trial_auto(message))
 
 
-async def _premium_nudge(message: Message) -> None:
-    """Send a delayed premium promo to non-premium users."""
+async def _activate_trial_auto(message: Message) -> None:
     if message.from_user is None:
         return
     ru = _is_ru(message=message)
     await asyncio.sleep(3)
     sm = get_sessionmaker()
     async with sm() as session:
-        if await is_premium(session, message.from_user.id):
+        user = await session.get(User, message.from_user.id)
+        if user is None:
             return
+        if user.trial_started_at is not None:
+            return
+        await activate_trial(session, user)
+
+    trial_text = TRIAL_TEXT if ru else TRIAL_TEXT_EN
+    img = _asset_image("trial_premium_ru.png" if ru else "trial_premium_en.png")
+    settings = get_settings()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="✨ Попробовать сейчас" if ru else "✨ Try it now",
+            web_app=WebAppInfo(url=settings.webapp_url),
+        )],
+        [InlineKeyboardButton(
+            text="📋 Что входит в Premium" if ru else "📋 What's included",
+            callback_data="show_premium",
+        )],
+    ])
+    if img is not None:
+        await message.answer_photo(photo=img, caption=trial_text, reply_markup=kb)
+    else:
+        await message.answer(trial_text, reply_markup=kb)
+
+
+@dp.callback_query(F.data == "activate_trial")
+async def cb_activate_trial(cq: CallbackQuery) -> None:
+    if not cq.from_user or not cq.message:
+        await cq.answer()
+        return
+    ru = _is_ru(cq=cq)
+    sm = get_sessionmaker()
+    async with sm() as session:
+        user = await session.get(User, cq.from_user.id)
+        if user is None:
+            user = User(id=cq.from_user.id)
+            session.add(user)
+            await session.commit()
+            user = await session.get(User, cq.from_user.id)
+            assert user is not None
+        if user.trial_started_at is not None:
+            await cq.answer(
+                "У тебя уже был пробный период" if ru else "You already had a trial",
+                show_alert=True,
+            )
+            return
+        await activate_trial(session, user)
+
+    trial_text = TRIAL_TEXT if ru else TRIAL_TEXT_EN
+    img = _asset_image("trial_premium_ru.png" if ru else "trial_premium_en.png")
+    settings = get_settings()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="✨ Попробовать сейчас" if ru else "✨ Try it now",
+            web_app=WebAppInfo(url=settings.webapp_url),
+        )],
+        [InlineKeyboardButton(
+            text="📋 Что входит в Premium" if ru else "📋 What's included",
+            callback_data="show_premium",
+        )],
+    ])
+    if img is not None:
+        await cq.message.answer_photo(photo=img, caption=trial_text, reply_markup=kb)
+    else:
+        await cq.message.answer(trial_text, reply_markup=kb)
+    await cq.answer()
+
+
+@dp.callback_query(F.data == "dismiss_trial")
+async def cb_dismiss_trial(cq: CallbackQuery) -> None:
+    ru = _is_ru(cq=cq)
     text = (
-        "💎 <b>Попробуй Premium!</b>\n\n"
-        "Безлимитные задачи, свои категории, "
-        "ввод задач текстом и голосом — от 99 ⭐/мес."
+        "Хорошо! Ты можешь продолжить пользоваться бесплатной версией.\n"
+        "Premium всегда доступен по команде /premium ✨"
     ) if ru else (
-        "💎 <b>Try Premium!</b>\n\n"
-        "Unlimited tasks, custom categories, "
-        "create tasks via text and voice — from 99 ⭐/mo."
+        "Got it! You can keep using the free version.\n"
+        "Premium is always available via /premium ✨"
     )
-    btn_text = "💎 Подробнее о Premium" if ru else "💎 Learn more about Premium"
-    await message.answer(
-        text,
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[[
-                InlineKeyboardButton(
-                    text=btn_text,
-                    callback_data="show_premium",
-                )
-            ]]
-        ),
-    )
+    if cq.message:
+        await cq.message.answer(text, reply_markup=_open_app_kb(ru=ru))
+    await cq.answer()
 
 
 @dp.message(Command("app"))
@@ -352,20 +468,14 @@ async def cb_new_task(cq: CallbackQuery) -> None:
 # ---- premium / payment -----------------------------------------------
 
 
-def _premium_image() -> BufferedInputFile | None:
-    p = ASSETS_DIR / "premium.png"
-    if p.exists():
-        return BufferedInputFile(p.read_bytes(), filename=p.name)
-    return None
+def _premium_image(ru: bool = True) -> BufferedInputFile | None:
+    name = "premium_offer_ru.png" if ru else "premium_offer_en.png"
+    return _asset_image(name)
 
 
-def _premium_success_image() -> BufferedInputFile | None:
-    p = ASSETS_DIR / "premium_success.png"
-    if p.exists():
-        return BufferedInputFile(
-            p.read_bytes(), filename=p.name,
-        )
-    return None
+def _premium_success_image(ru: bool = True) -> BufferedInputFile | None:
+    name = "premium_success_ru.png" if ru else "premium_success_en.png"
+    return _asset_image(name)
 
 
 def _premium_kb() -> InlineKeyboardMarkup:
@@ -382,41 +492,33 @@ def _premium_kb() -> InlineKeyboardMarkup:
 
 
 PREMIUM_TEXT = (
-    "<b>⭐ Task Blo Premium</b>\n\n"
-    "Безлимитные задачи и никаких "
-    "ограничений.\n\n"
+    "💎 <b>Task Blo Premium</b>\n\n"
+    "Для тех, кто хочет пользоваться Task Blo без ограничений.\n\n"
     "<b>Что входит:</b>\n"
-    "• ♾️ Безлимитные задачи каждый день\n"
-    "• 🏷 Свои категории\n"
-    "• 📝 Создавай задачи прямо из чата\n"
-    "• 🎤 Создавай задачи голосом\n"
-    "• ⏰ Напоминания заранее\n\n"
+    "• ♾️ безлимитные задачи\n"
+    "• 🎤 создание задач голосом\n"
+    "• 🏷 свои категории\n"
+    "• ⏰ напоминания заранее\n\n"
     "<b>Тарифы:</b>\n"
     "• 1 месяц — 99 ⭐\n"
-    "• 3 месяца — 249 ⭐ "
-    "<i>(выгода 16%)</i>\n"
-    "• 12 месяцев — 799 ⭐ "
-    "<i>(выгода 33%)</i>\n\n"
-    "Выбери тариф ниже:"
+    "• 3 месяца — 249 ⭐\n"
+    "• 12 месяцев — 799 ⭐\n\n"
+    "Выбери тариф ниже 👇"
 )
 
 PREMIUM_TEXT_EN = (
-    "<b>⭐ Task Blo Premium</b>\n\n"
-    "Unlimited tasks and no "
-    "restrictions.\n\n"
+    "💎 <b>Task Blo Premium</b>\n\n"
+    "For people who want to use Task Blo without limits.\n\n"
     "<b>What's included:</b>\n"
-    "• ♾️ Unlimited tasks every day\n"
-    "• 🏷 Custom categories\n"
-    "• 📝 Create tasks from chat messages\n"
-    "• 🎤 Create tasks via voice\n"
-    "• ⏰ Early reminders\n\n"
+    "• ♾️ unlimited tasks\n"
+    "• 🎤 voice task creation\n"
+    "• 🏷 custom categories\n"
+    "• ⏰ early reminders\n\n"
     "<b>Plans:</b>\n"
     "• 1 month — 99 ⭐\n"
-    "• 3 months — 249 ⭐ "
-    "<i>(save 16%)</i>\n"
-    "• 12 months — 799 ⭐ "
-    "<i>(save 33%)</i>\n\n"
-    "Choose a plan below:"
+    "• 3 months — 249 ⭐\n"
+    "• 12 months — 799 ⭐\n\n"
+    "Choose your plan below 👇"
 )
 
 
@@ -424,15 +526,14 @@ PREMIUM_TEXT_EN = (
 async def cmd_premium(message: Message) -> None:
     ru = _is_ru(message=message)
     text = PREMIUM_TEXT if ru else PREMIUM_TEXT_EN
-    if ru:
-        img = _premium_image()
-        if img:
-            await message.answer_photo(
-                photo=img,
-                caption=text,
-                reply_markup=_premium_kb(),
-            )
-            return
+    img = _premium_image(ru=ru)
+    if img:
+        await message.answer_photo(
+            photo=img,
+            caption=text,
+            reply_markup=_premium_kb(),
+        )
+        return
     await message.answer(
         text, reply_markup=_premium_kb(),
     )
@@ -450,16 +551,15 @@ async def cb_show_premium(cq: CallbackQuery) -> None:
                 await session.commit()
     text = PREMIUM_TEXT if ru else PREMIUM_TEXT_EN
     if cq.message:
-        if ru:
-            img = _premium_image()
-            if img:
-                await cq.message.answer_photo(
-                    photo=img,
-                    caption=text,
-                    reply_markup=_premium_kb(),
-                )
-                await cq.answer()
-                return
+        img = _premium_image(ru=ru)
+        if img:
+            await cq.message.answer_photo(
+                photo=img,
+                caption=text,
+                reply_markup=_premium_kb(),
+            )
+            await cq.answer()
+            return
         await cq.message.answer(
             text, reply_markup=_premium_kb(),
         )
@@ -566,6 +666,48 @@ async def cb_renew_discount(cq: CallbackQuery) -> None:
     await cq.answer()
 
 
+@dp.callback_query(F.data == "trial_discount")
+async def cb_trial_discount(cq: CallbackQuery) -> None:
+    if not cq.message or not cq.from_user:
+        await cq.answer()
+        return
+
+    ru = _is_ru(cq=cq)
+    sm = get_sessionmaker()
+    async with sm() as session:
+        if await is_premium(session, cq.from_user.id):
+            await cq.message.answer(
+                "У тебя уже есть активная Premium-подписка! 🎉" if ru
+                else "You already have an active Premium subscription! 🎉"
+            )
+            await cq.answer()
+            return
+
+    plan = TRIAL_DISCOUNT_PLAN
+    desc = (
+        "Premium на 1 месяц со скидкой: безлимитные задачи, голосовой ввод и все возможности."
+    ) if ru else (
+        "Premium for 1 month (discount): unlimited tasks, voice input, and all features."
+    )
+    await cq.message.answer_invoice(
+        title="Task Blo Premium — 69 ⭐" if ru else "Task Blo Premium — 69 ⭐",
+        description=desc,
+        payload=json.dumps({
+            "type": "premium_trial_1m",
+            "user_id": cq.from_user.id,
+            "days": plan["days"],
+        }),
+        currency="XTR",
+        prices=[
+            LabeledPrice(
+                label="Premium 1 месяц" if ru else "Premium 1 month",
+                amount=plan["stars"],
+            )
+        ],
+    )
+    await cq.answer()
+
+
 @dp.pre_checkout_query()
 async def on_pre_checkout(query: PreCheckoutQuery) -> None:
     await query.answer(ok=True)
@@ -609,45 +751,41 @@ async def on_successful_payment(message: Message) -> None:
         await session.commit()
 
     ru = _is_ru(message=message)
-    exp_str = expires_at.strftime("%d.%m.%Y")
     if ru:
         success_text = (
-            "🎉 <b>Добро пожаловать в Premium!</b>\n\n"
-            "Спасибо, что выбрал Task Blo Premium. "
-            "Теперь тебе доступны все возможности:\n\n"
-            "• Безлимитные задачи каждый день\n"
-            "• Свои категории\n"
-            "• Создавай задачи прямо из чата\n"
-            "• Создавай задачи голосом\n"
-            "• Напоминания заранее\n\n"
-            f"Подписка активна до {exp_str}.\n"
-            "Просто напиши или запиши голосовое — "
-            "я создам задачу за тебя!"
+            "🎉 <b>Premium подключён!</b>\n\n"
+            "Теперь тебе доступны все функции Task Blo:\n"
+            "• голосовой ввод\n"
+            "• безлимитные задачи\n"
+            "• свои категории\n"
+            "• ранние напоминания\n\n"
+            "Наслаждайся — теперь всё открыто ✨"
         )
     else:
         success_text = (
-            "🎉 <b>Welcome to Premium!</b>\n\n"
-            "Thanks for choosing Task Blo Premium. "
-            "Now you have access to all features:\n\n"
-            "• Unlimited tasks every day\n"
-            "• Custom categories\n"
-            "• Create tasks from chat messages\n"
-            "• Create tasks via voice\n"
-            "• Early reminders\n\n"
-            f"Subscription active until {exp_str}.\n"
-            "Just send a message or a voice note — "
-            "I'll create the task for you!"
+            "🎉 <b>Premium activated!</b>\n\n"
+            "You now have access to the full Task Blo experience:\n"
+            "• voice input\n"
+            "• unlimited tasks\n"
+            "• custom categories\n"
+            "• early reminders\n\n"
+            "Enjoy — everything is unlocked ✨"
         )
-    kb = _open_app_kb(show_premium=False, ru=ru)
-    if ru:
-        img = _premium_success_image()
-        if img is not None:
-            await message.answer_photo(
-                photo=img,
-                caption=success_text,
-                reply_markup=kb,
-            )
-            return
+    settings = get_settings()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="🚀 Открыть приложение" if ru else "🚀 Open app",
+            web_app=WebAppInfo(url=settings.webapp_url),
+        )],
+    ])
+    img = _premium_success_image(ru=ru)
+    if img is not None:
+        await message.answer_photo(
+            photo=img,
+            caption=success_text,
+            reply_markup=kb,
+        )
+        return
     await message.answer(
         success_text, reply_markup=kb,
     )
