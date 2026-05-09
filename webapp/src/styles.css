@@ -5126,9 +5126,82 @@ button {
   cursor: not-allowed;
 }
 
-/* ── Pet nav 5-column layout ── */
+/* ── Pet nav 5-column layout (legacy, kept for compat) ── */
 .pet-nav--five {
   grid-template-columns: repeat(5, 1fr);
+}
+
+/* ── Pet nav 2-row grid (new design) ── */
+.pet-nav-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pet-nav-grid__row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.pet-nav-grid__row--center {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 68%;
+  margin: 0 auto;
+}
+
+.pet-nav-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tb-text);
+  cursor: pointer;
+  backdrop-filter: var(--tb-blur-light);
+  -webkit-backdrop-filter: var(--tb-blur-light);
+  box-shadow: var(--tb-shadow-soft);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.pet-nav-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tb-accent-strong) 14%, transparent);
+}
+
+.pet-nav-card__icon svg {
+  width: 22px;
+  height: 22px;
+  color: var(--tb-accent-strong);
+  opacity: 0.9;
+}
+
+.pet-nav-card__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.pet-nav-card:active {
+  transform: scale(0.94);
+  box-shadow: var(--tb-shadow-press);
+  background: color-mix(in srgb, var(--tb-accent-strong) 10%, transparent);
 }
 
 /* ── Daily Quests ── */
@@ -5209,6 +5282,88 @@ button {
 .quest-card__reroll:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.quest-card__reroll--used {
+  opacity: 0.35;
+}
+
+/* ── Liquid Glass Modal ── */
+.glass-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: glass-modal-fade-in 0.2s ease;
+}
+
+.glass-modal {
+  width: 85%;
+  max-width: 320px;
+  padding: 28px 24px 22px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: 20px;
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: var(--tb-shadow-soft), 0 8px 32px rgba(0, 0, 0, 0.12);
+  text-align: center;
+  animation: glass-modal-pop 0.25s ease;
+}
+
+.glass-modal__icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.glass-modal__title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--tb-text);
+  margin: 0 0 8px;
+}
+
+.glass-modal__text {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--tb-hint);
+  margin: 0 0 20px;
+}
+
+.glass-modal__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--tb-accent-strong);
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.glass-modal__btn:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+@keyframes glass-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes glass-modal-pop {
+  from { transform: scale(0.88); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .quest-card__progress {

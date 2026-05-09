@@ -13,6 +13,7 @@ export function DailyQuestsPage() {
   const [loading, setLoading] = useState(true);
   const [rerolling, setRerolling] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [showRerollModal, setShowRerollModal] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -39,17 +40,34 @@ export function DailyQuestsPage() {
         if (!prev) return prev;
         return {
           ...prev,
+          reroll_available: false,
           quests: prev.quests.map((q) =>
             q.id === questId ? res.new_quest : q
           ),
         };
       });
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error");
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("already rerolled") || msg.includes("400")) {
+        setShowRerollModal(true);
+        setData((prev) => prev ? { ...prev, reroll_available: false } : prev);
+        haptic("heavy");
+      } else {
+        setError(msg || "Error");
+      }
     } finally {
       setRerolling(null);
     }
   }, [data]);
+
+  const handleRerollAttempt = useCallback((questId: number) => {
+    if (data && !data.reroll_available) {
+      setShowRerollModal(true);
+      haptic("heavy");
+      return;
+    }
+    handleReroll(questId);
+  }, [data, handleReroll]);
 
   if (loading) return <div className="spinner">{t("\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430\u2026", "Loading\u2026")}</div>;
   if (error) return <div className="page"><p style={{ color: "var(--tb-danger)" }}>{error}</p></div>;
@@ -82,7 +100,7 @@ export function DailyQuestsPage() {
             rerollAvailable={data.reroll_available}
             rerollCost={data.reroll_cost}
             rerolling={rerolling === quest.id}
-            onReroll={handleReroll}
+            onReroll={handleRerollAttempt}
           />
         ))}
       </div>
@@ -95,6 +113,34 @@ export function DailyQuestsPage() {
           )}
         </p>
       )}
+
+      {showRerollModal && (
+        <RerollLimitModal onClose={() => setShowRerollModal(false)} />
+      )}
+    </div>
+  );
+}
+
+function RerollLimitModal({ onClose }: { onClose: () => void }) {
+  const t = useT();
+
+  return (
+    <div className="glass-modal-overlay" onClick={onClose}>
+      <div className="glass-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="glass-modal__icon">{"\uD83D\uDD04"}</div>
+        <h3 className="glass-modal__title">
+          {t("\u041f\u0435\u0440\u0435\u0431\u0440\u043e\u0441 \u0443\u0436\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d", "Reroll already used")}
+        </h3>
+        <p className="glass-modal__text">
+          {t(
+            "\u0412\u044b \u0443\u0436\u0435 \u043c\u0435\u043d\u044f\u043b\u0438 \u043a\u0432\u0435\u0441\u0442 \u0441\u0435\u0433\u043e\u0434\u043d\u044f. \u041d\u043e\u0432\u044b\u0439 \u043f\u0435\u0440\u0435\u0431\u0440\u043e\u0441 \u0431\u0443\u0434\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0437\u0430\u0432\u0442\u0440\u0430.",
+            "You've already rerolled a quest today. A new reroll will be available tomorrow."
+          )}
+        </p>
+        <button className="glass-modal__btn" onClick={onClose}>
+          {t("\u041f\u043e\u043d\u044f\u0442\u043d\u043e", "Got it")}
+        </button>
+      </div>
     </div>
   );
 }
@@ -129,12 +175,16 @@ function QuestCard({
             +{quest.reward_coins} <CoinIcon style={{ width: 12, height: 12, color: "#facc15", verticalAlign: "middle" }} />
           </div>
         </div>
-        {!quest.is_completed && rerollAvailable && (
+        {!quest.is_completed && (
           <button
-            className="quest-card__reroll"
+            className={`quest-card__reroll ${!rerollAvailable ? "quest-card__reroll--used" : ""}`}
             onClick={() => onReroll(quest.id)}
             disabled={rerolling}
-            title={t(`\u041f\u0435\u0440\u0435\u0431\u0440\u043e\u0441\u0438\u0442\u044c (${rerollCost})`, `Reroll (${rerollCost})`)}
+            title={
+              rerollAvailable
+                ? t(`\u041f\u0435\u0440\u0435\u0431\u0440\u043e\u0441\u0438\u0442\u044c (${rerollCost})`, `Reroll (${rerollCost})`)
+                : t("\u041f\u0435\u0440\u0435\u0431\u0440\u043e\u0441 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d", "Reroll used")
+            }
           >
             <RefreshIcon style={{ width: 16, height: 16 }} />
           </button>
