@@ -306,6 +306,14 @@ export interface RerollQuestResponse {
   coins_remaining: number;
 }
 
+export interface ReferralInfo {
+  referral_link: string;
+  total_invited: number;
+  rewarded_count: number;
+  total_days_earned: number;
+  bonus_days_per_invite: number;
+}
+
 export interface SpinReward {
   reward_type: string;
   amount: number;
@@ -418,6 +426,9 @@ export const api = {
     }),
   luckySpin: () =>
     request<SpinResponse>("/api/game/spin", { method: "POST" }),
+
+  // -------------------- Referral --------------------
+  referralInfo: () => request<ReferralInfo>("/api/subscription/referral"),
 
   // -------------------- Subscription & Admin --------------------
   subscriptionStatus: () =>

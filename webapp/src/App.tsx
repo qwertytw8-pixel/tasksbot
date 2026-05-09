@@ -33,6 +33,7 @@ const PetShopPage = lazy(() => import("./pages/PetShop").then((m) => ({ default:
 const PetCollectionPage = lazy(() => import("./pages/PetCollection").then((m) => ({ default: m.PetCollectionPage })));
 const DailyQuestsPage = lazy(() => import("./pages/DailyQuests").then((m) => ({ default: m.DailyQuestsPage })));
 const LuckySpinPage = lazy(() => import("./pages/LuckySpin").then((m) => ({ default: m.LuckySpinPage })));
+const ReferralPage = lazy(() => import("./pages/Referral").then((m) => ({ default: m.ReferralPage })));
 
 const HIDE_FAB_ON = ["/new", "/edit", "/profile", "/about", "/admin", "/pet"];
 
@@ -113,6 +114,7 @@ export function App() {
           <Route path="/pet/collection" element={<PetCollectionPage />} />
           <Route path="/pet/quests" element={<DailyQuestsPage />} />
           <Route path="/pet/spin" element={<LuckySpinPage />} />
+          <Route path="/referral" element={<ReferralPage />} />
           <Route path="/profile/*" element={<ProfileRoutes onResetOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/about" element={<Navigate to="/profile" replace />} />
           <Route path="/admin" element={<AdminPage onShowDailyReward={() => setShowDailyReward(true)} />} />

@@ -193,13 +193,44 @@ def _welcome_image(ru: bool = True) -> BufferedInputFile | None:
     return _asset_image(name)
 
 
+async def _handle_referral(user_id: int, param: str) -> None:
+    """Record referral link. Bonus is granted later when referred user creates first task."""
+    from app.db import Referral
+
+    try:
+        referrer_id = int(param.removeprefix("ref_"))
+    except (ValueError, TypeError):
+        return
+    if referrer_id == user_id:
+        return
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        from sqlalchemy import select
+        existing = (
+            await session.execute(
+                select(Referral).where(Referral.referred_id == user_id)
+            )
+        ).scalar_one_or_none()
+        if existing:
+            return
+        referrer = await session.get(User, referrer_id)
+        if referrer is None:
+            return
+        session.add(Referral(referrer_id=referrer_id, referred_id=user_id))
+        await session.commit()
+        log.info("referral recorded: %s invited by %s", user_id, referrer_id)
+
+
 @dp.message(CommandStart(deep_link=True, deep_link_encoded=True))
 async def cmd_start_deep(message: Message) -> None:
     args = (message.text or "").split(maxsplit=1)
-    param = args[1].strip().lower() if len(args) > 1 else ""
-    if param == "premium":
+    param = args[1].strip() if len(args) > 1 else ""
+    if param.lower() == "premium":
         await cmd_premium(message)
         return
+    if param.startswith("ref_") and message.from_user:
+        await _handle_referral(message.from_user.id, param)
     await _do_start(message)
 
 

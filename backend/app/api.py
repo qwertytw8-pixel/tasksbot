@@ -3,7 +3,7 @@ from calendar import monthrange
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,6 +27,7 @@ from app.subscription import (
     can_create_category,
     can_create_task,
     count_tasks_created_today,
+    get_active_subscription,
     is_premium,
 )
 
@@ -463,7 +464,68 @@ async def create_task(
 
             asyncio.create_task(_send_limit_nudge())
 
+    # Check referral reward (anti-abuse: only after first task)
+    await _check_referral_reward(session, tg.id)
+
     return task
+
+
+async def _check_referral_reward(session: AsyncSession, user_id: int) -> None:
+    """Grant 3-day Premium bonus to referrer when referred user creates first task."""
+    from app.db import Referral, Subscription
+
+    ref = (
+        await session.execute(
+            select(Referral).where(
+                Referral.referred_id == user_id,
+                Referral.rewarded.is_(False),
+            )
+        )
+    ).scalar_one_or_none()
+    if ref is None:
+        return
+
+    task_count = (
+        await session.execute(
+            select(func.count(Task.id)).where(Task.user_id == user_id)
+        )
+    ).scalar_one()
+    if task_count != 1:
+        return
+
+    now = datetime.now(UTC)
+    active_sub = await get_active_subscription(session, ref.referrer_id)
+    if active_sub and active_sub.expires_at and active_sub.expires_at > now:
+        start_from = active_sub.expires_at
+    else:
+        start_from = now
+    expires_at = start_from + timedelta(days=3)
+
+    sub = Subscription(
+        user_id=ref.referrer_id,
+        plan="premium",
+        started_at=now,
+        expires_at=expires_at,
+        is_active=True,
+        source="referral",
+    )
+    session.add(sub)
+    ref.rewarded = True
+    ref.rewarded_at = now
+    await session.commit()
+
+    try:
+        from app.bot import bot as tg_bot
+        await tg_bot.send_message(
+            chat_id=ref.referrer_id,
+            text=(
+                "🎉 <b>Реферальный бонус!</b>\n\n"
+                "Твой друг начал пользоваться Task Blo — "
+                f"тебе +3 дня Premium (до {expires_at.strftime('%d.%m.%Y')})!"
+            ),
+        )
+    except Exception:
+        pass
 
 
 async def _send_game_notifications(bot, user_id: int, event: GameEvent) -> None:

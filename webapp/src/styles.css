@@ -5709,3 +5709,109 @@ button {
   100% { transform: scale(1) translateY(-40px); opacity: 0; }
 }
 
+/* ==================== Referral page ==================== */
+.referral-page {
+  padding-bottom: 100px;
+}
+
+.referral-card {
+  text-align: center;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-md);
+  padding: 24px 20px;
+  margin-bottom: 16px;
+}
+
+.referral-card__icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.referral-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--tb-text);
+  margin: 0 0 8px;
+}
+
+.referral-card__desc {
+  font-size: 14px;
+  color: var(--tb-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.referral-link-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.referral-link-box__input {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 13px;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  color: var(--tb-text);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.referral-link-box__copy {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #818CF8, #6D5DFC);
+  border: none;
+  border-radius: var(--tb-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.referral-share-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #818CF8, #6D5DFC);
+  border: none;
+  border-radius: var(--tb-radius-sm);
+  cursor: pointer;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(109, 93, 252, 0.3);
+}
+
+.referral-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.referral-stat {
+  flex: 1;
+  text-align: center;
+  background: var(--tb-glass);
+  border: 1px solid var(--tb-glass-border);
+  border-radius: var(--tb-radius-sm);
+  padding: 16px 8px;
+}
+
+.referral-stat__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--tb-accent-strong);
+}
+
+.referral-stat__label {
+  display: block;
+  font-size: 12px;
+  color: var(--tb-text-muted);
+  margin-top: 4px;
+}
+

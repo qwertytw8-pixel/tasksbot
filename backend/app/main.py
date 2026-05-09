@@ -20,6 +20,7 @@ from app.config import get_settings
 from app.db import Base, ensure_runtime_schema, get_engine
 from app.game_seed import ensure_game_schema, seed_game_data
 from app.jobs import set_bot_for_scheduler, start_scheduler, stop_scheduler
+from app.rate_limit import RateLimitMiddleware
 from app.scheduler import (
     run_daily_summary,
     run_personal_offers,
@@ -112,6 +113,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(RateLimitMiddleware)
 
 app.include_router(api_router)
 app.include_router(game_router)
