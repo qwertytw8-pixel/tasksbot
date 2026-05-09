@@ -41,6 +41,7 @@ class GameProfile(Base):
     active_background_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_login_day: Mapped[date | None] = mapped_column(Date, nullable=True)
     daily_login_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_spin_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False
     )
@@ -119,6 +120,7 @@ class GameAchievement(Base):
     condition_value: Mapped[int] = mapped_column(Integer, nullable=False)
     reward_coins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     tier: Mapped[str] = mapped_column(String(16), nullable=False, default="bronze")
+    is_secret: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
@@ -148,3 +150,19 @@ class GameEggDrop(Base):
     character_type: Mapped[str] = mapped_column(String(32), nullable=False)
     rarity: Mapped[str] = mapped_column(String(16), nullable=False)
     weight: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+class GameDailyQuest(Base):
+    __tablename__ = "game_daily_quests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    quest_slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_value: Mapped[int] = mapped_column(Integer, nullable=False)
+    progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    reward_coins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    quest_date: Mapped[date] = mapped_column(Date, nullable=False)
+    is_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_rerolled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

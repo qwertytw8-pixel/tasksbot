@@ -20,12 +20,17 @@ from app.game import (
     PREMIUM_DAILY_CAP,
     RARITY_NAMES_EN,
     RARITY_NAMES_RU,
+    REROLL_COST,
     STAGE_NAMES_EN,
     STAGE_NAMES_RU,
+    generate_daily_quests,
+    get_quest_description,
     hatch_egg,
+    spin_wheel,
 )
 from app.game_models import (
     GameAchievement,
+    GameDailyQuest,
     GameInventory,
     GameItem,
     GamePet,
@@ -34,6 +39,8 @@ from app.game_models import (
 )
 from app.game_schemas import (
     BuyRequest,
+    DailyQuestOut,
+    DailyQuestsResponse,
     DailyRewardClaim,
     DailyRewardStatus,
     DeletePetResponse,
@@ -46,7 +53,10 @@ from app.game_schemas import (
     HatchResponse,
     RenameRequest,
     ReportOut,
+    RerollQuestResponse,
     SetBackgroundRequest,
+    SpinResponse,
+    SpinReward,
 )
 
 FREE_EGG_WEEKLY_LIMIT = 3
@@ -565,24 +575,48 @@ async def get_achievements(
     for ach in all_ach:
         attr_name = _CONDITION_ATTR_MAP.get(ach.condition_type)
         progress = getattr(profile, attr_name, 0) if attr_name else 0
-        result.append(
-            GameAchievementOut(
-                id=ach.id,
-                slug=ach.slug,
-                name_ru=ach.name_ru,
-                name_en=ach.name_en,
-                description_ru=ach.description_ru,
-                description_en=ach.description_en,
-                icon=ach.icon,
-                condition_type=ach.condition_type,
-                condition_value=ach.condition_value,
-                reward_coins=ach.reward_coins,
-                tier=ach.tier,
-                unlocked=ach.id in unlocked_map,
-                unlocked_at=unlocked_map.get(ach.id),
-                progress=min(progress, ach.condition_value),
+        is_unlocked = ach.id in unlocked_map
+
+        if ach.is_secret and not is_unlocked:
+            result.append(
+                GameAchievementOut(
+                    id=ach.id,
+                    slug=ach.slug,
+                    name_ru="???",
+                    name_en="???",
+                    description_ru="Секретное достижение",
+                    description_en="Secret achievement",
+                    icon="🔒",
+                    condition_type=ach.condition_type,
+                    condition_value=ach.condition_value,
+                    reward_coins=ach.reward_coins,
+                    tier=ach.tier,
+                    is_secret=True,
+                    unlocked=False,
+                    unlocked_at=None,
+                    progress=0,
+                )
             )
-        )
+        else:
+            result.append(
+                GameAchievementOut(
+                    id=ach.id,
+                    slug=ach.slug,
+                    name_ru=ach.name_ru,
+                    name_en=ach.name_en,
+                    description_ru=ach.description_ru,
+                    description_en=ach.description_en,
+                    icon=ach.icon,
+                    condition_type=ach.condition_type,
+                    condition_value=ach.condition_value,
+                    reward_coins=ach.reward_coins,
+                    tier=ach.tier,
+                    is_secret=ach.is_secret,
+                    unlocked=is_unlocked,
+                    unlocked_at=unlocked_map.get(ach.id),
+                    progress=min(progress, ach.condition_value),
+                )
+            )
 
     return result
 
@@ -740,4 +774,158 @@ async def claim_daily_reward(
         coins_earned=reward,
         current_day=profile.daily_login_streak,
         next_reward=next_reward,
+    )
+
+
+# -------------------- GET /quests --------------------
+
+@router.get("/quests", response_model=DailyQuestsResponse)
+async def get_daily_quests(
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.api import _ensure_user
+    user = await _ensure_user(session, tg)
+    await _ensure_profile(session, tg.id)
+    today = _user_today(user.tz)
+
+    quests = await generate_daily_quests(session, tg.id, today)
+    await session.commit()
+
+    quest_outs = []
+    for q in quests:
+        desc_ru, desc_en = get_quest_description(q.quest_slug)
+        quest_outs.append(
+            DailyQuestOut(
+                id=q.id,
+                quest_slug=q.quest_slug,
+                description_ru=desc_ru,
+                description_en=desc_en,
+                target_value=q.target_value,
+                progress=q.progress,
+                reward_coins=q.reward_coins,
+                is_completed=q.is_completed,
+            )
+        )
+
+    has_rerolled = any(q.is_rerolled for q in quests)
+    return DailyQuestsResponse(
+        quests=quest_outs,
+        reroll_available=not has_rerolled,
+        reroll_cost=REROLL_COST,
+    )
+
+
+# -------------------- POST /quests/{id}/reroll --------------------
+
+@router.post("/quests/{quest_id}/reroll", response_model=RerollQuestResponse)
+async def reroll_quest(
+    quest_id: int,
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.api import _ensure_user
+    user = await _ensure_user(session, tg)
+    profile = await _ensure_profile(session, tg.id)
+    today = _user_today(user.tz)
+
+    quest = await session.get(GameDailyQuest, quest_id)
+    if quest is None or quest.user_id != tg.id or quest.quest_date != today:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "quest not found")
+
+    if quest.is_completed:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "quest already completed")
+
+    if quest.is_rerolled:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "already rerolled today")
+
+    if profile.coins < REROLL_COST:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "not enough coins")
+
+    # Get current quest slugs to avoid duplicates
+    current_quests = (
+        await session.execute(
+            select(GameDailyQuest.quest_slug).where(
+                GameDailyQuest.user_id == tg.id,
+                GameDailyQuest.quest_date == today,
+            )
+        )
+    ).scalars().all()
+
+    from app.game import QUEST_POOL
+    import random
+    available = [q for q in QUEST_POOL if q["slug"] not in current_quests]
+    if not available:
+        available = QUEST_POOL
+
+    new_q = random.choice(available)
+    profile.coins -= REROLL_COST
+
+    quest.quest_slug = new_q["slug"]
+    quest.target_value = new_q["target"]
+    quest.reward_coins = new_q["reward"]
+    quest.progress = 0
+    quest.is_rerolled = True
+
+    await session.commit()
+
+    desc_ru, desc_en = get_quest_description(quest.quest_slug)
+    return RerollQuestResponse(
+        new_quest=DailyQuestOut(
+            id=quest.id,
+            quest_slug=quest.quest_slug,
+            description_ru=desc_ru,
+            description_en=desc_en,
+            target_value=quest.target_value,
+            progress=quest.progress,
+            reward_coins=quest.reward_coins,
+            is_completed=quest.is_completed,
+        ),
+        coins_remaining=profile.coins,
+    )
+
+
+# -------------------- POST /spin --------------------
+
+@router.post("/spin", response_model=SpinResponse)
+async def lucky_spin(
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.api import _ensure_user
+    user = await _ensure_user(session, tg)
+    profile = await _ensure_profile(session, tg.id)
+    today = _user_today(user.tz)
+
+    if profile.last_spin_date == today:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "already spun today",
+        )
+
+    reward = spin_wheel()
+    profile.last_spin_date = today
+
+    if reward["type"] == "coins":
+        profile.coins += reward["amount"]
+        profile.total_coins_earned += reward["amount"]
+    elif reward["type"] == "xp":
+        if profile.active_pet_id:
+            pet = await session.get(GamePet, profile.active_pet_id)
+            if pet:
+                from app.game import _compute_stage
+                pet.xp += reward["amount"]
+                pet.stage = _compute_stage(pet.xp)
+
+    await session.commit()
+
+    return SpinResponse(
+        reward=SpinReward(
+            reward_type=reward["type"],
+            amount=reward["amount"],
+            label_ru=reward["ru"],
+            label_en=reward["en"],
+        ),
+        coins_after=profile.coins,
+        can_spin_again=False,
     )

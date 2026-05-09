@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { api, type GameProfile } from "../api";
 import { PetView } from "../components/PetView";
-import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon, EditIcon } from "../icons";
+import { CoinIcon, FireIcon, ShopBagIcon, TrophyIcon, GridIcon, EditIcon, ScrollIcon, GiftIcon } from "../icons";
 import { useT } from "../i18n";
 import { haptic } from "../telegram";
 
@@ -362,7 +362,15 @@ export function PetPage() {
       </div>
 
       {/* Glass pill navigation */}
-      <div className="pet-nav">
+      <div className="pet-nav pet-nav--five">
+        <button className="pet-nav__btn" onClick={() => navigate("/pet/quests")}>
+          <ScrollIcon style={{ width: 20, height: 20 }} />
+          <span>{t("\u041a\u0432\u0435\u0441\u0442\u044b", "Quests")}</span>
+        </button>
+        <button className="pet-nav__btn" onClick={() => navigate("/pet/spin")}>
+          <GiftIcon style={{ width: 20, height: 20 }} />
+          <span>{t("\u0423\u0434\u0430\u0447\u0430", "Spin")}</span>
+        </button>
         <button className="pet-nav__btn" onClick={() => navigate("/pet/shop")}>
           <ShopBagIcon style={{ width: 20, height: 20 }} />
           <span>{t("\u041c\u0430\u0433\u0430\u0437\u0438\u043d", "Shop")}</span>

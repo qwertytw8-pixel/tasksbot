@@ -269,9 +269,45 @@ export interface GameAchievement {
   condition_value: number;
   reward_coins: number;
   tier: string;
+  is_secret: boolean;
   unlocked: boolean;
   unlocked_at: string | null;
   progress: number;
+}
+
+export interface DailyQuestOut {
+  id: number;
+  quest_slug: string;
+  description_ru: string;
+  description_en: string;
+  target_value: number;
+  progress: number;
+  reward_coins: number;
+  is_completed: boolean;
+}
+
+export interface DailyQuestsResponse {
+  quests: DailyQuestOut[];
+  reroll_available: boolean;
+  reroll_cost: number;
+}
+
+export interface RerollQuestResponse {
+  new_quest: DailyQuestOut;
+  coins_remaining: number;
+}
+
+export interface SpinReward {
+  reward_type: string;
+  amount: number;
+  label_ru: string;
+  label_en: string;
+}
+
+export interface SpinResponse {
+  reward: SpinReward;
+  coins_after: number;
+  can_spin_again: boolean;
 }
 
 export interface DailyRewardStatus {
@@ -362,6 +398,12 @@ export const api = {
     request<DailyRewardStatus>("/api/game/daily-reward"),
   claimDailyReward: () =>
     request<DailyRewardClaim>("/api/game/daily-reward", { method: "POST" }),
+  dailyQuests: () =>
+    request<DailyQuestsResponse>("/api/game/quests"),
+  rerollQuest: (questId: number) =>
+    request<RerollQuestResponse>(`/api/game/quests/${questId}/reroll`, { method: "POST" }),
+  luckySpin: () =>
+    request<SpinResponse>("/api/game/spin", { method: "POST" }),
 
   // -------------------- Subscription & Admin --------------------
   subscriptionStatus: () =>
@@ -426,6 +468,10 @@ export function showAchievementModal(gameEvent: GameEvent) {
   document.dispatchEvent(new CustomEvent("show-achievement", { detail: gameEvent }));
 }
 
+export function showPetReaction() {
+  document.dispatchEvent(new CustomEvent("show-pet-reaction"));
+}
+
 export async function toggleTask(task: Task): Promise<Task> {
   const updated = await api.updateTask(task.id, {
     title: task.title,
@@ -442,6 +488,9 @@ export async function toggleTask(task: Task): Promise<Task> {
   });
   if (updated.game_event) {
     showAchievementModal(updated.game_event);
+    if (!task.is_done && updated.game_event.coins_earned > 0) {
+      showPetReaction();
+    }
   }
   return updated;
 }

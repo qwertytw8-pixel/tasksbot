@@ -14,6 +14,7 @@ import {
   FireIcon,
   TrophyIcon,
   CheckIcon,
+  LockIcon,
 } from "../icons";
 import { useT } from "../i18n";
 
@@ -82,7 +83,8 @@ export function PetAchievementsPage() {
   if (loading) return <div className="spinner">{t("\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430\u2026", "Loading\u2026")}</div>;
 
   const unlocked = achievements.filter((a) => a.unlocked);
-  const locked = achievements.filter((a) => !a.unlocked);
+  const locked = achievements.filter((a) => !a.unlocked && !a.is_secret);
+  const secret = achievements.filter((a) => !a.unlocked && a.is_secret);
 
   return (
     <div className="page pet-page">
@@ -118,6 +120,43 @@ export function PetAchievementsPage() {
           ))}
         </div>
       )}
+
+      {/* Secret */}
+      {secret.length > 0 && (
+        <>
+          <h3 className="pet-achievements__secret-heading">
+            {t("\u0421\u0435\u043a\u0440\u0435\u0442\u043d\u044b\u0435", "Secret")}
+          </h3>
+          <div className="pet-achievements__section pet-achievements__section--secret">
+            {secret.map((a) => (
+              <SecretAchievementCard key={a.id} achievement={a} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SecretAchievementCard({ achievement: a }: { achievement: GameAchievement }) {
+  const t = useT();
+
+  return (
+    <div className="achievement-card achievement-card--secret">
+      <div className="achievement-card__icon">
+        <LockIcon style={{ width: 24, height: 24, color: "#9CA3AF" }} />
+      </div>
+      <div className="achievement-card__info">
+        <div className="achievement-card__name">
+          {t(a.name_ru, a.name_en)}
+        </div>
+        <div className="achievement-card__desc">
+          {t(a.description_ru, a.description_en)}
+        </div>
+      </div>
+      <div className="achievement-card__reward">
+        ??? <CoinIcon style={{ width: 14, height: 14, color: "#9CA3AF", verticalAlign: "middle" }} />
+      </div>
     </div>
   );
 }

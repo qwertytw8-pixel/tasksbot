@@ -255,6 +255,39 @@ ACHIEVEMENTS: list[dict] = [
         "condition_type": "items_bought", "condition_value": 10,
         "reward_coins": 50, "tier": "silver", "sort_order": 51,
     },
+    # Secret achievements
+    {
+        "slug": "secret_night_owl", "icon": "\U0001f989",
+        "name_ru": "Полуночник", "name_en": "Night Owl",
+        "description_ru": "Выполни задачу после полуночи",
+        "description_en": "Complete a task after midnight",
+        "condition_type": "tasks_done", "condition_value": 1,
+        "reward_coins": 30, "tier": "gold", "is_secret": True, "sort_order": 60,
+    },
+    {
+        "slug": "secret_speed_demon", "icon": "\u26a1",
+        "name_ru": "Молния", "name_en": "Speed Demon",
+        "description_ru": "Выполни 10 задач за один день",
+        "description_en": "Complete 10 tasks in one day",
+        "condition_type": "tasks_done", "condition_value": 10,
+        "reward_coins": 50, "tier": "gold", "is_secret": True, "sort_order": 61,
+    },
+    {
+        "slug": "secret_rich", "icon": "\U0001f4b0",
+        "name_ru": "Богач", "name_en": "Rich",
+        "description_ru": "Накопи 1000 монет",
+        "description_en": "Accumulate 1000 coins",
+        "condition_type": "tasks_done", "condition_value": 1,
+        "reward_coins": 100, "tier": "diamond", "is_secret": True, "sort_order": 62,
+    },
+    {
+        "slug": "secret_perfectionist", "icon": "\U0001f48e",
+        "name_ru": "Абсолют", "name_en": "Absolute",
+        "description_ru": "7 идеальных дней подряд",
+        "description_en": "7 perfect days in a row",
+        "condition_type": "perfect_days", "condition_value": 7,
+        "reward_coins": 75, "tier": "diamond", "is_secret": True, "sort_order": 63,
+    },
 ]
 
 # Tier mapping for existing achievements (used during seed migration)
@@ -391,6 +424,26 @@ async def ensure_game_schema(conn: AsyncConnection) -> None:
         # v10: achievement tiers
         "ALTER TABLE game_achievements ADD COLUMN IF NOT EXISTS"
         " tier VARCHAR(16) NOT NULL DEFAULT 'bronze'",
+        # v11: secret achievements
+        "ALTER TABLE game_achievements ADD COLUMN IF NOT EXISTS"
+        " is_secret BOOLEAN NOT NULL DEFAULT FALSE",
+        # v11: lucky spin
+        "ALTER TABLE game_profiles ADD COLUMN IF NOT EXISTS last_spin_date DATE",
+        # v11: daily quests
+        """
+        CREATE TABLE IF NOT EXISTS game_daily_quests (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            quest_slug VARCHAR(64) NOT NULL,
+            target_value INTEGER NOT NULL,
+            progress INTEGER NOT NULL DEFAULT 0,
+            reward_coins INTEGER NOT NULL DEFAULT 0,
+            quest_date DATE NOT NULL,
+            is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+            is_rerolled BOOLEAN NOT NULL DEFAULT FALSE
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_game_daily_quests_user ON game_daily_quests (user_id)",
     ]
     for s in stmts:
         await conn.execute(text(s))
@@ -422,12 +475,16 @@ async def seed_game_data(session: AsyncSession) -> None:
         if ach_data["slug"] not in existing_achievements:
             session.add(GameAchievement(**ach_data))
 
-    # Update tiers for existing achievements
+    # Update tiers and is_secret for existing achievements
+    ach_data_map = {a["slug"]: a for a in ACHIEVEMENTS}
     all_achs = (await session.execute(select(GameAchievement))).scalars().all()
     for db_ach in all_achs:
-        expected_tier = ACHIEVEMENT_TIERS.get(db_ach.slug)
-        if expected_tier and db_ach.tier != expected_tier:
-            db_ach.tier = expected_tier
+        expected = ach_data_map.get(db_ach.slug)
+        if expected:
+            if db_ach.tier != expected.get("tier", "bronze"):
+                db_ach.tier = expected["tier"]
+            if db_ach.is_secret != expected.get("is_secret", False):
+                db_ach.is_secret = expected.get("is_secret", False)
 
     # Egg drops — recreate if count changed (schema update)
     existing_drops = (await session.execute(select(GameEggDrop.id))).scalars().all()
