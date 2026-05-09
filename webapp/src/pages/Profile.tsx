@@ -107,6 +107,13 @@ function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) 
               : t("profile.premium_unlock")
           }
         />
+        <div className="nav-row__divider" />
+        <NavRow
+          to="/referral"
+          icon="🎁"
+          title={lang === "ru" ? "Пригласи друга" : "Invite a friend"}
+          subtitle={lang === "ru" ? "+3 дня Premium за каждого" : "+3 days Premium per friend"}
+        />
       </div>
 
 

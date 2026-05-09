@@ -401,6 +401,74 @@ async def _check_achievements(
 
 
 # ---------------------------------------------------------------------------
+# Pet Fusion: 3 same-rarity pets → 1 next-rarity pet
+# ---------------------------------------------------------------------------
+
+FUSION_RARITY_UP = {"common": "rare", "rare": "epic"}
+
+
+async def fuse_pets(
+    session: AsyncSession, user_id: int, pet_ids: list[int],
+) -> GamePet:
+    """Fuse 3 pets of the same rarity into 1 pet of the next rarity.
+
+    Rules:
+    - Exactly 3 pets required
+    - All must belong to the user
+    - All must have the same rarity (common or rare)
+    - Cannot fuse epic pets (already max rarity)
+    - The new pet inherits the character_type of the first pet
+    - The 3 source pets are deleted
+    """
+    if len(pet_ids) != 3:
+        raise ValueError("Exactly 3 pets required for fusion")
+
+    if len(set(pet_ids)) != 3:
+        raise ValueError("All pet IDs must be different")
+
+    pets: list[GamePet] = []
+    for pid in pet_ids:
+        pet = await session.get(GamePet, pid)
+        if pet is None or pet.user_id != user_id:
+            raise ValueError(f"Pet {pid} not found or not owned")
+        pets.append(pet)
+
+    rarities = {p.rarity for p in pets}
+    if len(rarities) != 1:
+        raise ValueError("All pets must have the same rarity")
+
+    source_rarity = pets[0].rarity
+    if source_rarity not in FUSION_RARITY_UP:
+        raise ValueError("Cannot fuse epic pets — already max rarity")
+
+    new_rarity = FUSION_RARITY_UP[source_rarity]
+    new_character = pets[0].character_type
+    avg_xp = sum(p.xp for p in pets) // 3
+
+    profile = await session.get(GameProfile, user_id)
+    for pet in pets:
+        if profile and profile.active_pet_id == pet.id:
+            profile.active_pet_id = None
+        await session.delete(pet)
+    await session.flush()
+
+    new_pet = GamePet(
+        user_id=user_id,
+        character_type=new_character,
+        rarity=new_rarity,
+        xp=avg_xp,
+        stage=_compute_stage(avg_xp),
+    )
+    session.add(new_pet)
+    await session.flush()
+
+    if profile and profile.active_pet_id is None:
+        profile.active_pet_id = new_pet.id
+
+    return new_pet
+
+
+# ---------------------------------------------------------------------------
 # Hatch egg
 # ---------------------------------------------------------------------------
 

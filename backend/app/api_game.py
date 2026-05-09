@@ -45,6 +45,8 @@ from app.game_schemas import (
     DailyRewardStatus,
     DeletePetResponse,
     EquipRequest,
+    FuseRequest,
+    FuseResponse,
     GameAchievementOut,
     GameItemOut,
     GamePetOut,
@@ -270,6 +272,38 @@ async def hatch(
         character_name_en=CHARACTER_NAMES_EN.get(pet.character_type, pet.character_type),
         rarity_name_ru=RARITY_NAMES_RU.get(pet.rarity, pet.rarity),
         rarity_name_en=RARITY_NAMES_EN.get(pet.rarity, pet.rarity),
+    )
+
+
+# -------------------- POST /fuse --------------------
+
+@router.post("/fuse", response_model=FuseResponse)
+async def fuse(
+    payload: FuseRequest,
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.api import _ensure_user
+    from app.game import fuse_pets
+
+    await _ensure_user(session, tg)
+    await _ensure_profile(session, tg.id)
+
+    try:
+        new_pet = await fuse_pets(session, tg.id, payload.pet_ids)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+
+    slug_map = await _get_item_slug_map(session)
+    pet_out = _pet_to_out(new_pet, slug_map)
+    await session.commit()
+
+    return FuseResponse(
+        pet=pet_out,
+        character_name_ru=CHARACTER_NAMES_RU.get(new_pet.character_type, new_pet.character_type),
+        character_name_en=CHARACTER_NAMES_EN.get(new_pet.character_type, new_pet.character_type),
+        rarity_name_ru=RARITY_NAMES_RU.get(new_pet.rarity, new_pet.rarity),
+        rarity_name_en=RARITY_NAMES_EN.get(new_pet.rarity, new_pet.rarity),
     )
 
 

@@ -207,6 +207,35 @@ class Reminder(Base):
     task: Mapped[Task] = relationship(back_populates="reminders")
 
 
+class Referral(Base):
+    """Tracks referral invitations.
+
+    referrer_id: user who shared the link
+    referred_id: user who joined via the link
+    rewarded: True once the referrer received their 3-day Premium bonus
+               (only granted after the referred user creates their first task)
+    """
+    __tablename__ = "referrals"
+    __table_args__ = (
+        UniqueConstraint("referred_id", name="uq_referral_referred"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    referrer_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    referred_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    rewarded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default="now()", nullable=False
+    )
+    rewarded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 _engine = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
@@ -371,6 +400,19 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS"
             " trial_last_call_sent BOOLEAN NOT NULL DEFAULT FALSE"
         ),
+        # Referral system
+        (
+            "CREATE TABLE IF NOT EXISTS referrals ("
+            "  id SERIAL PRIMARY KEY,"
+            "  referrer_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+            "  referred_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+            "  rewarded BOOLEAN NOT NULL DEFAULT FALSE,"
+            "  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),"
+            "  rewarded_at TIMESTAMPTZ,"
+            "  UNIQUE(referred_id)"
+            ")"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_referrals_referrer_id ON referrals (referrer_id)",
     ]
     for stmt in statements:
         await conn.execute(text(stmt))

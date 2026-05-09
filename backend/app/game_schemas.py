@@ -171,6 +171,19 @@ class RerollQuestResponse(BaseModel):
     coins_remaining: int
 
 
+class FuseRequest(BaseModel):
+    pet_ids: list[int] = Field(min_length=3, max_length=3)
+
+
+class FuseResponse(BaseModel):
+    pet: GamePetOut
+    character_name_ru: str
+    character_name_en: str
+    rarity_name_ru: str
+    rarity_name_en: str
+    fused_count: int = 3
+
+
 class SpinReward(BaseModel):
     reward_type: str  # "coins", "xp", "egg_ticket"
     amount: int

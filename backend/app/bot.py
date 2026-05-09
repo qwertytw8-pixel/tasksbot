@@ -41,6 +41,7 @@ from app.subscription import (
     RENEWAL_DISCOUNT_PLAN,
     TRIAL_DISCOUNT_PLAN,
     activate_trial,
+    get_active_subscription,
     is_premium,
 )
 
@@ -193,13 +194,44 @@ def _welcome_image(ru: bool = True) -> BufferedInputFile | None:
     return _asset_image(name)
 
 
+async def _handle_referral(user_id: int, param: str) -> None:
+    """Record referral link. Bonus is granted later when referred user creates first task."""
+    from app.db import Referral
+
+    try:
+        referrer_id = int(param.removeprefix("ref_"))
+    except (ValueError, TypeError):
+        return
+    if referrer_id == user_id:
+        return
+
+    sm = get_sessionmaker()
+    async with sm() as session:
+        from sqlalchemy import select
+        existing = (
+            await session.execute(
+                select(Referral).where(Referral.referred_id == user_id)
+            )
+        ).scalar_one_or_none()
+        if existing:
+            return
+        referrer = await session.get(User, referrer_id)
+        if referrer is None:
+            return
+        session.add(Referral(referrer_id=referrer_id, referred_id=user_id))
+        await session.commit()
+        log.info("referral recorded: %s invited by %s", user_id, referrer_id)
+
+
 @dp.message(CommandStart(deep_link=True, deep_link_encoded=True))
 async def cmd_start_deep(message: Message) -> None:
     args = (message.text or "").split(maxsplit=1)
-    param = args[1].strip().lower() if len(args) > 1 else ""
-    if param == "premium":
+    param = args[1].strip() if len(args) > 1 else ""
+    if param.lower() == "premium":
         await cmd_premium(message)
         return
+    if param.startswith("ref_") and message.from_user:
+        await _handle_referral(message.from_user.id, param)
     await _do_start(message)
 
 
@@ -577,22 +609,20 @@ async def cb_buy_premium(cq: CallbackQuery) -> None:
 
     sm = get_sessionmaker()
     async with sm() as session:
-        if await is_premium(session, cq.from_user.id):
-            await cq.message.answer(
-                "У тебя уже есть активная Premium-подписка! 🎉" if ru
-                else "You already have an active Premium subscription! 🎉"
-            )
-            await cq.answer()
-            return
+        active_sub = await get_active_subscription(session, cq.from_user.id)
 
-    desc = (
-        f"Premium {plan['label']}: безлимитные задачи, свои категории и все возможности."
-    ) if ru else (
-        f"Premium {plan['label']}: unlimited tasks, custom categories, and all features."
-    )
+    if active_sub and active_sub.expires_at:
+        ext_date = (active_sub.expires_at + timedelta(days=plan["days"])).strftime("%d.%m.%Y")
+        extend_label = f"(продлит до {ext_date})" if ru else f"(extends to {ext_date})"
+    else:
+        extend_label = ""
+
+    base_ru = f"Premium {plan['label']}: безлимитные задачи, свои категории и все возможности."
+    base_en = f"Premium {plan['label']}: unlimited tasks, custom categories, and all features."
+    desc = f"{base_ru} {extend_label}".strip() if ru else f"{base_en} {extend_label}".strip()
     await cq.message.answer_invoice(
         title="Task Blo Premium",
-        description=desc,
+        description=desc.strip(),
         payload=json.dumps({
             "type": f"premium_{plan_key}",
             "user_id": cq.from_user.id,
@@ -617,16 +647,6 @@ async def cb_renew_discount(cq: CallbackQuery) -> None:
         return
 
     ru = _is_ru(cq=cq)
-    sm = get_sessionmaker()
-    async with sm() as session:
-        if await is_premium(session, cq.from_user.id):
-            await cq.message.answer(
-                "У тебя уже есть активная Premium-подписка! 🎉" if ru
-                else "You already have an active Premium subscription! 🎉"
-            )
-            await cq.answer()
-            return
-
     plan = RENEWAL_DISCOUNT_PLAN
     desc = (
         f"Premium {plan['label']}: безлимитные задачи, свои категории и все возможности."
@@ -659,16 +679,6 @@ async def cb_trial_discount(cq: CallbackQuery) -> None:
         return
 
     ru = _is_ru(cq=cq)
-    sm = get_sessionmaker()
-    async with sm() as session:
-        if await is_premium(session, cq.from_user.id):
-            await cq.message.answer(
-                "У тебя уже есть активная Premium-подписка! 🎉" if ru
-                else "You already have an active Premium subscription! 🎉"
-            )
-            await cq.answer()
-            return
-
     plan = TRIAL_DISCOUNT_PLAN
     desc = (
         "Premium на 1 месяц со скидкой: безлимитные задачи, голосовой ввод и все возможности."
@@ -714,8 +724,6 @@ async def on_successful_payment(message: Message) -> None:
     except (json.JSONDecodeError, ValueError, TypeError):
         days = 30
 
-    expires_at = now + timedelta(days=days)
-
     sm = get_sessionmaker()
     async with sm() as session:
         user = await session.get(User, user_id)
@@ -723,6 +731,13 @@ async def on_successful_payment(message: Message) -> None:
             user = User(id=user_id)
             session.add(user)
             await session.commit()
+
+        active_sub = await get_active_subscription(session, user_id)
+        if active_sub and active_sub.expires_at and active_sub.expires_at > now:
+            start_from = active_sub.expires_at
+        else:
+            start_from = now
+        expires_at = start_from + timedelta(days=days)
 
         sub = Subscription(
             user_id=user_id,
@@ -1140,10 +1155,9 @@ async def configure_bot_commands(bot: Bot) -> None:
     await bot.set_my_commands(
         [
             BotCommand(command="start", description="Приветствие"),
-            BotCommand(command="new", description="Добавить задачу из чата"),
+            BotCommand(command="new", description="Создать задачу из текста"),
             BotCommand(command="premium", description="Купить Premium"),
             BotCommand(command="app", description="Открыть Mini App"),
-            BotCommand(command="new", description="Создать задачу из текста"),
             BotCommand(command="privacy", description="Приватность"),
             BotCommand(command="support", description="Поддержка"),
             BotCommand(command="help", description="Помощь"),

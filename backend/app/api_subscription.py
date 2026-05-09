@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import TelegramUser, get_telegram_user_factory
 from app.config import get_settings
-from app.db import PromoActivation, PromoCode, Subscription, User, get_session
+from app.db import PromoActivation, PromoCode, Referral, Subscription, User, get_session
 from app.schemas import (
     PlanInfo,
     PlansOut,
@@ -190,22 +190,24 @@ async def create_invoice(
         )
 
     await _ensure_user(session, tg)
-    if await is_premium(session, tg.id):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "У тебя уже есть активная подписка",
-        )
 
     from aiogram import Bot
 
     bot: Bot = request.app.state.bot
+    active_sub = await get_active_subscription(session, tg.id)
+    ext = ""
+    if active_sub and active_sub.expires_at:
+        from datetime import timedelta as td
+        ext_date = (active_sub.expires_at + td(days=plan["days"])).strftime("%d.%m.%Y")
+        ext = f" (продлит до {ext_date})"
+    desc = (
+        f"Premium {plan['label']}: "
+        "безлимитные задачи, "
+        f"свои категории и все возможности.{ext}"
+    )
     link = await bot.create_invoice_link(
         title="Task Blo Premium",
-        description=(
-            f"Premium {plan['label']}: "
-            "безлимитные задачи, "
-            "свои категории и все возможности."
-        ),
+        description=desc,
         payload=json.dumps({
             "type": f"premium_{plan_key}",
             "user_id": tg.id,
@@ -217,3 +219,48 @@ async def create_invoice(
         ],
     )
     return {"invoice_url": link}
+
+
+# -------------------- Referral system --------------------
+
+REFERRAL_BONUS_DAYS = 3
+
+
+@router.get("/referral")
+async def get_referral_info(
+    tg: TelegramUser = Depends(_get_dep()),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Return referral link and stats for current user."""
+    from sqlalchemy import func
+
+    await _ensure_user(session, tg)
+    settings = get_settings()
+    bot_username = settings.bot_username
+
+    ref_link = f"https://t.me/{bot_username}?start=ref_{tg.id}"
+
+    total_invited = (
+        await session.execute(
+            select(func.count(Referral.id)).where(Referral.referrer_id == tg.id)
+        )
+    ).scalar_one()
+
+    rewarded_count = (
+        await session.execute(
+            select(func.count(Referral.id)).where(
+                Referral.referrer_id == tg.id,
+                Referral.rewarded.is_(True),
+            )
+        )
+    ).scalar_one()
+
+    total_days_earned = rewarded_count * REFERRAL_BONUS_DAYS
+
+    return {
+        "referral_link": ref_link,
+        "total_invited": total_invited,
+        "rewarded_count": rewarded_count,
+        "total_days_earned": total_days_earned,
+        "bonus_days_per_invite": REFERRAL_BONUS_DAYS,
+    }

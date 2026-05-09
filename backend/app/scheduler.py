@@ -43,10 +43,17 @@ def _format_in(due_at: datetime, now: datetime) -> str:
 
 
 async def run_tick(bot: Bot) -> int:
-    """Process due reminders. Returns the number of reminders sent."""
+    """Process due reminders. Returns the number of reminders sent.
+
+    Retries each reminder up to 3 times with exponential backoff.
+    Reminders older than 24h are auto-marked as sent to avoid stale pileup.
+    """
+    import asyncio
+
     sm = get_sessionmaker()
     now = datetime.now(UTC)
     sent_count = 0
+    stale_cutoff = now - timedelta(hours=24)
     async with sm() as session:
         rows = await session.execute(
             select(Reminder, Task)
@@ -64,20 +71,38 @@ async def run_tick(bot: Bot) -> int:
             return 0
 
         for reminder, task in items:
-            try:
-                when = _format_in(task.due_at, now) if task.due_at else ""
-                text_when = f"\n🕒 {when}" if when else ""
-                await bot.send_message(
-                    chat_id=task.user_id,
-                    text=f"⏰ <b>Напоминание</b>\n\n<b>{task.title}</b>{text_when}",
+            if reminder.fire_at < stale_cutoff:
+                log.warning(
+                    "stale reminder %s (fire_at=%s), marking sent",
+                    reminder.id, reminder.fire_at,
                 )
-                sent_count += 1
-            except Exception:
-                log.exception("failed to send reminder %s", reminder.id)
+                await session.execute(
+                    update(Reminder).where(Reminder.id == reminder.id).values(sent=True)
+                )
                 continue
-            await session.execute(
-                update(Reminder).where(Reminder.id == reminder.id).values(sent=True)
-            )
+
+            sent = False
+            for attempt in range(3):
+                try:
+                    when = _format_in(task.due_at, now) if task.due_at else ""
+                    text_when = f"\n🕒 {when}" if when else ""
+                    await bot.send_message(
+                        chat_id=task.user_id,
+                        text=f"⏰ <b>Напоминание</b>\n\n<b>{task.title}</b>{text_when}",
+                    )
+                    sent = True
+                    sent_count += 1
+                    break
+                except Exception:
+                    if attempt < 2:
+                        await asyncio.sleep(2 ** attempt)
+                    else:
+                        log.exception("failed to send reminder %s after 3 attempts", reminder.id)
+
+            if sent:
+                await session.execute(
+                    update(Reminder).where(Reminder.id == reminder.id).values(sent=True)
+                )
         await session.commit()
     return sent_count
 
