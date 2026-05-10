@@ -9,7 +9,6 @@ from aiogram.enums import ParseMode
 from aiogram.types import MenuButtonWebApp, Update, WebAppInfo
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.api import router as api_router
 from app.api_admin import router as admin_router
@@ -21,13 +20,7 @@ from app.db import Base, ensure_runtime_schema, get_engine
 from app.game_seed import ensure_game_schema, seed_game_data
 from app.jobs import set_bot_for_scheduler, start_scheduler, stop_scheduler
 from app.rate_limit import RateLimitMiddleware
-from app.scheduler import (
-    run_daily_summary,
-    run_personal_offers,
-    run_subscription_notifications,
-    run_tick,
-    run_trial_notifications,
-)
+from app.scheduler import run_tick
 
 
 def _setup_logging(level: str) -> None:
@@ -107,7 +100,7 @@ app = FastAPI(title="tasksbot", lifespan=lifespan)
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list or ["*"],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -132,42 +125,13 @@ async def healthz() -> dict[str, str]:
     }
 
 
-@app.post("/migrate/neon")
-async def migrate_neon(
-    request: Request,
-    authorization: str | None = Header(default=None),
-) -> JSONResponse:
-    settings = get_settings()
-    if authorization != f"Bearer {settings.cron_secret}":
-        raise HTTPException(status_code=403, detail="bad secret")
-    payload = await request.json()
-    statements = payload.get("statements", [])
-    if not statements:
-        raise HTTPException(status_code=400, detail="no statements")
-    engine = get_engine()
-    from sqlalchemy import text as sa_text
-    ok = 0
-    errors = []
-    async with engine.begin() as conn:
-        for stmt in statements:
-            try:
-                await conn.execute(sa_text(stmt))
-                ok += 1
-            except Exception as e:
-                errors.append(f"{str(e)[:200]}")
-    return JSONResponse({
-        "status": "migrated", "ok": ok,
-        "errors_count": len(errors), "errors": errors[:10],
-    })
-
-
 @app.post("/tg/webhook")
 async def telegram_webhook(
     request: Request,
     x_telegram_bot_api_secret_token: str | None = Header(default=None),
 ) -> dict[str, bool]:
     settings = get_settings()
-    if x_telegram_bot_api_secret_token != settings.webhook_secret:
+    if not settings.webhook_secret or x_telegram_bot_api_secret_token != settings.webhook_secret:
         raise HTTPException(status_code=403, detail="bad secret")
     payload = await request.json()
     update = Update.model_validate(payload, context={"bot": request.app.state.bot})
@@ -181,19 +145,13 @@ async def cron_tick(
     authorization: str | None = Header(default=None),
 ) -> dict[str, int | str]:
     settings = get_settings()
+    if not settings.cron_secret:
+        raise HTTPException(status_code=503, detail="cron secret not configured")
     expected = f"Bearer {settings.cron_secret}"
     if authorization != expected:
         raise HTTPException(status_code=403, detail="bad cron secret")
     sent = await run_tick(request.app.state.bot)
-    summaries = await run_daily_summary(request.app.state.bot)
-    sub_notifs = await run_subscription_notifications(request.app.state.bot)
-    personal = await run_personal_offers(request.app.state.bot)
-    trial_notifs = await run_trial_notifications(request.app.state.bot)
     return {
         "status": "ok",
         "sent": sent,
-        "summaries": summaries,
-        "sub_notifs": sub_notifs,
-        "personal_offers": personal,
-        "trial_notifs": trial_notifs,
     }

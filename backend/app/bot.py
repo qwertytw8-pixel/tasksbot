@@ -706,6 +706,16 @@ async def cb_trial_discount(cq: CallbackQuery) -> None:
 
 @dp.pre_checkout_query()
 async def on_pre_checkout(query: PreCheckoutQuery) -> None:
+    try:
+        payload = json.loads(query.invoice_payload)
+        ptype = payload.get("type", "")
+        days = int(payload.get("days", 0))
+        if not ptype.startswith("premium_") or days <= 0:
+            await query.answer(ok=False, error_message="Invalid payment payload")
+            return
+    except (json.JSONDecodeError, ValueError, TypeError):
+        await query.answer(ok=False, error_message="Invalid payment payload")
+        return
     await query.answer(ok=True)
 
 
