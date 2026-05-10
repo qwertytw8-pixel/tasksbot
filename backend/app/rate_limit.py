@@ -6,7 +6,9 @@ the initData header) with configurable limits per route group.
 
 from __future__ import annotations
 
+import json
 import time
+import urllib.parse
 from collections import defaultdict
 
 from fastapi import Request, Response
@@ -24,6 +26,8 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
 DEFAULT_LIMIT = (120, 60)  # 120 req/min default
 
 _buckets: dict[str, list[float]] = defaultdict(list)
+_last_gc: float = 0.0
+_GC_INTERVAL = 300.0  # full cleanup every 5 minutes
 
 
 def _match_prefix(path: str) -> tuple[int, int]:
@@ -39,10 +43,8 @@ def _extract_user_key(request: Request) -> str | None:
     if init_data:
         for part in init_data.split("&"):
             if part.startswith("user="):
-                import urllib.parse
                 try:
                     user_json = urllib.parse.unquote(part[5:])
-                    import json
                     user_data = json.loads(user_json)
                     uid = user_data.get("id")
                     if uid:
@@ -60,9 +62,22 @@ def _extract_user_key(request: Request) -> str | None:
     return None
 
 
+def _gc_buckets(now: float) -> None:
+    """Remove stale bucket entries to prevent memory leaks."""
+    global _last_gc
+    if now - _last_gc < _GC_INTERVAL:
+        return
+    _last_gc = now
+    max_window = max(w for _, w in RATE_LIMITS.values())
+    cutoff = now - max_window
+    stale_keys = [k for k, v in _buckets.items() if not v or v[-1] < cutoff]
+    for k in stale_keys:
+        del _buckets[k]
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
-        if request.url.path.startswith(("/healthz", "/webhook", "/cron", "/docs")):
+        if request.url.path.startswith(("/healthz", "/tg/webhook", "/cron", "/docs")):
             return await call_next(request)
 
         user_key = _extract_user_key(request)
@@ -73,6 +88,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         bucket_key = f"{user_key}:{request.url.path.split('/')[1:3]}"
 
         now = time.monotonic()
+
+        # Periodic garbage collection
+        _gc_buckets(now)
+
         timestamps = _buckets[bucket_key]
 
         # Remove expired entries

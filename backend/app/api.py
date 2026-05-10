@@ -190,6 +190,9 @@ async def update_me(
 ) -> User:
     user = await _ensure_user(session, tg)
     if payload.tz is not None:
+        from zoneinfo import available_timezones
+        if payload.tz not in available_timezones():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "invalid timezone")
         user.tz = payload.tz
     if payload.onboarding_completed is not None:
         user.onboarding_completed = payload.onboarding_completed
