@@ -36,6 +36,13 @@ async def lifespan(app: FastAPI):
     _setup_logging(settings.log_level)
     log = logging.getLogger("startup")
 
+    if not settings.webhook_secret:
+        log.warning("WEBHOOK_SECRET is empty — webhook endpoint will reject all requests")
+    if not settings.cron_secret:
+        log.warning("CRON_SECRET is empty — cron endpoint will reject all requests")
+    if not settings.cors_origins:
+        log.warning("CORS_ORIGINS is empty — no cross-origin requests will be allowed")
+
     # DB: create tables if not exist (for first run; later — alembic)
     engine = get_engine()
     async with engine.begin() as conn:
