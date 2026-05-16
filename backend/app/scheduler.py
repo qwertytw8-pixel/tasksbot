@@ -88,7 +88,12 @@ async def run_tick(bot: Bot) -> int:
                     text_when = f"\n🕒 {when}" if when else ""
                     await bot.send_message(
                         chat_id=task.user_id,
-                        text=f"⏰ <b>Напоминание</b>\n\n<b>{task.title}</b>{text_when}",
+                        text=(
+                            f"⏰ <b>Напоминание</b>\n"
+                            f"━━━━━━━━━━━━━━━\n"
+                            f"📌 <b>{task.title}</b>{text_when}\n"
+                            f"━━━━━━━━━━━━━━━"
+                        ),
                     )
                     sent = True
                     sent_count += 1
@@ -181,9 +186,11 @@ async def run_daily_summary(bot: Bot) -> int:
                 await bot.send_message(
                     chat_id=user.id,
                     text=(
-                        f"📋 <b>Итоги дня</b>\n\n"
-                        f"У тебя {incomplete} {task_word} на сегодня.{done_part}\n\n"
-                        f"Открой приложение и заверши их! 💪"
+                        f"📋 <b>Итоги дня</b>\n"
+                        f"━━━━━━━━━━━━━━━\n\n"
+                        f"📝 Осталось: <b>{incomplete}</b> {task_word}{done_part}\n\n"
+                        f"━━━━━━━━━━━━━━━\n"
+                        f"💪 Открой приложение и заверши их!"
                     ),
                 )
                 sent_count += 1
@@ -255,12 +262,13 @@ async def run_streak_at_risk(bot: Bot) -> int:
                 await bot.send_message(
                     chat_id=user.id,
                     text=(
-                        f"🔥 <b>Стрик в опасности!</b>\n\n"
-                        f"У тебя {profile.streak_days} дней подряд. "
-                        f"Заверши хотя бы одну задачу сегодня, чтобы не потерять стрик!\n\n"
-                        f"🔥 <b>Streak at risk!</b>\n\n"
-                        f"You have a {profile.streak_days}-day streak. "
-                        f"Complete at least one task today to keep it!"
+                        f"🔥 <b>Стрик в опасности!</b>\n"
+                        f"━━━━━━━━━━━━━━━\n\n"
+                        f"📊 Текущий стрик: <b>{profile.streak_days} дн.</b>\n\n"
+                        f"Заверши хотя бы одну задачу сегодня,\n"
+                        f"чтобы не потерять серию!\n\n"
+                        f"━━━━━━━━━━━━━━━\n"
+                        f"💪 Не сдавайся!"
                     ),
                 )
                 sent += 1

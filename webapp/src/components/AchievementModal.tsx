@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Confetti } from "./Confetti";
-import { CoinIcon, SparkIcon } from "../icons";
+import { CalendarIcon, CoinIcon, FireIcon, SparkIcon } from "../icons";
 import { useT } from "../i18n";
 import { useToast } from "./Toast";
 import type { GameEvent } from "../api";
@@ -25,22 +25,22 @@ export function AchievementModal({ gameEvent, onClose }: Props) {
     if (gameEvent.coins_earned > 0 && gameEvent.achievements_unlocked.length === 0) {
       const coins = gameEvent.coins_earned;
       const msg = t(`+${coins} монет`, `+${coins} coins`);
-      toast.show(`💰 ${msg}`, "success", <CoinIcon style={{ width: 16, height: 16 }} />);
+      toast.show(msg, "success", <CoinIcon style={{ width: 16, height: 16 }} />);
     }
     if (gameEvent.streak_lost) {
       const prev = gameEvent.streak_lost_previous;
       const msg = t(`Серия прервана (было ${prev} дн.)`, `Streak lost (was ${prev} days)`);
-      toast.show(`🔥 ${msg}`, "error");
+      toast.show(msg, "error", <FireIcon style={{ width: 16, height: 16 }} />);
     } else if (gameEvent.streak_days > 0) {
       const days = gameEvent.streak_days;
       const msg = t(`${days} дней подряд!`, `${days} days in a row!`);
-      toast.show(`🔥 ${msg}`, "success");
+      toast.show(msg, "success", <FireIcon style={{ width: 16, height: 16 }} />);
     }
     if (gameEvent.perfect_day) {
-      toast.show(t("✨ Идеальный день!", "✨ Perfect Day!"), "achievement");
+      toast.show(t("Идеальный день!", "Perfect Day!"), "achievement", <SparkIcon style={{ width: 16, height: 16 }} />);
     }
     if (gameEvent.daily_cap_reached) {
-      toast.show(t("📅 Дневной лимит монет", "📅 Daily coin cap reached"), "info");
+      toast.show(t("Дневной лимит монет", "Daily coin cap reached"), "info", <CalendarIcon style={{ width: 16, height: 16 }} />);
     }
   }, []);
 

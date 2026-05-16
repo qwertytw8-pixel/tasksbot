@@ -44,8 +44,14 @@ export function CalendarPage() {
 
   useEffect(() => {
     void (async () => {
-      const [t, c] = await Promise.all([api.listTasks(), api.listCategories()]);
-      setTasks(t);
+      const [active, archived, c] = await Promise.all([
+        api.listTasks(),
+        api.listTasks({ archived: true }),
+        api.listCategories(),
+      ]);
+      const seenIds = new Set(active.map((t) => t.id));
+      const merged = [...active, ...archived.filter((t) => !seenIds.has(t.id))];
+      setTasks(merged);
       setCats(c);
     })();
   }, []);
