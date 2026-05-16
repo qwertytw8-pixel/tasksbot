@@ -443,7 +443,14 @@ button {
 .task__check--done {
   background: var(--tb-button);
   border-color: var(--tb-button);
-  animation: tb-pop-in 0.32s ease both;
+  animation: tb-check-bounce 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes tb-check-bounce {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.25); opacity: 1; }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .task__content {
@@ -2069,28 +2076,30 @@ button {
 }
 
 .task-swipe__action {
-  width: 76px;
+  width: 72px;
   border: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: #ffffff;
   cursor: pointer;
   padding: 0;
   transition: filter 150ms ease, transform 150ms ease, opacity 150ms ease;
-  opacity: 0.96;
+  opacity: 1;
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   backdrop-filter: blur(16px) saturate(1.4);
 }
 
 .task-swipe__action svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
 }
 
 .task-swipe__action:active {
@@ -2099,15 +2108,15 @@ button {
 }
 
 .task-swipe__action--postpone {
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.82), rgba(245, 158, 11, 0.82));
+  background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
 .task-swipe__action--done {
-  background: linear-gradient(180deg, rgba(52, 211, 153, 0.82), rgba(16, 185, 129, 0.82));
+  background: linear-gradient(135deg, #10b981, #059669);
 }
 
 .task-swipe__action--delete {
-  background: linear-gradient(180deg, rgba(248, 113, 113, 0.82), rgba(239, 68, 68, 0.82));
+  background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
 .task-swipe--open .task-swipe__action {
@@ -2149,11 +2158,11 @@ button {
 }
 
 .task-swipe__action--archive {
-  background: linear-gradient(180deg, rgba(96, 165, 250, 0.82), rgba(59, 130, 246, 0.82));
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
 .task-swipe__action--restore {
-  background: linear-gradient(180deg, rgba(129, 140, 248, 0.82), rgba(99, 102, 241, 0.82));
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
 }
 
 .task-swipe__actions {
@@ -5846,5 +5855,36 @@ button {
   font-size: 14px;
   font-weight: 500;
   color: var(--tb-text);
+}
+
+/* Chip with delete button wrapper */
+.chip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.chip-delete {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--tb-danger, #ef4444);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.85;
+  transition: opacity 150ms, transform 150ms;
+  z-index: 2;
+}
+
+.chip-delete:active {
+  transform: scale(0.9);
+  opacity: 1;
 }
 

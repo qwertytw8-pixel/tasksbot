@@ -784,7 +784,10 @@ async def claim_daily_reward(
     if profile.daily_login_day is not None:
         diff = (today - profile.daily_login_day).days
         if diff == 1:
-            profile.daily_login_streak = min(profile.daily_login_streak + 1, 7)
+            if profile.daily_login_streak >= 7:
+                profile.daily_login_streak = 1
+            else:
+                profile.daily_login_streak += 1
         elif diff > 1:
             profile.daily_login_streak = 1
         else:
