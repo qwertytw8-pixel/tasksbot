@@ -384,7 +384,7 @@ async def run_personal_offers(bot: Bot) -> int:
 
 async def run_subscription_notifications(bot: Bot) -> int:
     """Send subscription expiry notifications. Returns the number sent."""
-    from app.subscription import RENEWAL_DISCOUNT_PLAN
+    from app.subscription import RENEWAL_DISCOUNT_PLAN, get_active_subscription
 
     sm = get_sessionmaker()
     now = datetime.now(UTC)
@@ -402,6 +402,11 @@ async def run_subscription_notifications(bot: Bot) -> int:
         ).scalars().all()
 
         for sub in subs:
+            # Skip if user has another active subscription (e.g. lifetime or renewed)
+            active = await get_active_subscription(session, sub.user_id)
+            if active is not None and active.id != sub.id:
+                continue
+
             days_left = (sub.expires_at - now).total_seconds() / 86400
 
             # 3 days before expiry
@@ -495,7 +500,7 @@ async def run_subscription_notifications(bot: Bot) -> int:
 async def run_trial_notifications(bot: Bot) -> int:
     """Send trial-related notifications: trial ending, trial expired + discount, last call."""
     from app.config import get_settings
-    from app.subscription import TRIAL_DISCOUNT_PLAN, trial_expires_at
+    from app.subscription import TRIAL_DISCOUNT_PLAN, get_active_subscription, trial_expires_at
 
     sm = get_sessionmaker()
     now = datetime.now(UTC)
@@ -515,6 +520,11 @@ async def run_trial_notifications(bot: Bot) -> int:
         for user in users:
             expires = trial_expires_at(user)
             if expires is None:
+                continue
+
+            # Skip if user already has a paid (non-trial) active subscription
+            active_sub = await get_active_subscription(session, user.id)
+            if active_sub is not None and active_sub.plan != "trial":
                 continue
 
             hours_left = (expires - now).total_seconds() / 3600

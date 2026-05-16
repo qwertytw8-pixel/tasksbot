@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Confetti } from "./Confetti";
-import { CoinIcon, FireIcon, SparkIcon } from "../icons";
+import { CoinIcon, SparkIcon } from "../icons";
 import { useT } from "../i18n";
+import { useToast } from "./Toast";
 import type { GameEvent } from "../api";
 
 interface Props {
@@ -11,18 +12,39 @@ interface Props {
 
 type SlideType =
   | { kind: "achievement"; name_ru: string; name_en: string; icon: string; reward_coins: number }
-  | { kind: "stage_up"; stage: number; stage_name_ru: string; stage_name_en: string }
-  | { kind: "coins"; coins: number }
-  | { kind: "streak"; days: number; lost: boolean; lost_previous: number }
-  | { kind: "perfect_day" }
-  | { kind: "cap_reached" };
+  | { kind: "stage_up"; stage: number; stage_name_ru: string; stage_name_en: string };
 
 export function AchievementModal({ gameEvent, onClose }: Props) {
   const t = useT();
+  const toast = useToast();
   const [visibleIndex, setVisibleIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(true);
 
-  // Build slides list
+  // Show minor events as toasts instead of ugly fullscreen modal
+  useEffect(() => {
+    if (gameEvent.coins_earned > 0 && gameEvent.achievements_unlocked.length === 0) {
+      const coins = gameEvent.coins_earned;
+      const msg = t(`+${coins} монет`, `+${coins} coins`);
+      toast.show(`💰 ${msg}`, "success", <CoinIcon style={{ width: 16, height: 16 }} />);
+    }
+    if (gameEvent.streak_lost) {
+      const prev = gameEvent.streak_lost_previous;
+      const msg = t(`Серия прервана (было ${prev} дн.)`, `Streak lost (was ${prev} days)`);
+      toast.show(`🔥 ${msg}`, "error");
+    } else if (gameEvent.streak_days > 0) {
+      const days = gameEvent.streak_days;
+      const msg = t(`${days} дней подряд!`, `${days} days in a row!`);
+      toast.show(`🔥 ${msg}`, "success");
+    }
+    if (gameEvent.perfect_day) {
+      toast.show(t("✨ Идеальный день!", "✨ Perfect Day!"), "achievement");
+    }
+    if (gameEvent.daily_cap_reached) {
+      toast.show(t("📅 Дневной лимит монет", "📅 Daily coin cap reached"), "info");
+    }
+  }, []);
+
+  // Build modal slides only for major events (achievements, stage_up)
   const slides: SlideType[] = [];
 
   if (gameEvent.achievements_unlocked.length > 0) {
@@ -37,10 +59,6 @@ export function AchievementModal({ gameEvent, onClose }: Props) {
     }
   }
 
-  if (gameEvent.coins_earned > 0 && gameEvent.achievements_unlocked.length === 0) {
-    slides.push({ kind: "coins", coins: gameEvent.coins_earned });
-  }
-
   if (gameEvent.new_stage !== null && gameEvent.new_stage > 0) {
     slides.push({
       kind: "stage_up",
@@ -48,30 +66,6 @@ export function AchievementModal({ gameEvent, onClose }: Props) {
       stage_name_ru: gameEvent.stage_name_ru ?? "",
       stage_name_en: gameEvent.stage_name_en ?? "",
     });
-  }
-
-  if (gameEvent.streak_lost) {
-    slides.push({
-      kind: "streak",
-      days: 0,
-      lost: true,
-      lost_previous: gameEvent.streak_lost_previous,
-    });
-  } else if (gameEvent.streak_days > 0) {
-    slides.push({
-      kind: "streak",
-      days: gameEvent.streak_days,
-      lost: false,
-      lost_previous: 0,
-    });
-  }
-
-  if (gameEvent.perfect_day) {
-    slides.push({ kind: "perfect_day" });
-  }
-
-  if (gameEvent.daily_cap_reached) {
-    slides.push({ kind: "cap_reached" });
   }
 
   const current = slides[visibleIndex];
@@ -181,89 +175,5 @@ function SlideContent({ slide, t }: { slide: SlideType; t: (ru: string, en: stri
         </>
       );
 
-    case "coins":
-      return (
-        <>
-          <div className="achievement-modal__badge">
-            <div className="achievement-modal__icon-ring">
-              <CoinIcon style={{ width: 40, height: 40, color: "var(--tb-accent-strong)" }} />
-            </div>
-          </div>
-          <h2 className="achievement-modal__title">
-            {t("💰 Монетки!", "💰 Coins!")}
-          </h2>
-          <div className="achievement-modal__name">
-            {t("+{n} монет", "+{n} coins").replace("{n}", String(slide.coins))}
-          </div>
-        </>
-      );
-
-    case "streak":
-      if (slide.lost) {
-        return (
-          <>
-            <div className="achievement-modal__badge" style={{ filter: "grayscale(0.8)" }}>
-              <div className="achievement-modal__icon-ring" style={{ borderColor: "var(--tb-danger)" }}>
-                <FireIcon style={{ width: 40, height: 40, color: "var(--tb-danger)" }} />
-              </div>
-            </div>
-            <h2 className="achievement-modal__title" style={{ color: "var(--tb-danger)" }}>
-              {t("🔥 Серия прервана", "🔥 Streak Lost")}
-            </h2>
-            <div className="achievement-modal__name">
-              {t(`Было: {n} дней`, `Previous: {n} days`).replace("{n}", String(slide.lost_previous))}
-            </div>
-          </>
-        );
-      }
-      return (
-        <>
-          <div className="achievement-modal__badge">
-            <div className="achievement-modal__icon-ring" style={{ borderColor: "#ff6b35" }}>
-              <FireIcon style={{ width: 40, height: 40, color: "#ff6b35" }} />
-            </div>
-          </div>
-          <h2 className="achievement-modal__title" style={{ color: "#ff6b35" }}>
-            {t("🔥 Серия продолжается!", "🔥 Streak Continues!")}
-          </h2>
-          <div className="achievement-modal__name">
-            {t(`{n} дней подряд`, `{n} days in a row`).replace("{n}", String(slide.days))}
-          </div>
-        </>
-      );
-
-    case "perfect_day":
-      return (
-        <>
-          <div className="achievement-modal__badge">
-            <div className="achievement-modal__icon-ring" style={{ borderColor: "#ffd700" }}>
-              <SparkIcon style={{ width: 40, height: 40, color: "#ffd700" }} />
-            </div>
-          </div>
-          <h2 className="achievement-modal__title" style={{ color: "#ffd700" }}>
-            {t("✨ Идеальный день!", "✨ Perfect Day!")}
-          </h2>
-          <div className="achievement-modal__name">
-            {t("Все задачи выполнены!", "All tasks completed!")}
-          </div>
-        </>
-      );
-
-    case "cap_reached":
-      return (
-        <>
-          <div className="achievement-modal__badge">
-            <div className="achievement-modal__icon-ring" style={{ borderColor: "#8b5cf6" }}>
-              <CoinIcon style={{ width: 40, height: 40, color: "#8b5cf6" }} />
-            </div>
-          </div>
-          <h2 className="achievement-modal__title">
-            {t("📅 Дневной лимит", "📅 Daily Cap")}
-          </h2>
-          <div className="achievement-modal__name">
-            {t("Вы получили все монеты на сегодня!", "You earned all coins for today!")}
-          </div>
-        </>
-      );
   }
 }

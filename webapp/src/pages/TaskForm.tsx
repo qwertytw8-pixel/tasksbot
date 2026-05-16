@@ -11,10 +11,10 @@ import {
   CheckIcon,
   ClockIcon,
   CornerDownRightIcon,
-  FlagIcon,
   LayersIcon,
   PlusIcon,
   TagIcon,
+  TrashIcon,
 } from "../icons";
 import { useI18n } from "../i18n";
 import { haptic } from "../telegram";
@@ -347,20 +347,35 @@ export function TaskFormPage() {
                 {t("form.cat_none")}
               </button>
               {cats.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={`chip ${categoryId === c.id ? "chip--soft-active" : ""}`}
-                  onClick={() => setCategoryId(c.id)}
-                  style={
-                    categoryId === c.id && c.color
-                      ? { color: c.color, borderColor: c.color }
-                      : undefined
-                  }
-                >
-                  {c.emoji ? `${c.emoji} ` : ""}
-                  {c.name}
-                </button>
+                <span key={c.id} className="chip-wrap">
+                  <button
+                    type="button"
+                    className={`chip ${categoryId === c.id ? "chip--soft-active" : ""}`}
+                    onClick={() => setCategoryId(c.id)}
+                    style={
+                      categoryId === c.id && c.color
+                        ? { color: c.color, borderColor: c.color }
+                        : undefined
+                    }
+                  >
+                    {c.emoji ? `${c.emoji} ` : ""}
+                    {c.name}
+                  </button>
+                  <button
+                    type="button"
+                    className="chip-delete"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!confirm(t("confirm.delete_category"))) return;
+                      await api.deleteCategory(c.id);
+                      setCats((prev) => prev.filter((x) => x.id !== c.id));
+                      if (categoryId === c.id) setCategoryId(null);
+                    }}
+                    aria-label={t("confirm.delete_category")}
+                  >
+                    <TrashIcon style={{ width: 12, height: 12 }} />
+                  </button>
+                </span>
               ))}
               <button
                 type="button"
@@ -437,7 +452,6 @@ export function TaskFormPage() {
                   style={priority === p.value ? { color: p.color, borderColor: p.color } : undefined}
                   onClick={() => setPriority(p.value)}
                 >
-                  {p.value > 0 && <FlagIcon style={{ color: p.color }} />}
                   {t(p.key)}
                 </button>
               ))}
@@ -502,31 +516,6 @@ export function TaskFormPage() {
                 )}
               </>
             )}
-          </div>
-
-          <div className="field">
-            <span className="field__label">{t("form.priority")}</span>
-            <div className="priority-selector">
-              {([
-                { value: 0, label: t("form.priority_none"), cls: "" },
-                { value: 1, label: t("form.priority_low"), cls: "priority-selector__btn--low" },
-                { value: 2, label: t("form.priority_med"), cls: "priority-selector__btn--med" },
-                { value: 3, label: t("form.priority_high"), cls: "priority-selector__btn--high" },
-              ] as const).map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  className={[
-                    "priority-selector__btn",
-                    p.cls,
-                    priority === p.value ? "priority-selector__btn--active" : "",
-                  ].filter(Boolean).join(" ")}
-                  onClick={() => setPriority(p.value)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {whenMode === "date" && includeTime && (

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api, toggleTask, type Category, type Task } from "../api";
 import { TaskRow, isTaskOverdue } from "../components/TaskRow";
-import { useI18n, getStoredHorizon } from "../i18n";
+import { useI18n, getStoredHorizon, getHiddenCategories } from "../i18n";
 import {
   AlertTriangleIcon,
   CalendarIcon,
@@ -45,6 +45,7 @@ export function AllPage() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
   const [filterCat, setFilterCat] = useState<number | null>(null);
+  const hiddenCats = useMemo(() => getHiddenCategories(), []);
 
   useEffect(() => {
     void (async () => {
@@ -231,7 +232,7 @@ export function AllPage() {
         >
           {t("all.filter_all")}
         </button>
-        {cats.map((c) => (
+        {cats.filter((c) => !hiddenCats.includes(c.id)).map((c) => (
           <button
             key={c.id}
             className={`chip ${filterCat === c.id ? "chip--soft-active" : ""}`}

@@ -60,11 +60,12 @@ export function DailyRewardModal({ onClose }: Props) {
           {rewards.map((reward, i) => {
             const dayNum = i + 1;
             const isCollected = dayNum <= currentDay;
-            const isCurrent = dayNum === currentDay + 1 && !alreadyClaimed;
+            const isCurrent = dayNum === currentDay + 1 && !alreadyClaimed && currentDay < rewards.length;
+            const isLastCollected = alreadyClaimed && dayNum === currentDay;
             return (
               <div
                 key={i}
-                className={`daily-reward-day${isCollected ? " collected" : ""}${isCurrent ? " current" : ""}`}
+                className={`daily-reward-day${isCollected ? " collected" : ""}${isCurrent ? " current" : ""}${isLastCollected ? " last-collected" : ""}`}
               >
                 <span className="daily-reward-day-label">
                   {dayLabels[i]}
