@@ -111,6 +111,9 @@ class Task(Base):
     done_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    reward_claimed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     archived_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
@@ -412,6 +415,7 @@ async def ensure_runtime_schema(conn: AsyncConnection) -> None:
             "  UNIQUE(referred_id)"
             ")"
         ),
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reward_claimed BOOLEAN NOT NULL DEFAULT FALSE",
         "CREATE INDEX IF NOT EXISTS ix_referrals_referrer_id ON referrals (referrer_id)",
     ]
     for stmt in statements:

@@ -629,15 +629,17 @@ async def update_task(
     await session.flush()
     await _sync_reminders(session, task)
 
-    # Award coins/XP if task just completed
+    # Award coins/XP if task just completed (only once per task)
     game_event: GameEvent | None = None
-    if payload.is_done and not was_done:
+    if payload.is_done and not was_done and not task.reward_claimed:
         user = await session.get(User, tg.id)
         user_tz = user.tz if user else "UTC"
         user_is_premium = await is_premium(session, tg.id)
         game_event = await award_task_completion(
             session, tg.id, task, is_premium=user_is_premium, user_tz=user_tz
         )
+        if game_event.coins_earned > 0 or game_event.xp_earned > 0:
+            task.reward_claimed = True
 
     await session.commit()
     await session.refresh(task)
