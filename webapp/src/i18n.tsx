@@ -5,6 +5,7 @@ export type Lang = "ru" | "en";
 
 const LS_KEY = "taskblo_lang";
 const HORIZON_LS_KEY = "taskblo_horizon";
+const HIDDEN_CATS_LS_KEY = "taskblo_hidden_cats";
 
 function getStoredLang(): Lang {
   try {
@@ -27,6 +28,18 @@ export function getStoredHorizon(): number {
 
 export function setStoredHorizon(days: number): void {
   try { localStorage.setItem(HORIZON_LS_KEY, String(days)); } catch { /* ignore */ }
+}
+
+export function getHiddenCategories(): number[] {
+  try {
+    const v = localStorage.getItem(HIDDEN_CATS_LS_KEY);
+    if (v) return JSON.parse(v) as number[];
+  } catch { /* ignore */ }
+  return [];
+}
+
+export function setHiddenCategories(ids: number[]): void {
+  try { localStorage.setItem(HIDDEN_CATS_LS_KEY, JSON.stringify(ids)); } catch { /* ignore */ }
 }
 
 interface I18nContextValue {
@@ -179,6 +192,15 @@ const ru: Record<string, string> = {
   "profile.admin": "👑 Админ-панель",
   "profile.admin_sub": "Статистика, промокоды, управление пользователями",
   "profile.back": "Профиль",
+  "profile.settings_btn": "Настройки",
+  "profile.settings_btn_sub": "Тема, язык, горизонт задач, категории",
+  "settings.title": "Настройки",
+  "settings.subtitle": "Тема, язык, горизонт и видимость категорий.",
+  "settings.categories_title": "Видимость категорий",
+  "settings.categories_hint": "Выбери, какие категории показывать во вкладке «Все»",
+  "settings.cat_show_all": "Показать все",
+  "settings.cat_hide": "Скрыть",
+  "settings.cat_show": "Показать",
 
   // Daily Reward
   "dr.title": "Ежедневный бонус",
@@ -499,6 +521,15 @@ const en: Record<string, string> = {
   "profile.admin": "👑 Admin panel",
   "profile.admin_sub": "Stats, promo codes, user management",
   "profile.back": "Profile",
+  "profile.settings_btn": "Settings",
+  "profile.settings_btn_sub": "Theme, language, task horizon, categories",
+  "settings.title": "Settings",
+  "settings.subtitle": "Theme, language, horizon and category visibility.",
+  "settings.categories_title": "Category visibility",
+  "settings.categories_hint": "Choose which categories to show in the \"All\" tab",
+  "settings.cat_show_all": "Show all",
+  "settings.cat_hide": "Hide",
+  "settings.cat_show": "Show",
 
   // Daily Reward
   "dr.title": "Daily Reward",

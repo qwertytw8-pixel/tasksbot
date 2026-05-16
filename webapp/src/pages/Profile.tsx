@@ -3,17 +3,20 @@ import { Link, Route, Routes, useNavigate } from "react-router-dom";
 
 import { api, type Category, type PrivacyInfo, type SubscriptionStatus, type Task } from "../api";
 import { TaskRow } from "../components/TaskRow";
-import { useI18n, getStoredHorizon, setStoredHorizon } from "../i18n";
+import { useI18n, getStoredHorizon, setStoredHorizon, getHiddenCategories, setHiddenCategories } from "../i18n";
 import {
   ArchiveIcon,
   ArrowRightIcon,
   BarChartIcon,
   CheckIcon,
   ChevronLeftIcon,
+  EyeIcon,
+  EyeOffIcon,
   HelpIcon,
   MonitorIcon,
   MoonIcon,
   RotateCcwIcon,
+  SettingsIcon,
   ShieldIcon,
   SparkIcon,
   SunIcon,
@@ -28,15 +31,13 @@ const SUPPORT_TG_URL = "https://t.me/ficsyk";
 const HORIZON_OPTIONS = [7, 14, 30, 90, 0] as const;
 
 function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) {
-  const { t, lang, setLang } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<ThemeMode>(() => getStoredMode());
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoMsg, setPromoMsg] = useState<string | null>(null);
   const [promoBusy, setPromoBusy] = useState(false);
-  const [horizon, setHorizonState] = useState(() => getStoredHorizon());
 
   useEffect(() => {
     void (async () => {
@@ -49,17 +50,6 @@ function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) 
       }
     })();
   }, []);
-
-  function pick(next: ThemeMode) {
-    setMode(next);
-    setStoredMode(next);
-    applyTheme(next);
-  }
-
-  function pickHorizon(days: number) {
-    setHorizonState(days);
-    setStoredHorizon(days);
-  }
 
   async function activatePromo() {
     if (!promoCode.trim()) return;
@@ -145,82 +135,13 @@ function ProfileHome({ onResetOnboarding }: { onResetOnboarding?: () => void }) 
         </div>
       </div>
 
-      <div className="surface" style={{ marginBottom: 14 }}>
-        <div className="surface__heading">
-          <SparkIcon /> {t("profile.theme")}
-        </div>
-        <p className="page-header__subtitle" style={{ marginTop: 4, marginBottom: 12 }}>
-          {t("profile.theme_hint")}
-        </p>
-        <div className="theme-grid">
-          <ThemeOption
-            active={mode === "system"}
-            label={t("profile.theme_system")}
-            hint={t("profile.theme_system_hint")}
-            icon={<MonitorIcon />}
-            onClick={() => pick("system")}
-          />
-          <ThemeOption
-            active={mode === "light"}
-            label={t("profile.theme_light")}
-            hint={t("profile.theme_light_hint")}
-            icon={<SunIcon />}
-            onClick={() => pick("light")}
-          />
-          <ThemeOption
-            active={mode === "dark"}
-            label={t("profile.theme_dark")}
-            hint={t("profile.theme_dark_hint")}
-            icon={<MoonIcon />}
-            onClick={() => pick("dark")}
-          />
-        </div>
-      </div>
-
-      {/* Settings section */}
-      <div className="surface" style={{ marginBottom: 14 }}>
-        <div className="surface__heading">
-          <MonitorIcon /> {t("profile.settings")}
-        </div>
-
-        <div className="settings-row">
-          <span className="settings-row__label">{t("profile.lang_label")}</span>
-          <div className="segmented segmented--compact">
-            <button
-              type="button"
-              className={`segmented__item ${lang === "ru" ? "segmented__item--active" : ""}`}
-              onClick={() => setLang("ru")}
-            >
-              Русский
-            </button>
-            <button
-              type="button"
-              className={`segmented__item ${lang === "en" ? "segmented__item--active" : ""}`}
-              onClick={() => setLang("en")}
-            >
-              English
-            </button>
-          </div>
-        </div>
-
-        <div className="settings-row" style={{ marginTop: 12 }}>
-          <span className="settings-row__label">{t("profile.horizon_label")}</span>
-          <div className="segmented segmented--compact">
-            {HORIZON_OPTIONS.map((days) => (
-              <button
-                key={days}
-                type="button"
-                className={`segmented__item ${horizon === days ? "segmented__item--active" : ""}`}
-                onClick={() => pickHorizon(days)}
-              >
-                {days === 0 ? t("profile.horizon_all") : `${days} ${t("profile.horizon_days")}`}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="page-header__subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
-          {t("profile.horizon_hint")}
-        </p>
+      <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
+        <NavRow
+          to="/profile/settings"
+          icon={<SettingsIcon />}
+          title={t("profile.settings_btn")}
+          subtitle={t("profile.settings_btn_sub")}
+        />
       </div>
 
       <div className="surface" style={{ padding: 0, marginBottom: 14 }}>
@@ -457,6 +378,171 @@ function PrivacyPage() {
   );
 }
 
+function SettingsPage() {
+  const { t, lang, setLang } = useI18n();
+  const [mode, setMode] = useState<ThemeMode>(() => getStoredMode());
+  const [horizon, setHorizonState] = useState(() => getStoredHorizon());
+  const [cats, setCats] = useState<Category[]>([]);
+  const [hiddenIds, setHiddenIds] = useState<number[]>(() => getHiddenCategories());
+
+  useEffect(() => {
+    void api.listCategories().then(setCats).catch(() => {});
+  }, []);
+
+  function pick(next: ThemeMode) {
+    setMode(next);
+    setStoredMode(next);
+    applyTheme(next);
+  }
+
+  function pickHorizon(days: number) {
+    setHorizonState(days);
+    setStoredHorizon(days);
+  }
+
+  function toggleCatVisibility(catId: number) {
+    const next = hiddenIds.includes(catId)
+      ? hiddenIds.filter((id) => id !== catId)
+      : [...hiddenIds, catId];
+    setHiddenIds(next);
+    setHiddenCategories(next);
+  }
+
+  function showAllCategories() {
+    setHiddenIds([]);
+    setHiddenCategories([]);
+  }
+
+  return (
+    <div className="page">
+      <BackHeader
+        eyebrow="settings"
+        title={t("settings.title")}
+        subtitle={t("settings.subtitle")}
+      />
+
+      <div className="surface" style={{ marginBottom: 14 }}>
+        <div className="surface__heading">
+          <SparkIcon /> {t("profile.theme")}
+        </div>
+        <p className="page-header__subtitle" style={{ marginTop: 4, marginBottom: 12 }}>
+          {t("profile.theme_hint")}
+        </p>
+        <div className="theme-grid">
+          <ThemeOption
+            active={mode === "system"}
+            label={t("profile.theme_system")}
+            hint={t("profile.theme_system_hint")}
+            icon={<MonitorIcon />}
+            onClick={() => pick("system")}
+          />
+          <ThemeOption
+            active={mode === "light"}
+            label={t("profile.theme_light")}
+            hint={t("profile.theme_light_hint")}
+            icon={<SunIcon />}
+            onClick={() => pick("light")}
+          />
+          <ThemeOption
+            active={mode === "dark"}
+            label={t("profile.theme_dark")}
+            hint={t("profile.theme_dark_hint")}
+            icon={<MoonIcon />}
+            onClick={() => pick("dark")}
+          />
+        </div>
+      </div>
+
+      <div className="surface" style={{ marginBottom: 14 }}>
+        <div className="surface__heading">
+          <MonitorIcon /> {t("profile.settings")}
+        </div>
+
+        <div className="settings-row">
+          <span className="settings-row__label">{t("profile.lang_label")}</span>
+          <div className="segmented segmented--compact">
+            <button
+              type="button"
+              className={`segmented__item ${lang === "ru" ? "segmented__item--active" : ""}`}
+              onClick={() => setLang("ru")}
+            >
+              Русский
+            </button>
+            <button
+              type="button"
+              className={`segmented__item ${lang === "en" ? "segmented__item--active" : ""}`}
+              onClick={() => setLang("en")}
+            >
+              English
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-row" style={{ marginTop: 12 }}>
+          <span className="settings-row__label">{t("profile.horizon_label")}</span>
+          <div className="segmented segmented--compact">
+            {HORIZON_OPTIONS.map((days) => (
+              <button
+                key={days}
+                type="button"
+                className={`segmented__item ${horizon === days ? "segmented__item--active" : ""}`}
+                onClick={() => pickHorizon(days)}
+              >
+                {days === 0 ? t("profile.horizon_all") : `${days} ${t("profile.horizon_days")}`}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="page-header__subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
+          {t("profile.horizon_hint")}
+        </p>
+      </div>
+
+      <div className="surface" style={{ marginBottom: 14 }}>
+        <div className="surface__heading">
+          <TagIcon /> {t("settings.categories_title")}
+        </div>
+        <p className="page-header__subtitle" style={{ marginTop: 4, marginBottom: 12 }}>
+          {t("settings.categories_hint")}
+        </p>
+        {cats.length > 0 && (
+          <>
+            {hiddenIds.length > 0 && (
+              <button
+                type="button"
+                className="btn btn--outline"
+                style={{ width: "100%", marginBottom: 12 }}
+                onClick={showAllCategories}
+              >
+                {t("settings.cat_show_all")}
+              </button>
+            )}
+            <div className="cat-visibility-list">
+              {cats.map((c) => {
+                const isHidden = hiddenIds.includes(c.id);
+                return (
+                  <div key={c.id} className={`cat-visibility-item${isHidden ? " cat-visibility-item--hidden" : ""}`}>
+                    <span className="cat-visibility-item__name">
+                      {c.emoji ? `${c.emoji} ` : ""}{c.name}
+                    </span>
+                    <button
+                      type="button"
+                      className={`chip ${isHidden ? "" : "chip--active"}`}
+                      onClick={() => toggleCatVisibility(c.id)}
+                    >
+                      {isHidden ? <><EyeOffIcon style={{ width: 14, height: 14 }} /> {t("settings.cat_show")}</> : <><EyeIcon style={{ width: 14, height: 14 }} /> {t("settings.cat_hide")}</>}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ArchivePage() {
   const { t } = useI18n();
   const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -544,6 +630,7 @@ export function ProfileRoutes({ onResetOnboarding }: { onResetOnboarding?: () =>
   return (
     <Routes>
       <Route index element={<ProfileHome onResetOnboarding={onResetOnboarding} />} />
+      <Route path="settings" element={<SettingsPage />} />
       <Route path="report" element={<ReportPageLazy />} />
       <Route path="archive" element={<ArchivePage />} />
       <Route path="support" element={<SupportPage />} />

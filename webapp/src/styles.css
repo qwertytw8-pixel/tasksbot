@@ -5137,6 +5137,12 @@ button {
   animation: pulse-reward 1.5s ease infinite;
 }
 
+.daily-reward-day.last-collected {
+  background: linear-gradient(135deg, #10b98122, #34d39933);
+  border: 2px solid #10b981;
+  transform: scale(1.05);
+}
+
 .daily-reward-day-label {
   font-size: 10px;
   font-weight: 600;
@@ -5813,5 +5819,32 @@ button {
   font-size: 12px;
   color: var(--tb-text-muted);
   margin-top: 4px;
+}
+
+/* Category visibility settings */
+.cat-visibility-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cat-visibility-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--tb-bg);
+  transition: opacity 0.2s;
+}
+
+.cat-visibility-item--hidden {
+  opacity: 0.5;
+}
+
+.cat-visibility-item__name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tb-text);
 }
 
