@@ -121,6 +121,11 @@ app.include_router(subscription_router)
 app.include_router(admin_router)
 
 
+@app.get("/")
+async def root() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     import os
