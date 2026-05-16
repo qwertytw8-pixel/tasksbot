@@ -4,9 +4,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 COPY .git /tmp/repo/.git
 WORKDIR /tmp/repo
-# Force fetch latest origin/main to bust Docker cache and get real HEAD
-RUN git fetch origin main 2>/dev/null || true
-RUN git reset --hard origin/main 2>/dev/null || git rev-parse --short HEAD > /tmp/build_sha 2>/dev/null || echo "unknown" > /tmp/build_sha
+# Fetch latest origin/main with a strict timeout so the build never hangs
+# on Amvera (the internal git remote is unreachable from the build container).
+RUN timeout 10 git fetch origin main 2>/dev/null || true
+RUN timeout 10 git reset --hard origin/main 2>/dev/null || true
 RUN git rev-parse --short HEAD > /tmp/build_sha 2>/dev/null || echo "unknown" > /tmp/build_sha
 RUN date -u +"%Y-%m-%dT%H:%M:%SZ" > /tmp/build_time
 
