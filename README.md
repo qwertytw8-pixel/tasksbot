@@ -1,7 +1,20 @@
 # tasksbot — Telegram bot + Mini App для задач
 
+[![CI](https://github.com/qwertytw8-pixel/tasksbot/actions/workflows/ci.yml/badge.svg)](https://github.com/qwertytw8-pixel/tasksbot/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Минималистичный планировщик задач прямо внутри Telegram: бот + Mini App с категориями,
-напоминаниями и нативной светлой/тёмной темой.
+напоминаниями, gamification и нативной светлой/тёмной темой.
+
+## Возможности
+
+- **Управление задачами** — создание, категории, приоритеты, напоминания
+- **Gamification** — монеты, XP, питомцы (кот/лиса/дракон), достижения
+- **Daily Quests** — ежедневные задания с наградами
+- **Lucky Spin** — колесо удачи раз в день
+- **Pet System** — вылупление яиц, эволюция (5 стадий), аксессуары, фьюжн
+- **Premium** — расширенные возможности для подписчиков
+- **Тёмная/светлая тема** — нативная поддержка Telegram
 
 ## Стек
 
@@ -24,5 +37,34 @@ tasksbot/
 └── assets/         # картинки бота (welcome и т.д.)
 ```
 
-См. `backend/README.md` и `webapp/README.md` для локального запуска.
-См. `DEPLOY.md` (TBD) для деплоя.
+## Быстрый старт
+
+### Backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env  # заполни свои данные
+python -m app.main
+```
+
+### Frontend
+
+```bash
+cd webapp
+pnpm install
+pnpm dev
+```
+
+## Документация
+
+- [Backend README](backend/README.md) — локальный запуск бэкенда
+- [Webapp README](webapp/README.md) — локальный запуск фронтенда
+- [DEPLOY.md](DEPLOY.md) — деплой на Render/Neon/Vercel
+- [CONTRIBUTING.md](CONTRIBUTING.md) — руководство для контрибьюторов
+
+## Лицензия
+
+[MIT](LICENSE)
