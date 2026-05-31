@@ -1,43 +1,43 @@
-# tasksbot — Telegram bot + Mini App для задач
+# TasksBot — Telegram Bot + Mini App for Task Management
 
 [![CI](https://github.com/qwertytw8-pixel/tasksbot/actions/workflows/ci.yml/badge.svg)](https://github.com/qwertytw8-pixel/tasksbot/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Минималистичный планировщик задач прямо внутри Telegram: бот + Mini App с категориями,
-напоминаниями, gamification и нативной светлой/тёмной темой.
+A minimalist task planner inside Telegram: bot + Mini App with categories, reminders, gamification, and native light/dark theme support.
 
-## Возможности
+## Features
 
-- **Управление задачами** — создание, категории, приоритеты, напоминания
-- **Gamification** — монеты, XP, питомцы (кот/лиса/дракон), достижения
-- **Daily Quests** — ежедневные задания с наградами
-- **Lucky Spin** — колесо удачи раз в день
-- **Pet System** — вылупление яиц, эволюция (5 стадий), аксессуары, фьюжн
-- **Premium** — расширенные возможности для подписчиков
-- **Тёмная/светлая тема** — нативная поддержка Telegram
+- **Task Management** — create, categorize, prioritize, set reminders
+- **Gamification** — coins, XP, pets (cat/fox/dragon), achievements
+- **Daily Quests** — daily challenges with rewards
+- **Lucky Spin** — daily wheel of fortune
+- **Pet System** — egg hatching, evolution (5 stages), accessories, fusion
+- **Premium** — extended features for subscribers
+- **Dark/Light Theme** — native Telegram theme support
+- **Bilingual** — full Russian and English localization
 
-## Стек
+## Tech Stack
 
 - **Backend:** Python 3.12, [aiogram 3](https://docs.aiogram.dev/), FastAPI, SQLAlchemy 2 (async),
   asyncpg, Alembic, APScheduler.
 - **Frontend (Mini App):** Vite + React + TypeScript,
   [@telegram-apps/sdk-react](https://docs.telegram-mini-apps.com/),
   [@telegram-apps/telegram-ui](https://github.com/Telegram-Mini-Apps/TelegramUI).
-- **Шрифты:** Inter (UI) + Manrope (заголовки).
+- **Fonts:** Inter (UI) + Manrope (headings).
 - **DB:** PostgreSQL.
 - **Hosting (free, no card):** Render Web Service + Neon Postgres + Vercel + GitHub Actions cron.
-  См. `DEPLOY.md`.
+  See `DEPLOY.md`.
 
-## Структура
+## Project Structure
 
 ```
 tasksbot/
 ├── backend/        # aiogram + FastAPI + APScheduler
 ├── webapp/         # React Mini App
-└── assets/         # картинки бота (welcome и т.д.)
+└── assets/         # bot images (welcome screens, etc.)
 ```
 
-## Быстрый старт
+## Quick Start
 
 ### Backend
 
@@ -46,7 +46,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env  # заполни свои данные
+cp .env.example .env  # fill in your credentials
 python -m app.main
 ```
 
@@ -58,13 +58,13 @@ pnpm install
 pnpm dev
 ```
 
-## Документация
+## Documentation
 
-- [Backend README](backend/README.md) — локальный запуск бэкенда
-- [Webapp README](webapp/README.md) — локальный запуск фронтенда
-- [DEPLOY.md](DEPLOY.md) — деплой на Render/Neon/Vercel
-- [CONTRIBUTING.md](CONTRIBUTING.md) — руководство для контрибьюторов
+- [Backend README](backend/README.md) — local backend setup
+- [Webapp README](webapp/README.md) — local frontend setup
+- [DEPLOY.md](DEPLOY.md) — deployment to Render/Neon/Vercel
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contributor guidelines
 
-## Лицензия
+## License
 
 [MIT](LICENSE)

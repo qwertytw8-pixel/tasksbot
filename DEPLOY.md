@@ -1,96 +1,84 @@
-# Деплой tasksbot — пошаговая инструкция
+# Deploying TasksBot — Step by Step
 
-**Amvera (бэкенд) + PostgreSQL + Vercel (Mini App) + GitHub Actions (cron)**.
+**Amvera (backend) + PostgreSQL + Vercel (Mini App) + GitHub Actions (cron)**.
 
-> Бэкенд размещён на [Amvera](https://amvera.ru) — российский облачный хостинг.
-> GitHub Actions раз в 5 минут пингует `/healthz` и зовёт `/cron/tick`
-> (рассылает напоминания).
+> Backend runs on [Amvera](https://amvera.ru) — Russian cloud platform.
+> GitHub Actions runs cron every 5 minutes hitting `/healthz` and `/cron/tick` (triggers background jobs).
 
-## 1. База данных (PostgreSQL)
+## 1. Database (PostgreSQL)
 
-1. https://neon.tech → Sign up with GitHub.
-2. Create project: имя `tasksbot`, регион **AWS Frankfurt** (`eu-central-1`).
-3. Скопируй **Connection string → Pooled connection**. Замени `postgresql://` на
-   `postgresql+asyncpg://` и сохрани — это `DATABASE_URL`.
+1. https://neon.tech — Sign up with GitHub.
+2. Create project: name it `tasksbot`, region **AWS Frankfurt** (`eu-central-1`).
+3. Copy **Connection string → Pooled connection**. Change `postgresql://` to `postgresql+asyncpg://` and save as `DATABASE_URL`.
 
-## 2. Amvera — Бэкенд
+## 2. Amvera — Backend
 
-1. https://amvera.ru → Регистрация.
-2. Создай проект, подключи репозиторий `tasksbot`, корневая директория — `backend`.
-3. Задай переменные окружения:
-   - `BOT_TOKEN` — токен от @BotFather.
-   - `PUBLIC_URL` — публичный URL сервиса на Amvera.
-   - `WEBAPP_URL` — домен Vercel-приложения.
-   - `DATABASE_URL` — строка подключения к PostgreSQL.
-   - `CORS_ORIGINS` — `https://<ВАШ-Vercel>.vercel.app,http://localhost:5173`.
-   - `WEBHOOK_SECRET` — любой секретный токен (для верификации вебхуков от Telegram).
-   - `CRON_SECRET` — любой секретный токен (для GitHub Actions крона).
-4. После деплоя проверь:
+1. https://amvera.ru — Sign up.
+2. Create project, connect repo branch `main`, root directory — `backend`.
+3. Set environment variables:
+   - `BOT_TOKEN` — token from @BotFather.
+   - `PUBLIC_URL` — public URL of your Amvera app.
+   - `WEBAPP_URL` — Vercel Mini App URL.
+   - `DATABASE_URL` — connection string to PostgreSQL.
+   - `CORS_ORIGINS` — `https://<your-vercel>.vercel.app,http://localhost:5173`.
+   - `WEBHOOK_SECRET` — any random string (for Telegram webhook verification).
+   - `CRON_SECRET` — any random string (for GitHub Actions cron).
+4. Verify deployment:
    ```
-   curl https://<твой-amvera-домен>/healthz
+   curl https://<your-amvera-app>/healthz
    # {"status":"ok"}
    ```
 
 ## 3. Vercel — Mini App
 
-1. https://vercel.com → Continue with GitHub → Import репо `tasksbot-`.
-2. **Root Directory** = `webapp`. Framework `Vite` определится сам.
+1. https://vercel.com — Continue with GitHub → Import repo `tasksbot`.
+2. **Root Directory** = `webapp`. Framework `Vite` auto-detected.
 3. **Environment Variables**:
-   - `VITE_API_URL` = `https://<твой-amvera-домен>` (без слэша на конце).
-4. Deploy. Получишь домен вида `https://tasksbot-xxx.vercel.app`.
-5. Вернись в Amvera → Переменные окружения, обнови `WEBAPP_URL` и `CORS_ORIGINS` на этот реальный домен.
-   Amvera автоматически передеплоит.
+   - `VITE_API_URL` = `https://<your-amvera-app>` (without trailing slash).
+4. Deploy. You'll get a URL like `https://tasksbot-xxx.vercel.app`.
+5. Go back to Amvera → environment variables, update `WEBAPP_URL` and `CORS_ORIGINS` with the real Vercel URL. Amvera auto-redeploys.
 
-## 4. GitHub Actions — крон для напоминаний
+## 4. GitHub Actions — Background Cron
 
-В репо открой Settings → **Secrets and variables → Actions → New repository secret**
-и добавь два секрета:
+Go to repo Settings → **Secrets and variables → Actions → New repository secret**. Add:
 
-- `PUBLIC_URL` = `https://<твой-amvera-домен>`
-- `CRON_SECRET` = тот, что ты задал в Amvera в шаге 2
+- `PUBLIC_URL` = `https://<your-amvera-app>`
+- `CRON_SECRET` = same value as in Amvera step 2
 
-Workflow `.github/workflows/cron-tick.yml` уже в репо — он запустится автоматически
-по расписанию `*/5 * * * *`. Можно проверить вручную: Actions → cron-tick → Run workflow.
+The workflow `.github/workflows/cron-tick.yml` is already in the repo — it runs automatically via schedule `*/5 * * * *`. To test manually: Actions → cron-tick → Run workflow.
 
-## 5. BotFather — связать всё в Telegram
+## 5. BotFather — Connect to Telegram
 
-В Telegram открой `@BotFather`:
+In Telegram, message `@BotFather`:
 
-1. `/mybots` → выбери бота → **Bot Settings → Menu Button → Configure menu button**:
-   - Текст: `Открыть задачи`
-   - URL: `https://<твой-Vercel>.vercel.app`
-2. (Опционально) `/newapp` → создай Mini App с тем же URL — получишь короткую ссылку
-   `t.me/<твой-бот>/<short-name>`.
+1. `/mybots` → select your bot → **Bot Settings → Menu Button → Configure menu button**:
+   - Text: `Open TasksBot`
+   - URL: `https://<your-vercel>.vercel.app`
 
-## 6. Проверка end-to-end
+2. (Optional) `/newapp` → create a Mini App with the same URL — this creates a deep link `t.me/<your-bot>/<short-name>`.
 
-В Telegram:
-1. Открой бота → `/start` → видишь приветствие, кнопку «🚀 Открыть приложение».
-2. Жми кнопку → открывается Mini App в текущей теме (тёмная/светлая Telegram).
-3. Создай категорию, потом задачу с `due_at = now + 7 минут`, `remind = −5 мин`.
-4. В пределах ~5–10 минут (с учётом окна крона) — приходит уведомление от бота.
+## 6. End-to-End Test
 
-## Картинки бота
+In Telegram:
+1. Send `/start` → bot responds with welcome image and `< Open Mini App >` button.
+2. Tap the button → Mini App opens with current theme (dark/light Telegram).
+3. Create a task, set category, `due_at = now + 7 days`, `remind = in 5 min`.
+4. In ~5-10 minutes (depending on cron interval) — you should get a reminder notification.
 
-Положи `welcome.png` (или `.jpg`/`.webp`) в `backend/assets/`, закоммить, Amvera передеплоит автоматом.
-Бот сам подхватит её в `/start`.
+## Assets
 
-## Тонкие моменты
+Place `welcome.png` (or `.jpg`/`.webp`) in `backend/assets/`, and Amvera will serve it as a bot image sent on `/start`.
 
-- **Amvera** — бэкенд работает постоянно без засыпания. Крон всё равно полезен для
-  рассылки напоминаний каждые 5 минут.
-- **GitHub Actions cron** иногда задерживается на 5–15 минут под нагрузкой GitHub —
-  это нормальное поведение. Для личного планировщика не критично; если нужна точность
-  «секунда в секунду», уже надо платный сервис.
-- **Часовой пояс:** Mini App при первом входе шлёт `Intl.DateTimeFormat().resolvedOptions().timeZone`
-  на `/api/me`. Бэкенд хранит `due_at` в UTC.
-- **Webhook secret:** Telegram при каждом апдейте присылает заголовок
-  `X-Telegram-Bot-Api-Secret-Token`. Если он не совпадает с `WEBHOOK_SECRET` — бэк возвращает 403.
+## Troubleshooting
 
-## Локальный dev
+- **Amvera** — backend works great on free tier. Cron runs every 5 minutes via GitHub Actions to keep the service alive (Amvera pauses idle services after inactivity).
+- **GitHub Actions cron** — may take 5-15 minutes depending on GitHub load. The free tier is sufficient.
+- **Timezone note:** Mini App uses `Intl.DateTimeFormat().resolvedOptions().timezone` from `/api/me`. All `due_at` is stored in UTC.
+- **Webhook secret:** Telegram sends `X-Telegram-Bot-Api-Secret-Token` header. If it doesn't match `WEBHOOK_SECRET` — webhook returns 403.
 
-Чтобы тикать напоминания локально без GitHub Actions, просто дёргай эндпоинт
-сам каждую минуту:
+## Local Dev
+
+To simulate the cron job locally without GitHub Actions:
 ```bash
 watch -n 60 'curl -X POST localhost:8080/cron/tick -H "Authorization: Bearer change-me-too"'
 ```
