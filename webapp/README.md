@@ -1,25 +1,28 @@
-# tasksbot — webapp (Mini App)
+# TasksBot — Webapp (Mini App)
 
-Vite + React + TypeScript + Telegram UI. Минималистичный дизайн, нативная тёмная/светлая тема
-из Telegram, шрифты Inter (UI) + Manrope (заголовки).
+Vite + React + TypeScript + Telegram UI. Responsive interface with native dark/light theme support, Inter (UI) + Manrope (headings) fonts.
 
-## Локально
+## Quick Start
 
 ```bash
 cd webapp
-pnpm install   # или npm install / yarn
+pnpm install
 cp .env.example .env
-# заполни VITE_API_URL = адрес локального бэкенда (через ngrok тоже HTTPS-домен)
+# Set VITE_API_URL = your backend URL (via ngrok or HTTPS)
 
 pnpm dev
 ```
 
-> Запускать Mini App вне Telegram можно — но `initData` будет пустой и API вернёт 401.
-> Для полноценного теста открывай через бота (см. `backend/README.md`).
+> **Note:** Mini App won't work in Telegram Web without proper `initData` — you'll get 401 errors from the API.
+> For local testing, use ngrok (see `backend/README.md`).
 
-## Деплой
+## Deployment
 
-Vercel: подключи репо, root = `webapp/`, Framework = Vite. В Project Settings → Environment Variables
-добавь `VITE_API_URL` = публичный URL бэкенда (Fly.io). Получишь домен типа
-`https://tasksbot.vercel.app` — его и пропиши в @BotFather в настройках Mini App.
-  ; git add webapp/README.md ; git commit -m "chore: trigger Vercel rebuild" ; git push origin main
+**Vercel:** Connect repo, set root = `webapp/`, framework = Vite. In Project Settings → Environment Variables, set `VITE_API_URL` = your backend URL (Fly.io). The URL should be like `https://tasksbot.vercel.app` — this is what you register in @BotFather as the Mini App link.
+
+To trigger a rebuild:
+```bash
+git add webapp/README.md
+git commit -m "chore: trigger Vercel rebuild"
+git push origin main
+```

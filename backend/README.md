@@ -1,9 +1,8 @@
-# tasksbot — backend
+# TasksBot — Backend
 
-aiogram 3 + FastAPI + SQLAlchemy 2 + APScheduler. Один процесс, один сервис: webhook от Telegram,
-REST API для Mini App, фоновые напоминания.
+aiogram 3 + FastAPI + SQLAlchemy 2 + APScheduler. Handles Telegram webhook, REST API for Mini App, background schedulers.
 
-## Локальный запуск
+## Quick Start
 
 ```bash
 cd backend
@@ -11,30 +10,29 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e .
 
 cp .env.example .env
-# заполни BOT_TOKEN, DATABASE_URL и т.д.
+# Set BOT_TOKEN, DATABASE_URL, etc.
 
-# для локального webhook нужен публичный URL — самый простой способ — ngrok
+# For local webhook testing, use ngrok
 ngrok http 8080
-# скопируй https URL → положи в .env как PUBLIC_URL
+# Copy the https URL and set PUBLIC_URL in .env
 
 uvicorn app.main:app --reload --port 8080
 ```
 
-Проверки:
-- `GET /healthz` — должен вернуть `{"status":"ok"}`.
-- В Telegram: открой бота → `/start` → должна появиться кнопка «Открыть приложение».
+Health check:
+- `GET /healthz` — returns `{"status": "ok"}`.
+- In Telegram: send `/start` to the bot to verify it responds.
 
-## Структура
+## Key Files
 
-- `app/main.py` — FastAPI, lifespan, webhook endpoint.
-- `app/bot.py` — aiogram dispatcher, хэндлеры команд.
+- `app/main.py` — FastAPI app, lifespan, webhook endpoint.
+- `app/bot.py` — aiogram dispatcher, command handlers.
 - `app/api.py` — REST API (`/api/me`, `/api/categories`, `/api/tasks`).
-- `app/db.py` — модели + sessionmaker.
-- `app/auth.py` — проверка `initData` от Telegram Mini App.
-- `app/scheduler.py` — APScheduler tick раз в минуту, рассылающий напоминания.
-- `app/config.py` — pydantic-settings.
+- `app/db.py` — database models + sessionmaker.
+- `app/auth.py` — Telegram Mini App `initData` validation.
+- `app/scheduler.py` — APScheduler tick for background jobs.
+- `app/config.py` — pydantic-settings configuration.
 
-## Картинки
+## Assets
 
-Положи `welcome.png` (или .jpg/.webp) в `backend/assets/` — бот автоматически
-отправит её в `/start` как заглавное фото.
+Place `welcome.png` (or .jpg/.webp) in `backend/assets/` — this image is automatically sent when users `/start` the bot.
